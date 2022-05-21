@@ -1,0 +1,8 @@
+[build]
+target = "index.html"
+dist = "static/dist"
+public_url = "/static/dist/"
+release = true
+[[proxy]]
+backend = "ws://localhost:9000/api/ws"
+ws = false
