@@ -1,0 +1,40 @@
+[package]
+name = "poetshuffle_v2"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[lib]
+name = "poetshuffle"
+path = "src/lib/mod.rs"
+
+[[bin]]
+name = "app"
+
+[[bin]]
+name = "server"
+[features]
+default = ["test_cdn"]
+test_cdn = []
+
+[dependencies]
+anyhow = "1.0.57"
+tracing = "0.1.34"
+tracing-subscriber = {version="0.3.11",features=["env-filter"]}
+
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+js-sys = "0.3.57"
+yew = {version = "0.19.3" }
+yew-router = {version = "0.16.0"}
+web-sys = {version="0.3.57",features=["HtmlElement","Navigator"]}
+stylist = {version="0.10.0",features=["yew_integration"]}
+
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+tokio = {version="1.18.2",features=["full","rt"]}
+tokio-util = {version="0.7.2",features=["rt"]}
+axum = "0.5.6"
+tower-http = {version="0.3.3",features=["fs","set-header","trace"]}
+tower = "0.4.12"
+reqwest = "0.11.10"
+once_cell = "1.10.0"
