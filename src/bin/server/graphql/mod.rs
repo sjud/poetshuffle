@@ -1,6 +1,7 @@
 pub mod schema {
     use std::collections::BTreeMap;
     use async_graphql::*;
+    use async_graphql::extensions::Tracing;
     use hmac::digest::KeyInit;
     use hmac::Hmac;
     use sea_orm::{Value,DatabaseConnection,EntityTrait,DbBackend, DbErr, Statement};
@@ -35,7 +36,7 @@ pub mod schema {
                 .one(db)
                 .await
                 .map_err(|err|format!("{}",err))? {
-            // Fetch the permission from the permission table.
+            // Fetch the permission from the permission table using user_uuid.
             if let Some(permission) = entity::permissions::Entity::find_by_id(user_uuid)
                 .one(db)
                 .await
@@ -59,17 +60,20 @@ pub mod schema {
     }
     #[derive(MergedObject, Default)]
     pub struct Query(LoginQuery);
+    pub type PoetShuffleSchema = Schema<Query, EmptyMutation, EmptySubscription>;
 
-
-
-    pub fn schema(conn:DatabaseConnection)
-        -> Schema<Query, EmptyMutation, EmptySubscription> {
+    /// Builds our Schema for our service layer using DB Conn.
+    /// It generates internally a JWT key by using the env var JWT_SECRET.
+    pub fn new_schema(conn:DatabaseConnection)
+        ->  PoetShuffleSchema {
         // Create our key for signing JWT's.
         let key: Hmac<Sha256> = Hmac::new_from_slice(crate::JWT_SECRET.as_bytes())
             .expect("Expecting valid Hmac<Sha256> from slice.");
         Schema::build(Query::default(), EmptyMutation, EmptySubscription)
             .data(conn)
             .data(key)
+            // Tracing extension logs query info at the INFO level.
+            .extension(Tracing)
             .finish()
     }
 }
