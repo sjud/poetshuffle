@@ -1,0 +1,35 @@
+pub use sea_orm_migration::prelude::*;
+
+mod m20220521_530pm_create_users;
+mod m20220521_000000_init;
+mod m20220521_000002_sets;
+mod m20220521_000003_permissions;
+mod m20220521_000004_set_options;
+mod m20220521_000005_logins;
+mod m20220521_000006_pen_names;
+mod m20220521_000007_poems;
+mod m20220521_000008_intros;
+mod m20220521_000009_banters;
+mod m20220521_000010_comments;
+mod m20220521_000011_orders;
+
+pub struct Migrator;
+
+#[async_trait::async_trait]
+impl MigratorTrait for Migrator {
+    fn migrations() -> Vec<Box<dyn MigrationTrait>> {
+        vec![
+            Box::new(m20220521_530pm_create_users::Migration),
+            Box::new(m20220521_000000_init::Migration),
+            Box::new(m20220521_000002_sets::Migration),
+            Box::new(m20220521_000003_permissions::Migration),
+            Box::new(m20220521_000004_set_options::Migration),
+            Box::new(m20220521_000005_logins::Migration),
+            Box::new(m20220521_000006_pen_names::Migration),
+            Box::new(m20220521_000007_poems::Migration),
+            Box::new(m20220521_000008_intros::Migration),
+            Box::new(m20220521_000009_banters::Migration),
+            Box::new(m20220521_000010_comments::Migration),
+            Box::new(m20220521_000011_orders::Migration)]
+    }
+}

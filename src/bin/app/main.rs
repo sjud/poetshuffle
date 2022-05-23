@@ -1,5 +1,7 @@
 mod publish;
 mod admin;
+mod poetshuffle;
+mod services;
 
 use yew::prelude::*;
 use yew_router::prelude::*;
@@ -14,7 +16,7 @@ pub enum Route {
     #[at("/about")]
     About,
     #[at("/admin")]
-    Admin
+    Admin,
     #[at("/publish")]
     Publish,
     #[at("/")]
@@ -27,6 +29,7 @@ fn switch(routes: &Route) -> Html {
     match routes {
         Route::PoetShuffle => html!{{"PoetShuffle"}},
         Route::About => html!{{"About"}},
+        Route::Admin => html!{{<Admin/>}},
         Route::Publish => html!{{"Publish"}},
         Route::MainMenu => html! {<MainMenu />},
         Route::NotFound => html! { {"404"}},

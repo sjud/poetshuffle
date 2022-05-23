@@ -3,7 +3,11 @@ use web_sys::HtmlInputElement;
 use yew_hooks::prelude::*;
 #[function_component(Admin)]
 fn admin() -> Html {
-
+    html!{
+        <div>
+        <Login/>
+        </div>
+    }
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, Default)]
@@ -15,8 +19,15 @@ pub struct LoginInfo {
 #[function_component(Login)]
 pub fn login() -> Html {
     let login_info = use_state(LoginInfo::default);
-    let onsubmit = {
-
+    let onsubmit = |_|{
+        let req =  use_async(
+            fe
+        reqwasm::http::Request::new("/api/verify_login")
+            .header("x-email",&login_info.email)
+            .header("x-password",&login_info.password)
+            .send()
+        );
+        req.run();
     };
     let oninput_email = {
         let login_info = login_info.clone();

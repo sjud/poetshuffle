@@ -4,6 +4,7 @@ use std::sync::Arc;
 use axum::extract::Path;
 use axum::http::{HeaderMap, StatusCode};
 use axum::{Extension, Router};
+
 use tokio::{try_join};
 use tower_http::trace::TraceLayer;
 use tracing_subscriber::layer::SubscriberExt;
@@ -14,15 +15,17 @@ use migration::{Migrator, MigratorTrait};
 
 mod storage;
 mod test_cdn;
+mod graphql;
+
+const DATABASE_URL :&str = dotenv_codegen::dotenv!("DATABASE_URL");
+const JWT_SECRET: &str = dotenv_codegen::dotenv!("JWT_SECRET");
+
 
 #[tokio::main]
 async fn main() {
     // Load DB url from env vars and make sure we are up on latest
     // migration.
-    dotenv::dotenv().ok();
-    let database_url = std::env::var("DATABASE_URL")
-        .expect("Expecting Valid DB url in env vars.");
-    let connection = sea_orm::Database::connect(&database_url).await
+    let connection = sea_orm::Database::connect(DATABASE_URL).await
         .expect("Expecting DB connection given DATABASE_URL.");
     Migrator::up(&connection, None).await
         .expect("Expecting Successful migration.");
@@ -41,7 +44,7 @@ async fn main() {
 
 
 async fn server() {
-    // Tracing gets us traces.
+    // Normal tracing boilerplate to get traces, see tracing docs
     tracing_subscriber::registry()
         .with(tracing_subscriber::EnvFilter::new(
             std::env::var("RUST_LOG")
@@ -61,7 +64,7 @@ async fn server() {
                 storage::get_file_from_test_cdn(Path("dist/index.html".to_string())).await
             }))
         .layer(TraceLayer::new_for_http());
-    // See Axum docs for standard boilerplate.
+    // See Axum docs for standard server boilerplate.
     axum::Server::bind(&"0.0.0.0:8000".parse().unwrap())
         .serve(app.into_make_service())
         .await
