@@ -1,1 +1,4 @@
-mod requests;
+use gloo::net::{
+    http::{Request,Response},
+    Error,
+};

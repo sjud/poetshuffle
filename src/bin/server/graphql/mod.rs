@@ -9,9 +9,9 @@ pub mod schema {
     use jwt::SignWithKey;
     use sha2::Sha256;
 
-
     #[derive(Default)]
     pub struct LoginQuery;
+
     #[Object]
     impl LoginQuery {
         async fn login(
@@ -27,10 +27,11 @@ pub mod schema {
             // If the password and email match we get back the user uuid.
             if let Some(entity::users::Model{user_uuid, .. }) = entity::users::Entity::find().
                 from_raw_sql(
+                    // TODO IS THIS VULNERABLE TO SQL INJECTION ATTACKS ???
                 Statement::from_sql_and_values(
                     DbBackend::Postgres,
-                    r#"SELECT user_uuid FROM users
-                     WHERE email = $1, password = crypt($2,password)"#,
+                    r#"SELECT user_uuid FROM logins
+                     WHERE email = $1 AND password = crypt($2,password)"#,
                     vec![Value::from(email),Value::from(pass)]
                 ))
                 .one(db)
@@ -46,7 +47,8 @@ pub mod schema {
                 claims.insert("sub",permission);
 
                 // Sign our claims and return functioning JWT.
-                Ok(claims.sign_with_key(key)
+                Ok(
+                    claims.sign_with_key(key)
                     .map_err(|err|format!("{}",err))?
                 )
             } else {
@@ -56,8 +58,8 @@ pub mod schema {
                 Err(String::from("No matching User."))
             }
         }
-
     }
+
     #[derive(MergedObject, Default)]
     pub struct Query(LoginQuery);
     pub type PoetShuffleSchema = Schema<Query, EmptyMutation, EmptySubscription>;
@@ -69,6 +71,8 @@ pub mod schema {
         // Create our key for signing JWT's.
         let key: Hmac<Sha256> = Hmac::new_from_slice(crate::JWT_SECRET.as_bytes())
             .expect("Expecting valid Hmac<Sha256> from slice.");
+        // Build our schema from our merged top level queries, and add
+        // a database conneciton and JWT key.
         Schema::build(Query::default(), EmptyMutation, EmptySubscription)
             .data(conn)
             .data(key)

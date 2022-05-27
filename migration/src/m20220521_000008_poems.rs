@@ -17,7 +17,7 @@ impl MigrationTrait for Migration {
     originator_uuid UUID REFERENCES users(user_uuid) NOT NULL,
     creation_ts TIMESTAMPTZ NOT NULL DEFAULT current_timestamp,
     set_uuid UUID REFERENCES sets(set_uuid) NOT NULL,
-    banter_uuid UUID REFERENCES banter(banter_uuid),
+    banter_uuid UUID REFERENCES banters(banter_uuid),
     title VARCHAR(100) NOT NULL,
     idx INTEGER NOT NULL,
     part_of_poetshuffle BOOL NOT NULL,

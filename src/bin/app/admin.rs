@@ -1,8 +1,19 @@
+use std::sync::Arc;
 use super::*;
 use web_sys::HtmlInputElement;
 use yew_hooks::prelude::*;
+use graphql_client::{GraphQLQuery};
+
+#[derive(GraphQLQuery)]
+#[graphql(
+schema_path = "schema.graphql",
+query_path = "app_queries/login.graphql",
+response_derives = "Serialize,PartialEq",
+)]
+struct LoginQuery;
+
 #[function_component(Admin)]
-fn admin() -> Html {
+pub fn admin() -> Html {
     html!{
         <div>
         <Login/>
@@ -10,41 +21,58 @@ fn admin() -> Html {
     }
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, Default)]
-pub struct LoginInfo {
-    pub email: String,
-    pub password: String,
+
+pub async fn post_graphql<Q:GraphQLQuery>(vars:<Q as GraphQLQuery>::Variables)
+    -> Result<Arc<graphql_client::Response<Q::ResponseData>>,String>{
+    tracing::error!("post_graphql");
+    Ok(Arc::new(
+        gloo::net::http::Request::post("api/graphql")
+        .header("accept-encoding","gzip")
+        .json(&Q::build_query(vars))
+                 .map_err(|err|format!("{:?}",err))?
+        .send()
+        .await
+            .map_err(|err|format!("{:?}",err))?
+        .json()
+        .await
+            .map_err(|err|format!("{:?}",err))?
+    ))
 }
+
+
 
 #[function_component(Login)]
 pub fn login() -> Html {
-    let login_info = use_state(LoginInfo::default);
-    let onsubmit = |_|{
-        let req =  use_async(
-            fe
-        reqwasm::http::Request::new("/api/verify_login")
-            .header("x-email",&login_info.email)
-            .header("x-password",&login_info.password)
-            .send()
-        );
-        req.run();
+    let email = use_state(||String::default());
+    let pass = use_state(||String::default());
+    let token = use_state(||String::default());
+    let req =  {
+        let email = email.clone();
+        let pass = pass.clone();
+        use_async({
+            tracing::error!("use_async");
+            post_graphql::<LoginQuery>(login_query::Variables {
+                email: (*email).clone(),
+                pass: (*pass).clone(),
+            })})
     };
+    let onsubmit = Callback::from(move |e:FocusEvent|{
+        e.prevent_default();
+        req.run();
+        tracing::error!("onsubmit");
+    });
     let oninput_email = {
-        let login_info = login_info.clone();
+        let email = email.clone();
         Callback::from(move |e: InputEvent| {
             let input: HtmlInputElement = e.target_unchecked_into();
-            let mut info = (*login_info).clone();
-            info.email = input.value();
-            login_info.set(info);
+            email.set(input.value());
         })
     };
     let oninput_password = {
-        let login_info = login_info.clone();
+        let pass = pass.clone();
         Callback::from(move |e: InputEvent| {
             let input: HtmlInputElement = e.target_unchecked_into();
-            let mut info = (*login_info).clone();
-            info.password = input.value();
-            login_info.set(info);
+            pass.set(input.value());
         })
     };
 
@@ -61,7 +89,7 @@ pub fn login() -> Html {
                                         class="form-control form-control-lg"
                                         type="email"
                                         placeholder="Email"
-                                        value={login_info.email.clone()}
+                                        value={(*email).clone()}
                                         oninput={oninput_email}
                                         />
                                 </fieldset>
@@ -70,7 +98,7 @@ pub fn login() -> Html {
                                         class="form-control form-control-lg"
                                         type="password"
                                         placeholder="Password"
-                                        value={login_info.password.clone()}
+                                        value={(*pass).clone()}
                                         oninput={oninput_password}
                                         />
                                 </fieldset>

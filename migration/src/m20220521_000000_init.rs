@@ -1,4 +1,4 @@
-use sea_orm::{ConnectionTrait, Statement};
+use sea_orm::{ConnectionTrait, DatabaseBackend, SelectorRaw, Statement};
 use sea_orm_migration::prelude::*;
 use entity::users::*;
 use crate::extension::postgres::{Type, TypeAlterAddOpt};
@@ -60,13 +60,14 @@ impl Iden for UserRole {
 impl MigrationTrait for Migration {
     async fn up(&self, manager: &SchemaManager) -> Result<(), DbErr> {
         let db = manager.get_connection();
-
-        manager.create_type(
-            Type::create()
-            .as_enum(SetStatus::Type)
-            .values(vec![SetStatus::Pending,SetStatus::Published]).to_owned()
-        ).await?;
-        manager.create_type(Type::create()
+        // TODO don't Ignore errors because I don't
+        // TODO know how to create type if not exists???
+        let _ = manager.create_type(
+                Type::create()
+                    .as_enum(SetStatus::Type)
+                    .values(vec![SetStatus::Pending, SetStatus::Published]).to_owned()
+            ).await;
+        let _ = manager.create_type(Type::create()
             .as_enum(UserRole::Type)
             .values(vec![
                 UserRole::Listener,
@@ -74,12 +75,12 @@ impl MigrationTrait for Migration {
                 UserRole::Moderator,
                 UserRole::Admin,
                 UserRole::SuperAdmin]).to_owned()
-        ).await?;
+        ).await;
         let sql = r#"
 CREATE EXTENSION pgcrypto;"#;
         let stmt = Statement::from_string(manager.get_database_backend(), sql.to_owned());
-        manager.get_connection().execute(stmt).await.map(|_| ())
-
+        let _ = manager.get_connection().execute(stmt).await.map(|_| ());
+        Ok(())
     }
 
     async fn down(&self, manager: &SchemaManager) -> Result<(), DbErr> {

@@ -1,12 +1,29 @@
+
 mod publish;
 mod admin;
 mod poetshuffle;
 mod services;
+mod console_writer;
 
+use std::sync::Mutex;
 use yew::prelude::*;
 use yew_router::prelude::*;
 use stylist::{yew::styled_component, css, global_style};
-fn main() { yew::start_app::<App>(); }
+use crate::console_writer::WASMConsoleWriter;
+
+#[global_allocator]
+static ALLOC: wee_alloc::WeeAlloc = wee_alloc::WeeAlloc::INIT;
+fn main() {
+    console_error_panic_hook::set_once();
+    tracing_subscriber::fmt()
+        .without_time()
+        .with_ansi(false)
+        .with_writer(Mutex::new(WASMConsoleWriter))
+        .pretty()
+        .init();
+    yew::start_app::<App>();
+}
+
 
 
 #[derive(Routable, PartialEq, Clone, Debug)]
@@ -29,7 +46,7 @@ fn switch(routes: &Route) -> Html {
     match routes {
         Route::PoetShuffle => html!{{"PoetShuffle"}},
         Route::About => html!{{"About"}},
-        Route::Admin => html!{{<Admin/>}},
+        Route::Admin => html!{<admin::Admin/>},
         Route::Publish => html!{{"Publish"}},
         Route::MainMenu => html! {<MainMenu />},
         Route::NotFound => html! { {"404"}},
@@ -164,11 +181,12 @@ pub fn footer() -> Html {
 
     html!{
         <div class={list}>
-        <button onclick={about} class = {button}>{"About"}</button>
-        <button onclick={admin} class = {button}>{"Admin"}</button>
+        <button onclick={about} class = {button.clone()}>{"About"}</button>
+        <button onclick={admin} class = {button.clone()}>{"Admin"}</button>
         </div>
     }
 }
+
 
 
 
@@ -178,7 +196,6 @@ pub fn app() -> Html {
 
     html! {
             <BrowserRouter>
-
                 <div class ="main">
                     <Switch<Route> {render} />
                 </div>

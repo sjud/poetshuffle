@@ -3,9 +3,11 @@
 use std::sync::Arc;
 use async_graphql_axum::{GraphQLRequest, GraphQLResponse};
 use axum::extract::Path;
-use axum::http::{HeaderMap, StatusCode};
+use axum::http::{HeaderMap, Request, StatusCode};
 use axum::routing::post;
 use axum::{Extension, Router};
+use axum::body::Body;
+use axum::response::Html;
 use sea_orm::{DatabaseConnection, Schema};
 
 use tokio::{try_join};
@@ -44,7 +46,7 @@ async fn main() {
     try_join!(test_cdn,server).unwrap();
 }
 
-
+/// Executes GraphQL requests against out schema stored in extensions.
 async fn graphql_handler(
     schema: Extension<PoetShuffleSchema>,
     req: GraphQLRequest,
@@ -52,6 +54,7 @@ async fn graphql_handler(
     schema.execute(req.into_inner()).await.into()
 }
 
+/// builds our HTTP server, needs DB conn for GraphQL.
 async fn server(conn:DatabaseConnection) {
     // Normal tracing boilerplate to get traces, see tracing docs
     tracing_subscriber::registry()
@@ -61,8 +64,16 @@ async fn server(conn:DatabaseConnection) {
         ))
         .with(tracing_subscriber::fmt::layer())
         .init();
-    let api_routes = Router::new()
-        .route("/graph_ql",post(graphql_handler));
+        let api_routes = Router::new()
+        .route("/graphql",post(graphql_handler));
+    // For use during development.
+    #[cfg(feature = "graphiql")]
+       let api_routes =  api_routes
+        .route("/graphiql",axum::routing::any(async move ||{
+            Html(
+            async_graphql::http::graphiql_source("/api/graphql",None)
+            )
+        }));
     // Using storage() as a base which handles arbitrary file lookups.
     let app = storage()
         .route("/",axum::routing::get( async move ||{
