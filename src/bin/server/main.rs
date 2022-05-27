@@ -17,11 +17,11 @@ use tracing_subscriber::layer::SubscriberExt;
 use tracing_subscriber::util::SubscriberInitExt;
 use crate::storage::storage;
 use migration::{Migrator, MigratorTrait};
-use crate::graphql::schema::PoetShuffleSchema;
+use crate::graphql::PoetShuffleSchema;
 
 
 mod storage;
-mod test_cdn;
+mod local_cdn;
 mod graphql;
 
 lazy_static!{
@@ -52,8 +52,8 @@ async fn main() {
         .expect("Expecting Successful migration.");
     // Spawn test_cdn server on port 8001 during development.
     let test_cdn = tokio::task::spawn(async move {
-        #[cfg(feature = "test_cdn")]
-        test_cdn::test_cdn().await
+        #[cfg(feature = "local_cdn")]
+        local_cdn::local_cdn().await
     });
     // Spawn our normal HTTP server to handle API calls.
     let server = tokio::task::spawn( async move {server(connection).await});
@@ -104,7 +104,7 @@ async fn server(conn:DatabaseConnection) {
         // Add tracing to our service.
         .layer(TraceLayer::new_for_http())
         // Add our Graphql schema for our handler.
-        .layer(Extension(graphql::schema::new_schema(conn)));
+        .layer(Extension(graphql::new_schema(conn)));
     // See Axum docs for standard server boilerplate.
     axum::Server::bind(&"0.0.0.0:8000".parse().unwrap())
         .serve(app.into_make_service())

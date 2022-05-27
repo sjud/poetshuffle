@@ -18,8 +18,8 @@ name = "app"
 name = "server"
 
 [features]
-dev = ["test_cdn","graphiql"]
-test_cdn = []
+dev = ["local_cdn","graphiql"]
+local_cdn = []
 graphiql = []
 
 [dependencies]
@@ -61,3 +61,4 @@ jwt = "0.16.0"
 sha2 = "0.10.2"
 hmac = "0.12.1"
 entity = {path="entity"}
+sea-query = "0.24.6"
