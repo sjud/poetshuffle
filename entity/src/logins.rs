@@ -11,7 +11,6 @@ impl EntityName for Entity {
     }
 }
 
-use async_graphql::*;
 #[derive(Clone, Debug, PartialEq, DeriveModel, DeriveActiveModel)]
 pub struct Model {
     pub user_uuid: Uuid,

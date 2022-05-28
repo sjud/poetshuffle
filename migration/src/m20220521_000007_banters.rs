@@ -1,6 +1,5 @@
 use sea_orm::{ConnectionTrait, Statement};
 use sea_orm_migration::prelude::*;
-use entity::users::*;
 pub struct Migration;
 
 impl MigrationName for Migration {

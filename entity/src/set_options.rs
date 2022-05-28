@@ -12,7 +12,6 @@ impl EntityName for Entity {
     }
 }
 
-use async_graphql::*;
 #[derive(Clone, Debug, PartialEq, DeriveModel, DeriveActiveModel,SimpleObject)]
 #[graphql(concrete(name = "SetOption", params()))]
 pub struct Model {

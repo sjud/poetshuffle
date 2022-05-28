@@ -1,7 +1,6 @@
-use sea_orm::{ConnectionTrait, DatabaseBackend, SelectorRaw, Statement};
+use sea_orm::{ConnectionTrait, Statement};
 use sea_orm_migration::prelude::*;
-use entity::users::*;
-use crate::extension::postgres::{Type, TypeAlterAddOpt};
+use crate::extension::postgres::{Type};
 
 pub struct Migration;
 
@@ -59,7 +58,6 @@ impl Iden for UserRole {
 #[async_trait::async_trait]
 impl MigrationTrait for Migration {
     async fn up(&self, manager: &SchemaManager) -> Result<(), DbErr> {
-        let db = manager.get_connection();
         // TODO don't Ignore errors because I don't
         // TODO know how to create type if not exists???
         let _ = manager.create_type(

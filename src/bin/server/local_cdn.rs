@@ -1,7 +1,7 @@
 use axum::http::{header, HeaderValue, StatusCode};
 use axum::response::IntoResponse;
 use axum::Router;
-use axum::routing::{get, get_service};
+use axum::routing::get_service;
 use tokio::io;
 use tower_http::services::ServeDir;
 use tower::ServiceBuilder;

@@ -1,7 +1,6 @@
-use axum::body::{BoxBody, Bytes};
+use axum::body::Bytes;
 use axum::extract::Path;
-use axum::http::StatusCode;
-use axum::response::{Html, Redirect, Response};
+use axum::response::{Html, Redirect};
 use axum::Router;
 use axum::routing::get;
 

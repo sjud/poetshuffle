@@ -1,4 +1,1 @@
-use gloo::net::{
-    http::{Request,Response},
-    Error,
-};
+pub mod network;

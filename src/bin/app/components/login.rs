@@ -1,72 +1,46 @@
-use std::sync::Arc;
-use super::*;
 use web_sys::HtmlInputElement;
 use yew_hooks::prelude::*;
-use graphql_client::{GraphQLQuery};
-
-#[derive(GraphQLQuery)]
-#[graphql(
-schema_path = "schema.graphql",
-query_path = "app_queries/login.graphql",
-response_derives = "Serialize,PartialEq",
-)]
-struct LoginQuery;
-
-#[function_component(Admin)]
-pub fn admin() -> Html {
-    html!{
-        <div>
-        <Login/>
-        </div>
-    }
-}
-
-
-pub async fn post_graphql<Q:GraphQLQuery>(vars:<Q as GraphQLQuery>::Variables)
-    -> Result<Arc<graphql_client::Response<Q::ResponseData>>,String>{
-    Ok(Arc::new(
-        gloo::net::http::Request::post("api/graphql")
-        .header("accept-encoding","gzip")
-        .json(&Q::build_query(vars))
-                 .map_err(|err|format!("{:?}",err))?
-        .send()
-        .await
-            .map_err(|err|format!("{:?}",err))?
-        .json()
-        .await
-            .map_err(|err|format!("{:?}",err))?
-    ))
-}
-
-
-
+use yew::prelude::*;
+use crate::services::network::post_graphql;
+use crate::types::auth_context::{AuthContext, AuthTokenAction};
+use crate::queries::{LoginQuery,login_query::Variables};
 #[function_component(Login)]
 pub fn login() -> Html {
+    // We'll use these node refs in our inputs on our login form.
     let email = use_node_ref();
     let pass = use_node_ref();
+    // AuthContext is a ReducerHandle wrapped around Auth, so we can mutate our authtoken.
     let auth_ctx = use_context::<AuthContext>().unwrap();
     let req = {
+        // Clones are required because of the move in our async block.
         let email = email.clone();
         let pass = pass.clone();
         let auth_ctx = auth_ctx.clone();
+        // We run this when we submit our form.
         use_async::<_, (), String>(async move {
-            let resp = post_graphql::<LoginQuery>(login_query::Variables {
+            // Get the values from the fields and post a login graphql query to our server
+            let resp = post_graphql::<LoginQuery>(Variables {
                 email:email.cast::<HtmlInputElement>().unwrap().value(),
                 pass:pass.cast::<HtmlInputElement>().unwrap().value(),
             }).await
                 .map_err(|err| format!("{:?}", err))?;
+            // If we our response has data check it's .login field it ~should~ be a jwt string
+            // which we dispatch to our AuthToken which will now use it in all future contexts.
             if let Some(ref data) = resp.data {
                 auth_ctx.dispatch(AuthTokenAction::Set(data.login.clone()))
             }
+            // If we have no data then see if we have errors and print those to console.
+            else if resp.errors.is_some() {
+                tracing::error!("{:?}",resp.errors);
+            }
             Ok(())
-        }
-        )
+        })
     };
+    // .prevent_default() is required for custom behavior for on submit buttons on forms.
     let onsubmit = Callback::from(move |e: FocusEvent| {
         e.prevent_default();
         req.run();
     });
-
 
     html! {
         <div class="auth-page">
