@@ -24,7 +24,6 @@ pub fn admin() -> Html {
 
 pub async fn post_graphql<Q:GraphQLQuery>(vars:<Q as GraphQLQuery>::Variables)
     -> Result<Arc<graphql_client::Response<Q::ResponseData>>,String>{
-    tracing::error!("post_graphql");
     Ok(Arc::new(
         gloo::net::http::Request::post("api/graphql")
         .header("accept-encoding","gzip")
@@ -43,38 +42,31 @@ pub async fn post_graphql<Q:GraphQLQuery>(vars:<Q as GraphQLQuery>::Variables)
 
 #[function_component(Login)]
 pub fn login() -> Html {
-    let email = use_state(||String::default());
-    let pass = use_state(||String::default());
-    let token = use_state(||String::default());
-    let req =  {
+    let email = use_node_ref();
+    let pass = use_node_ref();
+    let auth_ctx = use_context::<AuthContext>().unwrap();
+    let req = {
         let email = email.clone();
         let pass = pass.clone();
-        use_async({
-            tracing::error!("use_async");
-            post_graphql::<LoginQuery>(login_query::Variables {
-                email: (*email).clone(),
-                pass: (*pass).clone(),
-            })})
+        let auth_ctx = auth_ctx.clone();
+        use_async::<_, (), String>(async move {
+            let resp = post_graphql::<LoginQuery>(login_query::Variables {
+                email:email.cast::<HtmlInputElement>().unwrap().value(),
+                pass:pass.cast::<HtmlInputElement>().unwrap().value(),
+            }).await
+                .map_err(|err| format!("{:?}", err))?;
+            if let Some(ref data) = resp.data {
+                auth_ctx.dispatch(AuthTokenAction::Set(data.login.clone()))
+            }
+            Ok(())
+        }
+        )
     };
-    let onsubmit = Callback::from(move |e:FocusEvent|{
+    let onsubmit = Callback::from(move |e: FocusEvent| {
         e.prevent_default();
         req.run();
-        tracing::error!("onsubmit");
     });
-    let oninput_email = {
-        let email = email.clone();
-        Callback::from(move |e: InputEvent| {
-            let input: HtmlInputElement = e.target_unchecked_into();
-            email.set(input.value());
-        })
-    };
-    let oninput_password = {
-        let pass = pass.clone();
-        Callback::from(move |e: InputEvent| {
-            let input: HtmlInputElement = e.target_unchecked_into();
-            pass.set(input.value());
-        })
-    };
+
 
     html! {
         <div class="auth-page">
@@ -89,8 +81,7 @@ pub fn login() -> Html {
                                         class="form-control form-control-lg"
                                         type="email"
                                         placeholder="Email"
-                                        value={(*email).clone()}
-                                        oninput={oninput_email}
+                                        ref={email.clone()}
                                         />
                                 </fieldset>
                                 <fieldset class="form-group">
@@ -98,8 +89,7 @@ pub fn login() -> Html {
                                         class="form-control form-control-lg"
                                         type="password"
                                         placeholder="Password"
-                                        value={(*pass).clone()}
-                                        oninput={oninput_password}
+                                        ref={pass.clone()}
                                         />
                                 </fieldset>
                                 <button

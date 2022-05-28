@@ -5,8 +5,10 @@ mod poetshuffle;
 mod services;
 mod console_writer;
 
+use std::rc::Rc;
 use std::sync::Mutex;
 use yew::prelude::*;
+use yew::context::ContextProvider;
 use yew_router::prelude::*;
 use stylist::{yew::styled_component, css, global_style};
 use crate::console_writer::WASMConsoleWriter;
@@ -193,16 +195,39 @@ pub fn footer() -> Html {
 #[styled_component(App)]
 pub fn app() -> Html {
     let render = Switch::render(switch);
-
+    let auth_token = use_reducer(||AuthToken::default());
     html! {
+        <ContextProvider<AuthContext> context={auth_token}>
+
             <BrowserRouter>
-                <div class ="main">
+            <div class ="main">
                     <Switch<Route> {render} />
                 </div>
                 <div class="footer">
                         <Footer/>
                 </div>
             </BrowserRouter>
+        </ContextProvider<AuthContext>>
+
     }
 }
+pub type AuthContext = UseReducerHandle<AuthToken>;
+#[derive(Default,PartialEq,Clone)]
+pub struct AuthToken{
+    token:String,
+}
 
+pub enum AuthTokenAction{
+    Set(String)
+}
+impl Reducible for AuthToken {
+    type Action = AuthTokenAction;
+
+    fn reduce(self: Rc<Self>, action: Self::Action) -> Rc<Self> {
+        match action {
+            AuthTokenAction::Set(token) => {
+                tracing::error!("AuthToken set: \n{}",token);
+                Self{token}.into()}
+        }
+    }
+}

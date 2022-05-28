@@ -17,7 +17,7 @@ use tracing_subscriber::layer::SubscriberExt;
 use tracing_subscriber::util::SubscriberInitExt;
 use crate::storage::storage;
 use migration::{Migrator, MigratorTrait};
-use crate::graphql::PoetShuffleSchema;
+use crate::graphql::{PoetShuffleSchema, populate_db_with_test_data};
 
 
 mod storage;
@@ -50,6 +50,9 @@ async fn main() {
         .expect("Expecting DB connection given DATABASE_URL.");
     Migrator::up(&connection, None).await
         .expect("Expecting Successful migration.");
+    // ...
+    #[cfg(feature="dev")]
+    populate_db_with_test_data(&connection).await.unwrap();
     // Spawn test_cdn server on port 8001 during development.
     let test_cdn = tokio::task::spawn(async move {
         #[cfg(feature = "local_cdn")]
