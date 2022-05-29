@@ -14,7 +14,7 @@ impl EntityName for Entity {
 
 use async_graphql::*;
 #[derive(Clone, Debug, PartialEq, DeriveModel, DeriveActiveModel,SimpleObject)]
-#[graphql(concrete(name = "Set", params()))]
+#[graphql(name="Set")]
 pub struct Model {
     pub set_uuid: Uuid,
     pub creation_ts: DateTimeWithTimeZone,

@@ -2006,6 +2006,7 @@ dependencies = [
  "sea-orm",
  "sea-query",
  "serde",
+ "serde_json",
  "sha2",
  "stylist",
  "tokio",

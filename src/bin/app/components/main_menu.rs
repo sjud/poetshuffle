@@ -13,7 +13,7 @@ pub fn main_menu() -> Html {
     let menu_style = css!(
         r#"
           display: flex;
-  height: 90vh;
+  height: 77vh;
   justify-content: center;
   align-items: center;
   text-align: center;
@@ -27,11 +27,12 @@ pub fn main_menu() -> Html {
     let menu_list_item = css!(r#"padding: 6px 0;"#);
     let menu_button = css!(r#"
   align-items: center;
-  background-color: #fee6e3;
+  background-color:  #fee6e3;
   border: 2px solid #111;
+
   border-radius: 8px;
   box-sizing: border-box;
-  color: #111;
+  color: #df73ff;
   cursor: pointer;
   display: block;
   font-family: Inter,sans-serif;
@@ -41,9 +42,10 @@ pub fn main_menu() -> Html {
   line-height: 24px;
   max-width: 100%;
   padding: 0 25px;
+  margin-right: 35px;
   position: relative;
   text-align: center;
-  text-decoration: none;
+  text-decoration: bold;
   user-select: none;
   -webkit-user-select: none;
   touch-action: manipulation;
@@ -67,7 +69,7 @@ pub fn main_menu() -> Html {
 }
 
 :active {
-  background-color: #D8BFD8;
+  background-color: #df73ff;
   outline: 0;
 }
 
@@ -80,23 +82,20 @@ pub fn main_menu() -> Html {
     padding: 0 40px;
   }
 }"#);
+    let text = css!(r#"  font-weight: bold;
+  color:black;"#);//
+
+
     html! {
         <div>
         <div class={menu_style}>
         <ul class={menu_list}>
-                    <li class = {menu_list_item.clone()}>
-        <button onclick={poet_shuffle.clone()} class = {menu_button.clone()}>{"Press"}</button>
-        </li>
-            <li class = {menu_list_item.clone()}>
-        <button onclick={poet_shuffle.clone()} class = {menu_button.clone()}>{"PoetShuffle"}</button>
-        </li>
-                    <li class = {menu_list_item.clone()}>
-        <button onclick={poet_shuffle.clone()} class = {menu_button.clone()}>{"Discover"}</button>
-        </li>
-                    <li class = {menu_list_item.clone()}>
-        <button onclick={poet_shuffle.clone()} class = {menu_button.clone()}>{"Poetry"}</button>
-        </li>
 
+            <li class = {menu_list_item.clone()}>
+        <button onclick={poet_shuffle.clone()} class = {menu_button.clone()}>
+            <span class={text}>{"PoetShuffle"}</span>
+        </button>
+        </li>
         </ul>
         </div>
         </div>

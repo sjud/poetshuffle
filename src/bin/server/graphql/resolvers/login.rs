@@ -1,19 +1,11 @@
-use std::collections::BTreeMap;
-use async_graphql::{*};
-use hmac::{Hmac};
 use jwt::SignWithKey;
-use sha2::Sha256;
-use sea_orm::{
-    DatabaseConnection,
-    EntityTrait,
-    ConnectionTrait,
-    DatabaseBackend,
-    Statement,
-};
-use sea_query::{PostgresQueryBuilder,Expr,Query as SeaQuery};
+use hmac::Hmac;
 use anyhow::Result;
+use std::collections::BTreeMap;
+use super::*;
 
-use crate::{DATABASE_URL,types::iden::Logins};
+
+use crate::{types::iden::Logins};
 
 #[derive(Default)]
 pub struct LoginQuery;

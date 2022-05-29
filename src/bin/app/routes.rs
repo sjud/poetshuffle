@@ -1,7 +1,7 @@
 use yew::prelude::*;
 use yew_router::prelude::*;
 use crate::components::{
-    admin::Admin,
+    login::Login,
     main_menu::MainMenu};
 
 
@@ -11,8 +11,8 @@ pub enum Route {
     PoetShuffle,
     #[at("/about")]
     About,
-    #[at("/admin")]
-    Admin,
+    #[at("/login")]
+    Login,
     #[at("/publish")]
     Publish,
     #[at("/")]
@@ -25,7 +25,7 @@ pub(crate) fn switch(routes: &Route) -> Html {
     match routes {
         Route::PoetShuffle => html!{{"PoetShuffle"}},
         Route::About => html!{{"About"}},
-        Route::Admin => html!{<Admin/>},
+        Route::Login => html!{<Login/>},
         Route::Publish => html!{{"Publish"}},
         Route::MainMenu => html! {<MainMenu />},
         Route::NotFound => html! { {"404"}},
