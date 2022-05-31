@@ -12,6 +12,7 @@ mod m20220521_000008_poems;
 mod m20220521_000009_intros;
 mod m20220521_000010_comments;
 mod m20220521_000011_orders;
+mod m20220531_000000_alter_logins;
 
 pub struct Migrator;
 
@@ -31,6 +32,7 @@ impl MigratorTrait for Migrator {
             Box::new(m20220521_000009_intros::Migration),
             Box::new(m20220521_000010_comments::Migration),
             Box::new(m20220521_000011_orders::Migration),
+            Box::new(m20220531_000000_alter_logins::Migration),
         ]
     }
 }

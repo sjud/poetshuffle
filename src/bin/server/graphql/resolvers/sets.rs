@@ -100,7 +100,25 @@ impl SetsQuery {
 }
 #[derive(Default)]
 pub struct SetsMutation;
-
+fn create_set(
+    db:&DatabaseConnection,
+    collection_title: String,
+              originator_uuid: Uuid,
+              collection_link: String, ) -> Result<Uuid> {
+    let uuid = Uuid::new_v4();
+    sets::ActiveModel {
+        set_uuid: Set(uuid),
+        collection_title: Set(collection_title),
+        originator_uuid: Set(originator_uuid),
+        set_status: Set(SetStatus::Pending),
+        collection_link: Set(collection_link),
+        approved: Set(false),
+        ..Default::default()
+    }
+        .insert(db)
+        .await?;
+    Ok(uuid)
+}
 #[Object]
 impl SetsMutation {
     async fn create_set(
@@ -112,21 +130,11 @@ impl SetsMutation {
     ) -> Result<Uuid> {
         if let Auth(Some(perm)) = ctx.data::<Auth>().unwrap() {
             let db = ctx.data::<DatabaseConnection>().unwrap();
-            let uuid = Uuid::new_v4();
             if can_create_set(perm, originator_uuid)? {
-                sets::ActiveModel {
-                    set_uuid: Set(uuid),
-                    collection_title: Set(collection_title),
-                    originator_uuid: Set(originator_uuid),
-                    set_status: Set(SetStatus::Pending),
-                    collection_link: Set(collection_link),
-                    approved: Set(false),
-                    ..Default::default()
-                }
-                .insert(db)
-                .await?;
+                create_set(db,collection_title,originator_uuid,collection_link,)
+            } else {
+                Err(anyhow::Error::msg("Unauthorized"))
             }
-            Ok(uuid)
         } else {
             Err(anyhow::Error::msg("No authorization provided"))
         }
