@@ -4,7 +4,7 @@ use lazy_static::lazy_static;
 
 use tokio::try_join;
 
-use crate::graphql::dev::populate_db_with_test_data;
+//use crate::graphql::dev::populate_db_with_test_data;
 use crate::storage::storage;
 use migration::{Migrator, MigratorTrait};
 
@@ -28,6 +28,18 @@ lazy_static! {
         #[cfg(not(feature = "dev"))]
         std::env::var("JWT_SECRET").unwrap()
     };
+    pub static ref POSTMARK_API_TRANSACTION: String = {
+        #[cfg(feature = "dev")]
+        return dotenv_codegen::dotenv!("POSTMARK_API_TRANSACTION").to_string();
+        #[cfg(not(feature = "dev"))]
+        std::env::var("POSTMARK_API_TRANSACTION").unwrap()
+    };
+    pub static ref OUTBOUND_EMAIL: String = {
+        #[cfg(feature = "dev")]
+        return dotenv_codegen::dotenv!("OUTBOUND_EMAIL").to_string();
+        #[cfg(not(feature = "dev"))]
+        std::env::var("OUTBOUND_EMAIL").unwrap()
+    };
 }
 
 #[tokio::main]
@@ -42,7 +54,7 @@ async fn main() {
         .expect("Expecting Successful migration.");
     // ...
     #[cfg(feature = "dev")]
-    populate_db_with_test_data(&connection).await.unwrap();
+    //populate_db_with_test_data(&connection).await.unwrap();
     // Spawn test_cdn server on port 8001 during development.
     let test_cdn = tokio::task::spawn(async move {
         #[cfg(feature = "local_cdn")]

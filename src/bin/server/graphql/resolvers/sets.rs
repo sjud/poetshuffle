@@ -36,7 +36,7 @@ impl SetsQuery {
         if let Some(set) = Sets::find_by_id(set_uuid).one(db).await? {
             Ok(set.creation_ts.timestamp())
         } else {
-            Err(anyhow::Error::msg(format!(
+            Err(Error::new(format!(
                 "Set not found, given uuid {}",
                 set_uuid
             )))
@@ -47,7 +47,7 @@ impl SetsQuery {
         if let Some(set) = Sets::find_by_id(set_uuid).one(db).await? {
             Ok(set.collection_title)
         } else {
-            Err(anyhow::Error::msg(format!(
+            Err(Error::new(format!(
                 "Set not found, given uuid {}",
                 set_uuid
             )))
@@ -58,7 +58,7 @@ impl SetsQuery {
         if let Some(set) = Sets::find_by_id(set_uuid).one(db).await? {
             Ok(set.originator_uuid)
         } else {
-            Err(anyhow::Error::msg(format!(
+            Err(Error::new(format!(
                 "Set not found, given uuid {}",
                 set_uuid
             )))
@@ -69,7 +69,7 @@ impl SetsQuery {
         if let Some(set) = Sets::find_by_id(set_uuid).one(db).await? {
             Ok(set.set_status)
         } else {
-            Err(anyhow::Error::msg(format!(
+            Err(Error::new(format!(
                 "Set not found, given uuid {}",
                 set_uuid
             )))
@@ -80,7 +80,7 @@ impl SetsQuery {
         if let Some(set) = Sets::find_by_id(set_uuid).one(db).await? {
             Ok(set.collection_link)
         } else {
-            Err(anyhow::Error::msg(format!(
+            Err(Error::new(format!(
                 "Set not found, given uuid {}",
                 set_uuid
             )))
@@ -91,7 +91,7 @@ impl SetsQuery {
         if let Some(set) = Sets::find_by_id(set_uuid).one(db).await? {
             Ok(set.approved)
         } else {
-            Err(anyhow::Error::msg(format!(
+            Err(Error::new(format!(
                 "Set not found, given uuid {}",
                 set_uuid
             )))
@@ -100,7 +100,7 @@ impl SetsQuery {
 }
 #[derive(Default)]
 pub struct SetsMutation;
-fn create_set(
+async fn create_set(
     db:&DatabaseConnection,
     collection_title: String,
               originator_uuid: Uuid,
@@ -131,12 +131,12 @@ impl SetsMutation {
         if let Auth(Some(perm)) = ctx.data::<Auth>().unwrap() {
             let db = ctx.data::<DatabaseConnection>().unwrap();
             if can_create_set(perm, originator_uuid)? {
-                create_set(db,collection_title,originator_uuid,collection_link,)
+                create_set(db,collection_title,originator_uuid,collection_link,).await
             } else {
-                Err(anyhow::Error::msg("Unauthorized"))
+                Err(Error::new("Unauthorized"))
             }
         } else {
-            Err(anyhow::Error::msg("No authorization provided"))
+            Err(Error::new("No authorization provided"))
         }
     }
     async fn approved(&self, ctx: &Context<'_>, set_uuid: Uuid, approved: bool) -> Result<Uuid> {
@@ -153,7 +153,7 @@ impl SetsMutation {
             }
             Ok(set_uuid)
         } else {
-            Err(anyhow::Error::msg("No authorization provided"))
+            Err(Error::new("No authorization provided"))
         }
     }
     async fn set_status(
@@ -176,13 +176,13 @@ impl SetsMutation {
                 }
                 Ok(set_uuid)
             } else {
-                Err(anyhow::Error::msg(format!(
+                Err(Error::new(format!(
                     "Set not found, given uuid {}",
                     set_uuid
                 )))
             }
         } else {
-            Err(anyhow::Error::msg("No authorization provided"))
+            Err(Error::new("No authorization provided"))
         }
     }
 
@@ -206,13 +206,13 @@ impl SetsMutation {
                 }
                 Ok(set_uuid)
             } else {
-                Err(anyhow::Error::msg(format!(
+                Err(Error::new(format!(
                     "Set not found, given uuid {}",
                     set_uuid
                 )))
             }
         } else {
-            Err(anyhow::Error::msg("No authorization provided"))
+            Err(Error::new("No authorization provided"))
         }
     }
 
@@ -236,13 +236,13 @@ impl SetsMutation {
                 }
                 Ok(set_uuid)
             } else {
-                Err(anyhow::Error::msg(format!(
+                Err(Error::new(format!(
                     "Set not found, given uuid {}",
                     set_uuid
                 )))
             }
         } else {
-            Err(anyhow::Error::msg("No authorization provided"))
+            Err(Error::new("No authorization provided"))
         }
     }
 }

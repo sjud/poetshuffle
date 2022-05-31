@@ -2,15 +2,87 @@ use super::*;
 use hmac::Hmac;
 use jwt::SignWithKey;
 use std::collections::BTreeMap;
+use chrono::Utc;
+use postmark::reqwest::PostmarkClient;
+use sea_orm::IntoSimpleExpr;
+use sea_query::SimpleExpr;
+use sea_query::value::Nullable;
+use entity::logins::Column;
+use entity::logins::ActiveModel as LoginsActiveModel;
+use entity::prelude::Logins;
 
-use crate::types::iden::Logins;
-
-#[derive(Default)]
-pub struct LoginQuery;
 #[derive(Default)]
 pub struct LoginMutation;
+
+async fn create_login_with_password(
+    db:&DatabaseConnection,
+    email:String,
+    password:String,
+) -> Result<Uuid> {
+    let uuid = Uuid::new_v4();
+    let query = SeaQuery::insert()
+        .into_table(Logins)
+        .columns(vec![Column::UserUuid, Column::Email, Column::Password])
+        .exprs(vec![
+            Expr::val(uuid).into(),
+            Expr::val(email).into(),
+            Expr::cust_with_values("crypt(?, gen_salt('bf'))", vec![password]),
+        ])?
+        .to_owned()
+        .to_string(PostgresQueryBuilder);
+    let stmt = Statement::from_string(DatabaseBackend::Postgres, query);
+    db.execute(stmt).await?;
+    Ok(uuid)
+}
+async fn create_login_with_lost_password_code(
+    db:&DatabaseConnection,
+    email:String,
+    lost_password_code:String,
+) -> Result<Uuid> {
+    let uuid = Uuid::new_v4();
+    let query = SeaQuery::insert()
+        .into_table(Logins)
+        .columns(vec![Column::UserUuid, Column::Email,Column::Password, Column::LostPasswordHash])
+        .exprs(vec![
+            Expr::val(uuid).into(),
+            Expr::val(email).into(),
+            Expr::cust_with_values("crypt(?, gen_salt('bf'))", vec![
+                passwords::PasswordGenerator::new().length(16).generate_one()?
+            ]),
+            Expr::cust_with_values("crypt(?, gen_salt('bf'))", vec![lost_password_code]),
+        ])?
+        .to_owned()
+        .to_string(PostgresQueryBuilder);
+    let stmt = Statement::from_string(DatabaseBackend::Postgres, query);
+    db.execute(stmt).await?;
+    Ok(uuid)
+}
+async fn update_login_with_password_given_lost_password_code(
+    db:&DatabaseConnection,
+    email:String,
+    password:String,
+    lost_password_code:String,
+) -> Result<String> {
+    let query = SeaQuery::update()
+        .table(Logins)
+        .col_expr(Column::Password,
+                  Expr::cust_with_values("crypt(?, gen_salt('bf'))", vec![password])
+                      .into_simple_expr())
+        .col_expr(Column::LostPasswordHash,SimpleExpr::Value(String::null()))
+        .and_where(Column::Email.eq(email))
+        .and_where(Expr::cust_with_values(
+            "lost_password_hash = crypt(?, lost_password_hash)",
+            vec![lost_password_code],
+        ))
+        .to_owned()
+        .to_string(PostgresQueryBuilder);
+    let stmt = Statement::from_string(DatabaseBackend::Postgres, query);
+    db.execute(stmt).await?;
+    Ok("Updated".to_string())
+}
+
 #[Object]
-impl LoginQuery {
+impl LoginMutation{
     async fn login(
         &self,
         ctx: &Context<'_>,
@@ -18,19 +90,18 @@ impl LoginQuery {
         pass: String,
     ) -> Result<String> {
         // Initialize constants.
-        let db = ctx.data::<DatabaseConnection>().unwrap();
-        let key = ctx.data::<Hmac<Sha256>>().unwrap();
+        let db = ctx.data::<DatabaseConnection>()?;
+        let key = ctx.data::<Hmac<Sha256>>()?;
         let mut claims = BTreeMap::new();
         // If the password and email match we get back the user uuid.
         if let Some(Ok(user_uuid)) = {
             let query = SeaQuery::select()
-                .column(Logins::UserUuid)
-                .from(Logins::Table)
-                .and_where(Expr::cust_with_values("email = ?", vec![email]).into())
+                .column(Column::UserUuid)
+                .from(Logins)
                 .and_where(Expr::cust_with_values(
-                    "password = crypt(?, password)",
-                    vec![pass],
-                ))
+                    "email = ?", vec![email]).into())
+                .and_where(Expr::cust_with_values(
+                    "password = crypt(?, password)", vec![pass]))
                 .to_owned()
                 .to_string(PostgresQueryBuilder);
             let stmt = Statement::from_string(DatabaseBackend::Postgres, query);
@@ -43,6 +114,13 @@ impl LoginQuery {
                 .one(db)
                 .await?
             {
+                // update last login before we send the permissions
+                LoginsActiveModel{
+                    user_uuid:Set(user_uuid),
+                    last_login:Set(Some(DateTimeWithTimeZone::from(Utc::now()))),
+                    ..Default::default()
+                }.update(db).await?;
+
                 // Serialize the permission as the "sub" value of our future token.
                 claims.insert("sub", permission);
 
@@ -50,35 +128,12 @@ impl LoginQuery {
                 Ok(claims
                     .sign_with_key(key)?)
             } else {
-                Err(anyhow::Error::msg("No matching Permission."))
+                Err(Error::new("No matching Permission."))
             }
         } else {
-            Err(anyhow::Error::msg("No matching Login."))
+            Err(Error::new("No matching Login."))
         }
     }
-}
-fn create_login(
-    db:&DatabaseConnection,
-    email:String,
-    password:String,
-) -> Result<Uuid> {
-    let uuid = Uuid::new_v4();
-    let query = SeaQuery::insert()
-        .into_table(Logins::Table)
-        .columns(vec![Logins::UserUuid, Logins::Email, Logins::Password])
-        .exprs(vec![
-            Expr::val(uuid).into(),
-            Expr::val(email).into(),
-            Expr::cust_with_values("crypt(?, gen_salt('bf'))", vec![password]),
-        ])?
-        .to_owned()
-        .to_string(PostgresQueryBuilder);
-    let stmt = Statement::from_string(DatabaseBackend::Postgres, query);
-    conn.execute(stmt).await?;
-    Ok(uuid)
-}
-#[Object]
-impl LoginMutation{
     async fn register(
         &self,
         ctx: &Context<'_>,
@@ -89,7 +144,10 @@ impl LoginMutation{
         // create lost_password_code
         // email lost_password_code to email
         // store lost_password_hash
+        let client = ctx.data::<PostmarkClient>()?;
+        let db = ctx.data::<DatabaseConnection>()?;
         Ok("".into())
+
     }
     async fn validate_user(
         &self,
@@ -107,6 +165,8 @@ impl LoginMutation{
         // delete lost_password_hash
         // set is_validated to true <- only diff
         // tell user to login with new password.
+        Ok("".into())
+
     }
     async fn change_password(&self,
         ctx:&Context<'_>,
@@ -143,6 +203,8 @@ impl LoginMutation{
         // set password to new_password
         // delete lost_password_hash
         // tell user to login with new password.
+        Ok("".into())
+
     }
 }
 #[cfg(test)]

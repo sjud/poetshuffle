@@ -1,12 +1,13 @@
+/*
 use sea_orm::{
     prelude::Uuid, ActiveModelTrait, ActiveValue::Set, ConnectionTrait, DatabaseBackend,
     DatabaseConnection, EntityTrait, Statement,
 };
 
-use crate::types::iden::Logins;
 use anyhow::Result;
 use entity::sea_orm_active_enums::UserRole;
 use sea_query::{Expr, PostgresQueryBuilder, Query as SeaQuery};
+
 
 pub async fn populate_db_with_test_data(conn: &DatabaseConnection) -> Result<()> {
     let uuid = Uuid::from_u128(1);
@@ -61,3 +62,4 @@ async fn drop_db_with_test_data(conn: &DatabaseConnection, uuid: Uuid) -> Result
     .unwrap();
     Ok(())
 }
+*/
