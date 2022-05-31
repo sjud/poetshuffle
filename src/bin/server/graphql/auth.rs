@@ -1,10 +1,10 @@
-use std::cmp::Ordering;
 use anyhow::Result;
-use sea_orm::prelude::Uuid;
 use entity::permissions::Model as Permissions;
 use entity::sea_orm_active_enums::UserRole;
+use sea_orm::prelude::Uuid;
+use std::cmp::Ordering;
 
-#[derive(Debug, Clone,Copy,Eq, PartialEq)]
+#[derive(Debug, Clone, Copy, Eq, PartialEq)]
 pub struct OrdRoles(UserRole);
 impl PartialOrd for OrdRoles {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
@@ -13,14 +13,14 @@ impl PartialOrd for OrdRoles {
             UserRole::Poet => 1,
             UserRole::Moderator => 2,
             UserRole::Admin => 3,
-            UserRole::SuperAdmin => 4
+            UserRole::SuperAdmin => 4,
         };
         let other_val = match other.0 {
             UserRole::Listener => 0,
             UserRole::Poet => 1,
             UserRole::Moderator => 2,
             UserRole::Admin => 3,
-            UserRole::SuperAdmin => 4
+            UserRole::SuperAdmin => 4,
         };
         if self_val < other_val {
             Some(Ordering::Less)
@@ -30,10 +30,9 @@ impl PartialOrd for OrdRoles {
             Some(Ordering::Equal)
         }
     }
-
 }
 
-fn is_owner(perm:&Permissions,originator_uuid:Uuid) -> Result<bool> {
+fn is_owner(perm: &Permissions, originator_uuid: Uuid) -> Result<bool> {
     if perm.user_uuid != originator_uuid {
         Err(anyhow::Error::msg("Originator_uuid != user_uuid"))
     } else {
@@ -43,19 +42,19 @@ fn is_owner(perm:&Permissions,originator_uuid:Uuid) -> Result<bool> {
 
 /// Poets or greater can create sets.
 /// As long as that set's originator uuid is equal to their user uuid
-pub fn can_create_set(perm:&Permissions,originator_uuid:Uuid) -> Result<bool> {
-    let _ = is_owner(perm,originator_uuid)?;
+pub fn can_create_set(perm: &Permissions, originator_uuid: Uuid) -> Result<bool> {
+    let _ = is_owner(perm, originator_uuid)?;
     if OrdRoles(perm.user_role) < OrdRoles(UserRole::Poet) {
         Err(anyhow::Error::msg("permission.user_role < poet."))
     } else {
         Ok(true)
     }
 }
-pub fn can_edit_set(perm:&Permissions,originator_uuid:Uuid) -> Result<bool> {
-    is_owner(perm,originator_uuid)
+pub fn can_edit_set(perm: &Permissions, originator_uuid: Uuid) -> Result<bool> {
+    is_owner(perm, originator_uuid)
 }
 /// Moderators or greater can Approve
-pub fn can_approve(perm:&Permissions) -> Result<bool> {
+pub fn can_approve(perm: &Permissions) -> Result<bool> {
     if OrdRoles(perm.user_role) < OrdRoles(UserRole::Moderator) {
         Err(anyhow::Error::msg("permission.user_role < moderator."))
     } else {
@@ -63,8 +62,8 @@ pub fn can_approve(perm:&Permissions) -> Result<bool> {
     }
 }
 /// Originators can change status
-pub fn can_change_status(perm:&Permissions,originator_uuid:Uuid) -> Result<bool> {
-    is_owner(&perm,originator_uuid)
+pub fn can_change_status(perm: &Permissions, originator_uuid: Uuid) -> Result<bool> {
+    is_owner(&perm, originator_uuid)
 }
 /*
 /// Moderators or greater can Comment on every thing
@@ -76,4 +75,3 @@ pub fn can_comment(perm:&Permissions,set_originator:Uuid) -> Result<bool> {
         Err(anyhow::Error::msg("User role !>= to moderator OR user_uuid != set_originator"))
     }
 }*/
-

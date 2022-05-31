@@ -1,11 +1,8 @@
-use yew::prelude::*;
-use stylist::{css};
-use yew_router::{
-    hooks::use_history,
-    prelude::History
-};
 use crate::routes::Route;
 use crate::types::audio_context::{AudioContext, AudioOptions};
+use stylist::css;
+use yew::prelude::*;
+use yew_router::{hooks::use_history, prelude::History};
 
 #[function_component(Footer)]
 pub fn footer() -> Html {
@@ -15,14 +12,17 @@ pub fn footer() -> Html {
     let admin = Callback::from(move |_| history.push(Route::Login));
     let history = use_history().unwrap();
     let publish = Callback::from(move |_| history.push(Route::Publish));
-    let list = css!(r#"
+    let list = css!(
+        r#"
   display: flex;
   flex-direction: column;
   justify-content: center;
   align-items: center;
   text-align: center;
-"#);
-    let button = css!(r#"
+"#
+    );
+    let button = css!(
+        r#"
       align-items: center;
   justify-content: center;
   position: relative;
@@ -36,11 +36,12 @@ pub fn footer() -> Html {
   height: 5.5vh;
   :hover {text-decoration:underline;}
   :active {text-decoration:underline;}
-"#);
+"#
+    );
 
     let white = css!(r#"color:white;"#);
 
-    let normal_footer = html!{
+    let normal_footer = html! {
         <div class={list.clone()}>
         <button onclick={about} class = {button.clone()}>{"About"}</button>
         <button onclick={publish} class = {button.clone()}>{"Publish"}</button>
@@ -49,7 +50,7 @@ pub fn footer() -> Html {
     };
     let audio_ctx = use_context::<AudioContext>().unwrap();
 
-    let audio_footer = html!{
+    let audio_footer = html! {
         <div class={list}>
         <button>
         {if !audio_ctx.is_playing

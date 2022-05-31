@@ -11,6 +11,7 @@ members = [".", "entity", "migration"]
 name = "poetshuffle"
 path = "src/lib/mod.rs"
 
+
 [[bin]]
 name = "app"
 

@@ -1,18 +1,12 @@
-
-mod services;
+mod components;
 mod console_writer;
 mod queries;
-mod components;
 mod routes;
+mod services;
 mod types;
 
-
+use crate::{components::app::App, console_writer::WASMConsoleWriter};
 use std::sync::Mutex;
-use crate::{
-    components::app::App,
-    console_writer::WASMConsoleWriter
-};
-
 
 #[global_allocator]
 static ALLOC: wee_alloc::WeeAlloc = wee_alloc::WeeAlloc::INIT;

@@ -11,7 +11,7 @@ impl EntityName for Entity {
     }
 }
 use async_graphql::*;
-#[derive(Clone, Debug, PartialEq, DeriveModel, DeriveActiveModel,SimpleObject)]
+#[derive(Clone, Debug, PartialEq, DeriveModel, DeriveActiveModel, SimpleObject)]
 #[graphql(concrete(name = "Comment", params()))]
 pub struct Model {
     pub comment_uuid: Uuid,

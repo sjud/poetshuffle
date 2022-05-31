@@ -1,15 +1,12 @@
-use yew::prelude::*;
-use stylist::{css};
-use yew_router::{
-    hooks::use_history,
-    prelude::History
-};
 use crate::routes::Route;
+use stylist::css;
+use yew::prelude::*;
+use yew_router::{hooks::use_history, prelude::History};
 
 #[function_component(MainMenu)]
 pub fn main_menu() -> Html {
     let history = use_history().unwrap();
-    let poet_shuffle = Callback::from(move |_|history.push(Route::PoetShuffle));
+    let poet_shuffle = Callback::from(move |_| history.push(Route::PoetShuffle));
     let menu_style = css!(
         r#"
           display: flex;
@@ -17,15 +14,19 @@ pub fn main_menu() -> Html {
   justify-content: center;
   align-items: center;
   text-align: center;
-        "#);
-    let menu_list = css!(r#"
+        "#
+    );
+    let menu_list = css!(
+        r#"
   display: flex;
   flex-direction: column;
   align-items: start;
   list-style-type: none;
-    "#);
+    "#
+    );
     let menu_list_item = css!(r#"padding: 6px 0;"#);
-    let menu_button = css!(r#"
+    let menu_button = css!(
+        r#"
   align-items: center;
   background-color:  #fee6e3;
   border: 2px solid #111;
@@ -81,10 +82,12 @@ pub fn main_menu() -> Html {
   .button-56 {
     padding: 0 40px;
   }
-}"#);
-    let text = css!(r#"  font-weight: bold;
-  color:black;"#);//
-
+}"#
+    );
+    let text = css!(
+        r#"  font-weight: bold;
+  color:black;"#
+    ); //
 
     html! {
         <div>
@@ -100,5 +103,4 @@ pub fn main_menu() -> Html {
         </div>
         </div>
     }
-
 }

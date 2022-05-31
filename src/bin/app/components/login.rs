@@ -1,9 +1,9 @@
-use web_sys::HtmlInputElement;
-use yew_hooks::prelude::*;
-use yew::prelude::*;
+use crate::queries::{login_query::Variables, LoginQuery};
 use crate::services::network::post_graphql;
 use crate::types::auth_context::{AuthContext, AuthTokenAction};
-use crate::queries::{LoginQuery,login_query::Variables};
+use web_sys::HtmlInputElement;
+use yew::prelude::*;
+use yew_hooks::prelude::*;
 #[function_component(Login)]
 pub fn login() -> Html {
     // We'll use these node refs in our inputs on our login form.
@@ -20,10 +20,11 @@ pub fn login() -> Html {
         use_async::<_, (), String>(async move {
             // Get the values from the fields and post a login graphql query to our server
             let resp = post_graphql::<LoginQuery>(Variables {
-                email:email.cast::<HtmlInputElement>().unwrap().value(),
-                pass:pass.cast::<HtmlInputElement>().unwrap().value(),
-            }).await
-                .map_err(|err| format!("{:?}", err))?;
+                email: email.cast::<HtmlInputElement>().unwrap().value(),
+                pass: pass.cast::<HtmlInputElement>().unwrap().value(),
+            })
+            .await
+            .map_err(|err| format!("{:?}", err))?;
             // If we our response has data check it's .login field it ~should~ be a jwt string
             // which we dispatch to our AuthToken which will now use it in all future contexts.
             if let Some(ref data) = resp.data {
@@ -31,7 +32,7 @@ pub fn login() -> Html {
             }
             // If we have no data then see if we have errors and print those to console.
             else if resp.errors.is_some() {
-                tracing::error!("{:?}",resp.errors);
+                tracing::error!("{:?}", resp.errors);
             }
             Ok(())
         })

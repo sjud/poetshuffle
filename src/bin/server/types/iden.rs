@@ -1,6 +1,6 @@
 use sea_query::Iden;
 #[derive(Iden)]
-pub enum Logins{
+pub enum Logins {
     Table,
     UserUuid,
     Email,

@@ -25,12 +25,16 @@ impl MigrationTrait for Migration {
 );"#;
         let stmt = Statement::from_string(manager.get_database_backend(), sql.to_owned());
         manager.get_connection().execute(stmt).await.map(|_| ())
-
     }
 
     async fn down(&self, manager: &SchemaManager) -> Result<(), DbErr> {
         manager
-            .drop_table(Table::drop().table(entity::poems::Entity).cascade().to_owned())
+            .drop_table(
+                Table::drop()
+                    .table(entity::poems::Entity)
+                    .cascade()
+                    .to_owned(),
+            )
             .await
     }
 }
@@ -38,4 +42,4 @@ impl MigrationTrait for Migration {
 /*
 
 
- */
+*/

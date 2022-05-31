@@ -12,7 +12,15 @@ impl EntityName for Entity {
     }
 }
 
-#[derive(Clone, Debug, PartialEq,serde_derive::Serialize,serde_derive::Deserialize, DeriveModel, DeriveActiveModel)]
+#[derive(
+    Clone,
+    Debug,
+    PartialEq,
+    serde_derive::Serialize,
+    serde_derive::Deserialize,
+    DeriveModel,
+    DeriveActiveModel,
+)]
 pub struct Model {
     pub user_uuid: Uuid,
     pub user_role: UserRole,

@@ -1,15 +1,15 @@
 pub use sea_orm_migration::prelude::*;
 
-mod m20220521_000001_create_users;
 mod m20220521_000000_init;
+mod m20220521_000001_create_users;
 mod m20220521_000002_sets;
 mod m20220521_000003_permissions;
 mod m20220521_000004_set_options;
 mod m20220521_000005_logins;
 mod m20220521_000006_pen_names;
+mod m20220521_000007_banters;
 mod m20220521_000008_poems;
 mod m20220521_000009_intros;
-mod m20220521_000007_banters;
 mod m20220521_000010_comments;
 mod m20220521_000011_orders;
 

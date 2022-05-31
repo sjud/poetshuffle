@@ -1,19 +1,12 @@
 use anyhow::Result;
+use async_graphql::*;
 use sea_orm::QueryFilter;
-use sha2::Sha256;
 use sea_orm::{
-    entity::prelude::*,
-    DatabaseConnection,
-    EntityTrait,
-    ConnectionTrait,
-    ActiveModelTrait,
-    DatabaseBackend,
-    Statement,
-    ColumnTrait,
-    ActiveValue::Set
+    entity::prelude::*, ActiveModelTrait, ActiveValue::Set, ColumnTrait, ConnectionTrait,
+    DatabaseBackend, DatabaseConnection, EntityTrait, Statement,
 };
-use async_graphql::{*};
-use sea_query::{PostgresQueryBuilder,Expr,Query as SeaQuery};
+use sea_query::{Expr, PostgresQueryBuilder, Query as SeaQuery};
+use sha2::Sha256;
 
 pub mod login;
 pub mod sets;
