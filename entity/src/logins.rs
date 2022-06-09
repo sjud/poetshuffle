@@ -17,10 +17,9 @@ pub struct Model {
     pub user_uuid: Uuid,
     pub creation_ts: DateTimeWithTimeZone,
     pub password: String,
-    pub email: String,
     pub last_login: Option<DateTimeWithTimeZone>,
-    pub is_validated: bool,
     pub lost_password_hash: Option<String>,
+    pub email: String,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveColumn)]
@@ -28,10 +27,9 @@ pub enum Column {
     UserUuid,
     CreationTs,
     Password,
-    Email,
     LastLogin,
-    IsValidated,
     LostPasswordHash,
+    Email,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DerivePrimaryKey)]
@@ -58,10 +56,9 @@ impl ColumnTrait for Column {
             Self::UserUuid => ColumnType::Uuid.def(),
             Self::CreationTs => ColumnType::TimestampWithTimeZone.def(),
             Self::Password => ColumnType::String(Some(72u32)).def(),
-            Self::Email => ColumnType::String(None).def(),
             Self::LastLogin => ColumnType::TimestampWithTimeZone.def().null(),
-            Self::IsValidated => ColumnType::Boolean.def(),
             Self::LostPasswordHash => ColumnType::String(None).def().null(),
+            Self::Email => ColumnType::String(None).def().unique(),
         }
     }
 }

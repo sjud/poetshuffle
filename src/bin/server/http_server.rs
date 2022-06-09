@@ -1,11 +1,13 @@
-use crate::{graphql::schema::new_schema, handlers::graphql_handler, storage};
+use crate::{graphql::schema::new_schema, handlers::graphql_handler, POSTMARK_API_TRANSACTION, storage};
 use axum::{extract::Path, response::Html, routing::post, Extension, Router};
 use hmac::digest::KeyInit;
 use hmac::Hmac;
+use postmark::reqwest::PostmarkClient;
 use sea_orm::DatabaseConnection;
 use sha2::Sha256;
 use tower_http::trace::TraceLayer;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
+use crate::email::Postmark;
 
 /// builds our HTTP server, needs DB conn for GraphQL.
 pub(crate) async fn http_server(conn: DatabaseConnection) {
@@ -28,6 +30,15 @@ pub(crate) async fn http_server(conn: DatabaseConnection) {
             Html(async_graphql::http::graphiql_source("/api/graphql", None))
         }),
     );
+    // Build our email client for our schema to send emails.
+    let client = Postmark{
+        client:
+        PostmarkClient::builder()
+            .base_url("https://api.postmarkapp.com/")
+            .token(&*POSTMARK_API_TRANSACTION)
+            .build()
+    };
+
     // Using storage() as a base which handles arbitrary file lookups.
     let app = storage()
         .route(
@@ -46,7 +57,7 @@ pub(crate) async fn http_server(conn: DatabaseConnection) {
         .layer(TraceLayer::new_for_http())
         .layer(Extension(key.clone()))
         // Add our Graphql schema for our handler.
-        .layer(Extension(new_schema(conn,key)));
+        .layer(Extension(new_schema(conn,key,client)));
     // See Axum docs for standard server boilerplate.
     axum::Server::bind(&"0.0.0.0:8000".parse().unwrap())
         .serve(app.into_make_service())

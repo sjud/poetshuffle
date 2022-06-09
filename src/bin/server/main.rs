@@ -14,8 +14,10 @@ mod http_server;
 mod local_cdn;
 mod storage;
 mod types;
+mod email;
 
 lazy_static! {
+    /// i.e postgresql://postgres:PASSWORD@0.0.0.0:5432/postgres
     pub static ref DATABASE_URL: String = {
         #[cfg(feature = "dev")]
         return dotenv_codegen::dotenv!("DATABASE_URL").to_string();
@@ -40,6 +42,13 @@ lazy_static! {
         #[cfg(not(feature = "dev"))]
         std::env::var("OUTBOUND_EMAIL").unwrap()
     };
+    /// i.e https://127.0.0.1:8000/
+    pub static ref URL_BASE: String = {
+        #[cfg(feature = "dev")]
+        return dotenv_codegen::dotenv!("URL_BASE").to_string();
+        #[cfg(not(feature = "dev"))]
+        std::env::var("URL_BASE").unwrap()
+    };
 }
 
 #[tokio::main]
@@ -61,7 +70,8 @@ async fn main() {
         local_cdn::local_cdn().await
     });
     // Spawn our normal HTTP server to handle API calls.
-    let server = tokio::task::spawn(async move { http_server::http_server(connection).await });
+    let server = tokio::task::spawn(async move {
+        http_server::http_server(connection).await });
     // We run all processes until the first error.
     try_join!(test_cdn, server).unwrap();
 }
