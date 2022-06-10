@@ -17,7 +17,7 @@ use crate::{OUTBOUND_EMAIL, URL_BASE};
 use crate::email::{Email, Postmark};
 
 #[cfg(test)]
-use crate::email::MockEmail;
+use crate::email::TestEmail;
 
 #[derive(Default)]
 pub struct LoginMutation;
@@ -127,11 +127,11 @@ async fn update_login_with_password_given_lost_password_code(
         .to_owned()
         .to_string(PostgresQueryBuilder);
     let stmt = Statement::from_string(DatabaseBackend::Postgres, query);
-    if let Some(result) = db.query_one(stmt).await? {
-        result.try_get("","user_uuid")
-            .map_err(|err|err.into())
-    } else {
-        Err("Internal Server Error.".into())
+    eprintln!("{:?}",stmt);
+    match  db.query_one(stmt).await? {
+        Some(result) => result.try_get("","user_uuid")
+            .map_err(|err|err.into()),
+        None =>  Err("Can't find given login entry, with email and lost password code.".into()),
     }
 }
 
@@ -144,7 +144,7 @@ async fn update_login_with_lost_password_code(
         .table(Logins::Table)
         .col_expr(Logins::LostPasswordHash,
                   Expr::cust_with_values(
-                      "lost_password_hash = crypt($1, lost_password_hash)",
+                      "crypt($1, gen_salt('bf'))",
                       vec![lost_password_code],
                   ))
         .and_where(Expr::col(Logins::Email).eq(email))
@@ -263,7 +263,7 @@ impl LoginMutation{
         email: String,
     ) -> Result<String> {
         #[cfg(test)]
-            let email_client = ctx.data::<MockEmail>()?;
+            let email_client = ctx.data::<TestEmail>()?;
         #[cfg(not(test))]
             let email_client = ctx.data::<Postmark>()?;
         let db = ctx.data::<DatabaseConnection>()?;
@@ -350,11 +350,12 @@ impl LoginMutation{
     ) -> Result<String> {
         let db = ctx.data::<DatabaseConnection>()?;
         #[cfg(test)]
-        let email_client = ctx.data::<MockEmail>()?;
+        let email_client = ctx.data::<TestEmail>()?;
         #[cfg(not(test))]
             let email_client = ctx.data::<Postmark>()?;
 
         let lost_password_code = new_lost_password_code()?;
+        eprintln!("{}",lost_password_code);
         let _ = update_login_with_lost_password_code(
             db,
             email.clone(),
@@ -384,19 +385,19 @@ impl LoginMutation{
             lost_password_code,
         ).await?;
         Ok("You may now login with your new password.".into())
-
     }
 }
 
 #[cfg(test)]
 mod test {
+    use std::sync::{Arc, Mutex};
     use hmac::digest::KeyInit;
     use super::*;
     use crate::graphql::schema::new_schema;
     use crate::{DATABASE_URL};
-    use crate::email::MockEmail;
+    use crate::email::{MockEmail, TestEmail};
 
-    async fn key_conn_email() -> (Hmac<Sha256>,DatabaseConnection, impl Email) {
+    async fn key_conn_email() -> (Hmac<Sha256>,DatabaseConnection, TestEmail) {
         (
             Hmac::new_from_slice(crate::JWT_SECRET.as_bytes())
                 .expect("Expecting valid Hmac<Sha256> from slice."),
@@ -404,17 +405,31 @@ mod test {
                 .await
                 .expect("Expecting DB connection given DATABASE_URL."),
             {
-                let mut email = MockEmail::new();
-                email.expect_register()
-                    .returning(|_,_|Ok(()));
-                email.expect_reset_password()
-                    .returning(|_,_|Ok(()));
+                let register_code = Arc::new(Mutex::new(String::default()));
+                let reset_pass_code = Arc::new(Mutex::new(String::default()));
+                let mut email = TestEmail {
+                    register_code: register_code.clone(),
+                    reset_pass_code: reset_pass_code.clone(),
+                    email:MockEmail::new(),
+                };
+                email.email.expect_register()
+                    .returning(move |_,lost_password_code| {
+                        let mut data = register_code.lock().unwrap();
+                        *data = lost_password_code;
+                        Ok(())
+                    });
+                email.email.expect_reset_password()
+                    .returning(move |_,lost_password_code| {
+                        let mut data = reset_pass_code.lock().unwrap();
+                        *data = lost_password_code;
+                        Ok(())
+                        });
                 email
             }
             )
     }
     #[tokio::test]
-    async fn test_login_graphql_query() {
+    async fn test_login() {
         let (key,conn,email) = key_conn_email().await;
 
         create_login_with_password(
@@ -449,8 +464,11 @@ mod test {
     }
 
     #[tokio::test]
-    async fn test_register_query() {
+    async fn test_register() {
         let (key,conn,email) = key_conn_email().await;
+        // get our arc to see into later
+        let register_code = email.register_code.clone();
+        // create graphql schema to test against
         let schema = new_schema(conn,key,email);
 
         let result = schema
@@ -460,6 +478,7 @@ mod test {
                 }",
             )
             .await;
+        // print our errors if we have any
         eprintln!("{:?}",result.errors);
         assert!(result.errors.is_empty());
         assert_eq!(result.data.to_string(),
@@ -478,6 +497,9 @@ mod test {
         assert_eq!(result.data.to_string(),
                    "{register: \"Please check your email for a validation link.\"}".to_string());
         // We aren't actually testing to see if our postmark client sends emails so expect bugs.
+
+        // Check that a register_code was put into our TestEmail struct
+        assert!(!(*(register_code.lock().unwrap())).is_empty())
     }
 
     #[tokio::test]
@@ -542,8 +564,102 @@ mod test {
             .await;
         eprintln!("{:?}",result.errors);
         assert!(result.errors.is_empty());
+    }
+
+    #[tokio::test]
+    async fn test_request_reset_password_and_reset_password() {
+        let (key,conn,email) = key_conn_email().await;
+        // get our arc to see into later
+        let reset_pass_code = email.reset_pass_code.clone();
+        create_login_with_password(&conn,"test5@test.com".into(),"1234".into())
+                .await
+                .unwrap();
+
+        // create graphql schema to test against
+        let schema = new_schema(conn,key,email);
+        let result = schema
+            .execute(
+                "mutation {
+                requestResetPassword(email: \"test5@test.com\")
+                }",
+            )
+            .await;
+        // print our errors if we have any
+        if !result.errors.is_empty() {
+            eprintln!("{:?}", result.errors);
+        }
+        assert!(result.errors.is_empty());
+        assert_eq!(result.data.to_string(),
+                   "{requestResetPassword: \"Please check your email for a validation link.\"}".to_string());
+        let reset_pass_code = (*(reset_pass_code.lock().unwrap())).clone();
+        let result = schema
+            .execute(&format!(
+                "mutation {{
+                resetPassword(email: \"test5@test.com\" newPassword: \"12345\"
+                lostPasswordCode : \"{}\")
+                }}",reset_pass_code)
+            )
+            .await;
+        eprintln!("{:?}",result.errors);
+        assert!(result.errors.is_empty());
+        assert_eq!(result.data.to_string(),
+                   "{resetPassword: \"You may now login with your new password.\"}".to_string());
+        let result = schema
+            .execute(
+                "mutation {
+                login(email: \"test5@test.com\" pass: \"12345\")
+                }"
+            )
+            .await;
+        eprintln!("{:?}",result.errors);
+        assert!(result.errors.is_empty());
+        assert!(!result.data.to_string().is_empty())// Get our JWT
+    }
+
+    #[tokio::test]
+    async fn test_register_validate_login() {
+        let (key,conn,email) = key_conn_email().await;
+        // get our arc to see into later
+        let register_code = email.register_code.clone();
+        // create graphql schema to test against
+        let schema = new_schema(conn,key,email);
+
+        let result = schema
+            .execute(
+                "mutation {
+                register(email: \"test6@test.com\")
+                }",
+            )
+            .await;
+        // print our errors if we have any
+        eprintln!("{:?}",result.errors);
+        assert!(result.errors.is_empty());
+        assert_eq!(result.data.to_string(),
+                   "{register: \"Please check your email for a validation link.\"}".to_string());
+        let result = schema
+            .execute(&format!(
+                "mutation {{
+                validateUser(email: \"test6@test.com\", newPassword:\"1234\",\
+                lostPasswordCode:\"{}\")
+                }}",*(register_code.lock().unwrap()))
+            )
+            .await;
+        eprintln!("{:?}",result.errors);
+        assert!(result.errors.is_empty());
+        assert_eq!(result.data.to_string(),
+                   "{validateUser: \"Account validated. Please use your new password to log in.\"}".to_string());
+        let result = schema
+            .execute(
+                "mutation {
+                login(email: \"test6@test.com\", pass: \"1234\")
+                }",
+            )
+            .await;
+        eprintln!("{:?}",result.errors);
+        assert!(result.errors.is_empty());
 
     }
+
 
 
 }
