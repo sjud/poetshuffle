@@ -6,8 +6,7 @@ use crate::{OUTBOUND_EMAIL, URL_BASE};
 use postmark::Query;
 
 
-#[cfg(test)]
-#[mockall::automock]
+#[cfg_attr(test,mockall::automock)]
 #[async_trait::async_trait]
 pub trait Email {
     async fn register(&self,email:String,lost_password_code:String) -> Result<()>;

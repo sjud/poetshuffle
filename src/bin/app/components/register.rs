@@ -1,5 +1,5 @@
 use stylist::css;
-use crate::queries::{login_mutation::Variables, LoginMutation};
+use crate::queries::{register_mutation::Variables, RegisterMutation};
 use crate::services::network::post_graphql;
 use crate::types::auth_context::{AuthContext, AuthTokenAction};
 use web_sys::HtmlInputElement;
@@ -8,32 +8,25 @@ use yew_hooks::prelude::*;
 use crate::styles::{form_css, form_elem};
 use crate::types::footer_context::{FooterContext, FooterOptionsActions};
 
-#[function_component(Login)]
+#[function_component(Register)]
 pub fn login() -> Html {
-
     // We'll use these node refs in our inputs on our login form.
     let email = use_node_ref();
-    let pass = use_node_ref();
-    // AuthContext is a ReducerHandle wrapped around Auth, so we can mutate our authtoken.
-    let auth_ctx = use_context::<AuthContext>().unwrap();
     let req = {
         // Clones are required because of the move in our async block.
         let email = email.clone();
-        let pass = pass.clone();
-        let auth_ctx = auth_ctx.clone();
         // We run this when we submit our form.
         use_async::<_, (), String>(async move {
             // Get the values from the fields and post a login graphql query to our server
-            let resp = post_graphql::<LoginMutation>(Variables {
+            let resp = post_graphql::<RegisterMutation>(Variables {
                 email: email.cast::<HtmlInputElement>().unwrap().value(),
-                pass: pass.cast::<HtmlInputElement>().unwrap().value(),
             },None)
-            .await
-            .map_err(|err| format!("{:?}", err))?;
+                .await
+                .map_err(|err| format!("{:?}", err))?;
             // If we our response has data check it's .login field it ~should~ be a jwt string
             // which we dispatch to our AuthToken which will now use it in all future contexts.
             if let Some(ref data) = resp.data {
-                auth_ctx.dispatch(AuthTokenAction::Set(data.login.clone()))
+                gloo::console::log!(data.register.clone());
             }
             // If we have no data then see if we have errors and print those to console.
             else if resp.errors.is_some() {
@@ -53,17 +46,15 @@ pub fn login() -> Html {
     html! {
         <div class={form_css.clone()}>
         <div>
-            <h2>{ "Sign In" }</h2>
+            <h2>{ "Register" }</h2>
         </div>
             <form {onsubmit}>
                 <input type="email" placeholder="Email" ref={email.clone()}
-        class={form_elem.clone()}/>
-                <br/>
-                <input type="password" placeholder="Password" ref={pass.clone()}
+
         class={form_elem.clone()}/>
                 <br/>
                 <button type="submit" disabled=false class={button.clone()}>
-        { "Sign in" } </button>
+        { "Register" } </button>
             </form>
         </div>
 

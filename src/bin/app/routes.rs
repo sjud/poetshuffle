@@ -1,4 +1,4 @@
-use crate::components::{login::Login, main_menu::MainMenu};
+use crate::components::{login_register::LoginRegister, main_menu::MainMenu};
 use yew::prelude::*;
 use yew_router::prelude::*;
 
@@ -8,8 +8,8 @@ pub enum Route {
     PoetShuffle,
     #[at("/about")]
     About,
-    #[at("/login")]
-    Login,
+    #[at("/login_register")]
+    LoginRegister,
     #[at("/publish")]
     Publish,
     #[at("/")]
@@ -22,7 +22,7 @@ pub(crate) fn switch(routes: &Route) -> Html {
     match routes {
         Route::PoetShuffle => html! {{"PoetShuffle"}},
         Route::About => html! {{"About"}},
-        Route::Login => html! {<Login/>},
+        Route::LoginRegister => html! {<LoginRegister/>},
         Route::Publish => html! {{"Publish"}},
         Route::MainMenu => html! {<MainMenu />},
         Route::NotFound => html! { {"404"}},

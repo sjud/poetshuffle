@@ -5,10 +5,11 @@ use hmac::Hmac;
 use sea_orm::DatabaseConnection;
 use sha2::Sha256;
 use crate::email::Email;
+use crate::graphql::resolvers::sets::SetsQuery;
 use crate::POSTMARK_API_TRANSACTION;
 
 #[derive(MergedObject, Default)]
-pub struct Query();
+pub struct Query(SetsQuery);
 #[derive(MergedObject, Default)]
 pub struct Mutation(LoginMutation);
 pub type PoetShuffleSchema = Schema<Query, Mutation, EmptySubscription>;

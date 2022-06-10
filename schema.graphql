@@ -1,3 +1,5 @@
-type Query {
-  login(email: String!, pass: String!): String!
+type Mutation {
+    login(email: String!, pass: String!): String!
+    register(email:String!): String!
 }
+

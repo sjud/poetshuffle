@@ -5,4 +5,11 @@ use graphql_client::GraphQLQuery;
     query_path = "app_queries/login.graphql",
     response_derives = "Serialize,PartialEq"
 )]
-pub struct LoginQuery;
+pub struct LoginMutation;
+#[derive(GraphQLQuery)]
+#[graphql(
+schema_path = "schema.graphql",
+query_path = "app_queries/register.graphql",
+response_derives = "Serialize,PartialEq"
+)]
+pub struct RegisterMutation;
