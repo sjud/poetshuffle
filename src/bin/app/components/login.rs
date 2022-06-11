@@ -1,12 +1,12 @@
-use stylist::css;
 use crate::queries::{login_mutation::Variables, LoginMutation};
 use crate::services::network::post_graphql;
 use crate::types::auth_context::{AuthContext, AuthTokenAction};
 use web_sys::HtmlInputElement;
 use yew::prelude::*;
 use yew_hooks::prelude::*;
+use crate::MSG_DURATION;
 use crate::styles::{form_css, form_elem};
-use crate::types::footer_context::{FooterContext, FooterOptionsActions};
+use crate::types::msg_context::{MsgActions, MsgContext, MsgForm, MsgTheme, UserMessage};
 
 #[function_component(Login)]
 pub fn login() -> Html {
@@ -16,11 +16,14 @@ pub fn login() -> Html {
     let pass = use_node_ref();
     // AuthContext is a ReducerHandle wrapped around Auth, so we can mutate our authtoken.
     let auth_ctx = use_context::<AuthContext>().unwrap();
+    // MsgContext is used to inform user of responses.
+    let msg_context = use_context::<MsgContext>().unwrap();
     let req = {
         // Clones are required because of the move in our async block.
         let email = email.clone();
         let pass = pass.clone();
         let auth_ctx = auth_ctx.clone();
+        let msg_context = msg_context.clone();
         // We run this when we submit our form.
         use_async::<_, (), String>(async move {
             // Get the values from the fields and post a login graphql query to our server
@@ -33,10 +36,29 @@ pub fn login() -> Html {
             // If we our response has data check it's .login field it ~should~ be a jwt string
             // which we dispatch to our AuthToken which will now use it in all future contexts.
             if let Some(ref data) = resp.data {
-                auth_ctx.dispatch(AuthTokenAction::Set(data.login.clone()))
+                auth_ctx.dispatch(AuthTokenAction::Set(data.login.clone()));
+                msg_context.dispatch(MsgActions::NewMsg(UserMessage{
+                    body: format!("Login Successful."),
+                    form: MsgForm::WithDuration(MSG_DURATION),
+                    theme: MsgTheme::Green,
+                }));
             }
             // If we have no data then see if we have errors and print those to console.
             else if resp.errors.is_some() {
+                msg_context.dispatch(MsgActions::NewMsg(UserMessage{
+                    body: resp
+                        .errors
+                        .as_ref()
+                        .unwrap()
+                        .into_iter()
+                        .fold(
+                            String::new(),
+                            |acc,err|
+                                format!("{}\n{}",acc,err.message.clone()
+                                )),
+                    form: MsgForm::WithDuration(MSG_DURATION),
+                    theme: MsgTheme::Red,
+                }));
                 tracing::error!("{:?}", resp.errors);
             }
             Ok(())

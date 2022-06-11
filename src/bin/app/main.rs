@@ -9,6 +9,8 @@ mod styles;
 use crate::{components::app::App, console_writer::WASMConsoleWriter};
 use std::sync::Mutex;
 
+pub const MSG_DURATION : u8 = 4;
+
 #[global_allocator]
 static ALLOC: wee_alloc::WeeAlloc = wee_alloc::WeeAlloc::INIT;
 fn main() {

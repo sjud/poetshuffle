@@ -135,3 +135,26 @@ pub fn form_elem() -> StyleSource<'static>{
         margin: 4px 0;
     "#)
 }
+pub fn user_msg() -> StyleSource<'static> {
+    css!(r#"
+            padding:4px;
+            max-width:200px;
+      display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+    z-index:2;
+    "#)
+}
+pub fn green_user_msg() -> StyleSource<'static>{
+    css!(r#"
+    background-color:Green;
+    "#)
+}
+pub fn red_user_msg() -> StyleSource<'static> {
+    css!(r#"
+    background-color:Red;
+    "#)
+
+}

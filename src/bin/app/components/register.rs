@@ -1,12 +1,9 @@
-use stylist::css;
 use crate::queries::{register_mutation::Variables, RegisterMutation};
 use crate::services::network::post_graphql;
-use crate::types::auth_context::{AuthContext, AuthTokenAction};
 use web_sys::HtmlInputElement;
 use yew::prelude::*;
 use yew_hooks::prelude::*;
 use crate::styles::{form_css, form_elem};
-use crate::types::footer_context::{FooterContext, FooterOptionsActions};
 
 #[function_component(Register)]
 pub fn login() -> Html {

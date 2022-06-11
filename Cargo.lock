@@ -2089,6 +2089,7 @@ dependencies = [
  "tower-http",
  "tracing",
  "tracing-subscriber",
+ "wasm-bindgen-futures",
  "wasm-logger",
  "web-sys",
  "wee_alloc",
