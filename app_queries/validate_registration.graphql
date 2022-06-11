@@ -1,0 +1,3 @@
+mutation ValidateRegistrationMutation($email: String!, $new_password: String!, $lost_password_code: String!) {
+  validateUser(email: $email, newPassword: $new_password, lostPasswordCode: $lost_password_code)
+}

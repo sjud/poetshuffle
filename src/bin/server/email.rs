@@ -41,9 +41,8 @@ impl Email for Postmark {
             .to(&email)
             .subject("PoetShuffle Registration")
             .body(postmark::api::email::Body::Text(
-                format!("{}validate_registration/{}",
-                        &*URL_BASE,
-                        lost_password_code)))
+                format!("{}validate_registration/{}/{}",
+                        &*URL_BASE,email, lost_password_code)))
             .build();
         req.execute(&self.client).await?;
         Ok(())

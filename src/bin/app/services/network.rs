@@ -9,7 +9,7 @@ pub async fn post_graphql<Q: GraphQLQuery>(
     // We need an Arc here because we want to call it from use_async,
     // response is not clone and use_async's future state require clones? (I think, not sure)
     Ok(Arc::new(
-        gloo::net::http::Request::post("api/graphql")
+        gloo::net::http::Request::post("/api/graphql")
             //Facebook uses JSON for network requests in part because it's amiable to gzip
             .header("accept-encoding", "gzip")
             .header("x-authorization",&jwt.unwrap_or(String::default()))

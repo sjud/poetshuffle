@@ -1,9 +1,15 @@
-use crate::components::{login_register::LoginRegister, main_menu::MainMenu};
+use crate::components::{
+    login_register::LoginRegister,
+    main_menu::MainMenu,
+    validate_registration::ValidateRegistration
+};
 use yew::prelude::*;
 use yew_router::prelude::*;
 
 #[derive(Routable, PartialEq, Clone, Debug)]
 pub enum Route {
+    #[at("/validate_registration/:email/:code")]
+    ValidateRegistration{email:String,code:String},
     #[at("/poetshuffle")]
     PoetShuffle,
     #[at("/about")]
@@ -26,6 +32,14 @@ pub(crate) fn switch(routes: &Route) -> Html {
         Route::Publish => html! {{"Publish"}},
         Route::MainMenu => html! {<MainMenu />},
         Route::NotFound => html! { {"404"}},
-        //
+        Route::ValidateRegistration { email,code } => {
+            let props = crate::components::validate_registration::ValidateRegistrationProps{
+                email:email.clone(),
+                code:code.clone(),
+            };
+            return html! {
+                <ValidateRegistration ..props/>
+                };
+        }
     }
 }
