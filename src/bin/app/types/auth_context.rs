@@ -7,7 +7,7 @@ pub type AuthContext = UseReducerHandle<AuthToken>;
 /// requests requiring authorization should fail.
 #[derive(Default, PartialEq, Clone)]
 pub struct AuthToken {
-    token: String,
+    pub(crate) token: String,
 }
 
 pub enum AuthTokenAction {

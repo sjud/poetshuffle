@@ -4,6 +4,7 @@ use crate::types::audio_context::{AudioContext};
 use yew::prelude::*;
 use yew_router::{hooks::use_history, prelude::History};
 use crate::styles::{green_user_msg, menu_list, red_user_msg, user_msg};
+use crate::types::auth_context::{AuthContext, AuthTokenAction};
 use crate::types::footer_context::{FooterContext, FooterForm};
 use crate::types::msg_context::{MsgActions, MsgContext, MsgForm, MsgTheme};
 
@@ -21,13 +22,21 @@ pub fn footer() -> Html {
     let button = crate::styles::button();
     let footer_ctx = use_context::<FooterContext>().unwrap();
     let audio_ctx = use_context::<AudioContext>().unwrap();
-
+    let auth_ctx = use_context::<AuthContext>().unwrap();
+    let auth_ctx_clone = auth_ctx.clone();
+    let logout = Callback::from(move |_|
+        auth_ctx
+            .dispatch(AuthTokenAction::Set("".to_string())));
     let base = match footer_ctx.form {
         FooterForm::HomePage => html! {
                 <div class={list.clone()}>
                 <button onclick={about} class = {button.clone()}>{"About"}</button>
                 <button onclick={publish} class = {button.clone()}>{"Publish"}</button>
+            if auth_ctx_clone.token.is_empty() {
                 <button onclick={admin} class = {button.clone()}>{"Login/Register"}</button>
+                } else {
+                <button onclick={logout} class = {button.clone()}>{"Logout"}</button>
+            }
                 </div>
     },
         FooterForm::LoginPage => html!{

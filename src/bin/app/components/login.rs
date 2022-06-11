@@ -4,7 +4,10 @@ use crate::types::auth_context::{AuthContext, AuthTokenAction};
 use web_sys::HtmlInputElement;
 use yew::prelude::*;
 use yew_hooks::prelude::*;
+use yew_router::hooks::use_history;
+use yew_router::prelude::History;
 use crate::MSG_DURATION;
+use crate::routes::Route;
 use crate::styles::{form_css, form_elem};
 use crate::types::msg_context::{MsgActions, MsgContext, MsgForm, MsgTheme, UserMessage};
 
@@ -18,6 +21,7 @@ pub fn login() -> Html {
     let auth_ctx = use_context::<AuthContext>().unwrap();
     // MsgContext is used to inform user of responses.
     let msg_context = use_context::<MsgContext>().unwrap();
+    let history = use_history().unwrap();
     let req = {
         // Clones are required because of the move in our async block.
         let email = email.clone();
@@ -42,6 +46,7 @@ pub fn login() -> Html {
                     form: MsgForm::WithDuration(MSG_DURATION),
                     theme: MsgTheme::Green,
                 }));
+                history.push(Route::MainMenu);
             }
             // If we have no data then see if we have errors and print those to console.
             else if resp.errors.is_some() {
