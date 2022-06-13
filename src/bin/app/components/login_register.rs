@@ -11,7 +11,7 @@ pub fn login() -> Html {
     footer_ctx.dispatch(FooterOptionsActions::Transform(FooterForm::LoginPage));
     let style = login_register_style();
     let login_props = LoginProps{
-        admin_login: false
+        super_admin_login: false
     };
     html! {
         <div class={style.clone()}>

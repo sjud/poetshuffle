@@ -1,3 +1,0 @@
-mutation AdminLoginMutation($email: String!, $pass: String!) {
-  adminLogin(email: $email, pass: $pass)
-}

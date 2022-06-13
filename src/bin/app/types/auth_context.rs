@@ -1,3 +1,4 @@
+use std::cmp::Ordering;
 use std::collections::BTreeMap;
 use std::rc::Rc;
 use uuid::Uuid;
@@ -10,13 +11,54 @@ pub type AuthContext = UseReducerHandle<AuthToken>;
 /// This is copied from entities... make sure it is up to date.
 /// I'd prefer one source of truth, but there are wasm target
 /// build conflicts when bringing in the mess dependencies.
-#[derive(Serialize,Deserialize,Debug,Clone,PartialEq)]
+#[derive(Serialize,Deserialize,Debug,Clone,Copy,PartialEq)]
 pub enum UserRole {
     Admin,
     Listener,
     Moderator,
     Poet,
     SuperAdmin,
+}
+
+impl UserRole{
+    pub fn from_str(role:&'static str) -> Option<Self> {
+        match role {
+            "Admin" => Some(Self::Admin),
+            "Listener" => Some(Self::Listener),
+            "Moderator" => Some(Self::Moderator),
+            "Poet" => Some(Self::Poet),
+            "SuperAdmin" => Some(Self::SuperAdmin),
+            _ => None,
+        }
+    }
+}
+
+
+impl PartialOrd for UserRole {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        let self_val = match self {
+            UserRole::Listener => 0,
+            UserRole::Poet => 1,
+            UserRole::Moderator => 2,
+            UserRole::Admin => 3,
+            UserRole::SuperAdmin => 4,
+        };
+        let other_val = match other {
+            UserRole::Listener => 0,
+            UserRole::Poet => 1,
+            UserRole::Moderator => 2,
+            UserRole::Admin => 3,
+            UserRole::SuperAdmin => 4,
+        };
+        if self_val < other_val {
+            Some(Ordering::Less)
+        } else if self_val > other_val {
+            Some(Ordering::Greater)
+        } else {
+            Some(Ordering::Equal)
+        }
+    }
+
 }
 
 /// This is copied from entities... make sure it is up to date.

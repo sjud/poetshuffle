@@ -1,0 +1,3 @@
+mutation ModifyUserRoleMutation($email: String!, $new_user_role: UserRole!) {
+  modifyUserRole(email: $email, newUserRole: $new_user_role)
+}

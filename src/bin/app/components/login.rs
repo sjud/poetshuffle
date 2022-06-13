@@ -1,4 +1,4 @@
-use crate::queries::{AdminLoginMutation, LoginMutation,login_mutation,admin_login_mutation};
+use crate::queries::{SuperAdminLoginMutation, LoginMutation,login_mutation,super_admin_login_mutation};
 use crate::services::network::post_graphql;
 use crate::types::auth_context::{AuthContext, AuthTokenAction};
 use web_sys::HtmlInputElement;
@@ -14,7 +14,7 @@ use crate::types::msg_context::{MsgContext, new_green_msg_with_std_duration, new
 
 #[derive(Properties, PartialEq)]
 pub struct LoginProps{
-    pub(crate) admin_login:bool,
+    pub(crate) super_admin_login:bool,
 }
 #[function_component(Login)]
 pub fn login(props: &LoginProps) -> Html {
@@ -31,7 +31,7 @@ pub fn login(props: &LoginProps) -> Html {
         // Clones are required because of the move in our async block.
         let email = email.clone();
         let pass = pass.clone();
-        let admin_login = props.admin_login;
+        let admin_login = props.super_admin_login;
         let auth_ctx = auth_ctx.clone();
         let msg_context = msg_context.clone();
         // We run this when we submit our form.
@@ -42,11 +42,13 @@ pub fn login(props: &LoginProps) -> Html {
             //  post proper login graphql query to our server
             match if admin_login {
                 let resp =
-                    post_graphql::<AdminLoginMutation>(admin_login_mutation::Variables {
+                    post_graphql::<SuperAdminLoginMutation>(
+                        super_admin_login_mutation::Variables {
                     email, pass, }, None).await.map_err(|err| format!("{:?}", err))?;
-                (resp.data.as_ref().map(|data|data.admin_login.clone()),resp.errors.clone())
+                (resp.data.as_ref().map(|data|data.super_admin_login.clone()),resp.errors.clone())
             } else {
-                let resp = post_graphql::<LoginMutation>(login_mutation::Variables {
+                let resp =
+                    post_graphql::<LoginMutation>(login_mutation::Variables {
                     email, pass, }, None).await.map_err(|err| format!("{:?}", err))?;
                 (resp.data.as_ref().map(|data|data.login.clone()),resp.errors.clone())
             } {

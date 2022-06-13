@@ -17,25 +17,36 @@ pub async fn graphql_handler(
     headers: HeaderMap,
     req: GraphQLRequest,
 ) -> Result<GraphQLResponse, StatusCode> {
-    let auth = match headers.get("authorization") {
+    let auth = match headers.get("x-authorization") {
         Some(header) => match header.to_str() {
             Ok(str) => {
                 let perm: BTreeMap<String, String> = str.verify_with_key(&key).map_err(|err| {
-                    tracing::error!("{:?}", err);
+                    tracing::error!("verify {:?}", err);
                     StatusCode::INTERNAL_SERVER_ERROR
                 })?;
                 let perm: Permissions = serde_json::from_str(&*perm["sub"]).map_err(|err| {
-                    tracing::error!("{:?}", err);
+                    tracing::error!("from {:?}", err);
                     StatusCode::INTERNAL_SERVER_ERROR
                 })?;
                 Auth(Some(perm))
             }
             Err(err) => {
-                tracing::error!("{:?}", err);
+                tracing::error!(" to {:?}", err);
+                Err(StatusCode::INTERNAL_SERVER_ERROR)?;
                 Auth(None)
             }
         },
         None => Auth(None),
     };
     Ok(schema.execute(req.into_inner().data(auth)).await.into())
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[tokio::test]
+    async fn test_graphql_handler() {
+
+    }
 }

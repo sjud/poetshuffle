@@ -7,3 +7,4 @@ pub mod poetshuffle;
 pub mod register;
 pub mod login_register;
 pub mod validate_registration;
+pub mod admin;

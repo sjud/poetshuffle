@@ -23,7 +23,14 @@ pub struct ValidateRegistrationMutation;
 #[derive(GraphQLQuery)]
 #[graphql(
 schema_path = "schema.graphql",
-query_path = "app_queries/admin_login.graphql",
+query_path = "app_queries/super_admin_login.graphql",
 response_derives = "Serialize,PartialEq"
 )]
-pub struct AdminLoginMutation;
+pub struct SuperAdminLoginMutation;
+#[derive(GraphQLQuery)]
+#[graphql(
+schema_path = "schema.graphql",
+query_path = "app_queries/modify_user_role.graphql",
+response_derives = "Serialize,PartialEq"
+)]
+pub struct ModifyUserRoleMutation;

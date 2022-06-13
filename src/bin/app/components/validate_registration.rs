@@ -62,7 +62,7 @@ pub fn validate_registration(props:&ValidateRegistrationProps) -> Html {
     let button = crate::styles::button();
     let form_css = form_css();
     let login_props = LoginProps{
-        admin_login:false,
+        super_admin_login:false,
     };
     html! {
         if !*(display_login.clone()){

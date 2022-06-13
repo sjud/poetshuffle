@@ -1,0 +1,3 @@
+mutation SuperAdminLoginMutation($email: String!, $pass: String!) {
+  superAdminLogin(email: $email, pass: $pass)
+}

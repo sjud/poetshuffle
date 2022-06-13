@@ -19,7 +19,7 @@ impl AdminMutation{
     /// user credentials as opposed to a DB
     /// and it hands out the SuperAdmin user role which
     /// can promote users to administrators.
-    async fn admin_login (
+    async fn super_admin_login (
         &self,
         ctx: &Context<'_>,
         email: String,
@@ -38,7 +38,7 @@ impl AdminMutation{
             Err(Error::new("Nuh-uh-uh."))
         }
     }
-    async fn promote_user(
+    async fn modify_user_role(
         &self,
         ctx: &Context<'_>,
         email:String,
@@ -75,7 +75,7 @@ mod test{
     use crate::graphql::resolvers::login::create_login_with_password;
     use crate::graphql::test_util::key_conn_email;
     #[tokio::test]
-    async fn test_admin_login() {
+    async fn test_super_admin_login() {
         let (key,conn,email) = key_conn_email().await;
         let user = &*ADMIN_USER;
         let pass = &*ADMIN_PASS;
@@ -85,7 +85,7 @@ mod test{
         let result = schema
             .execute(&format!(
                 "mutation {{
-                adminLogin(email: \"{}\", pass: \"{}\")
+                superAdminLogin(email: \"{}\", pass: \"{}\")
                 }}",user,pass),
             )
             .await;
@@ -98,7 +98,7 @@ mod test{
         let result = schema
             .execute(&format!(
                 "mutation {{
-                adminLogin(email: \"{}\", pass: \"bad_pass\")
+                superAdminLogin(email: \"{}\", pass: \"bad_pass\")
                 }}",user),
             )
             .await;
@@ -107,7 +107,7 @@ mod test{
         let result = schema
             .execute(&format!(
                 "mutation {{
-                adminLogin(email: \"bad_user\", pass: \"{}\")
+                superAdminLogin(email: \"bad_user\", pass: \"{}\")
                 }}",pass),
             )
             .await;
@@ -126,7 +126,7 @@ mod test{
         let result = schema
             .execute(async_graphql::Request::from(
                 "mutation {
-                promoteUser(email: \"soon_to_be_poet@test.com\", newUserRole: \"POET\")
+                modifyUserRole(email: \"soon_to_be_poet@test.com\", newUserRole: \"POET\")
                 }"
             ).data(Auth(
                     Some(entity::permissions::Model{ user_uuid: Uuid::nil(), user_role: UserRole::Moderator })
@@ -143,7 +143,7 @@ mod test{
         let result = schema
             .execute(async_graphql::Request::from(
                 "mutation {
-                promoteUser(email: \"soon_to_be_poet@test.com\", newUserRole: \"ADMIN\")
+                modifyUserRole(email: \"soon_to_be_poet@test.com\", newUserRole: \"ADMIN\")
                 }"
             ).data(Auth(
                 Some(entity::permissions::Model{ user_uuid: Uuid::nil(), user_role: UserRole::Moderator })
@@ -153,7 +153,7 @@ mod test{
         let result = schema
             .execute(async_graphql::Request::from(
                 "mutation {
-                promoteUser(email: \"who???@test.com\", newUserRole: \"ADMIN\")
+                modifyUserRole(email: \"who???@test.com\", newUserRole: \"ADMIN\")
                 }"
             ).data(Auth(
                 Some(entity::permissions::Model{ user_uuid: Uuid::nil(), user_role: UserRole::Moderator })
