@@ -20,3 +20,10 @@ query_path = "app_queries/validate_registration.graphql",
 response_derives = "Serialize,PartialEq"
 )]
 pub struct ValidateRegistrationMutation;
+#[derive(GraphQLQuery)]
+#[graphql(
+schema_path = "schema.graphql",
+query_path = "app_queries/admin_login.graphql",
+response_derives = "Serialize,PartialEq"
+)]
+pub struct AdminLoginMutation;

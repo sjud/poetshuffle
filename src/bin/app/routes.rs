@@ -1,5 +1,6 @@
 use crate::components::{
     login_register::LoginRegister,
+    login::{Login,LoginProps},
     main_menu::MainMenu,
     validate_registration::ValidateRegistration
 };
@@ -8,6 +9,8 @@ use yew_router::prelude::*;
 
 #[derive(Routable, PartialEq, Clone, Debug)]
 pub enum Route {
+    #[at("/admin_login")]
+    AdminLogin,
     #[at("/validate_registration/:email/:code")]
     ValidateRegistration{email:String,code:String},
     #[at("/poetshuffle")]
@@ -40,6 +43,11 @@ pub(crate) fn switch(routes: &Route) -> Html {
             return html! {
                 <ValidateRegistration ..props/>
                 };
-        }
+        },
+        Route::AdminLogin => {
+            let login_props = LoginProps{admin_login: true};
+            return html!{
+            <Login ..login_props/>
+        };},
     }
 }

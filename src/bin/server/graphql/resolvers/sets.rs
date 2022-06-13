@@ -1,5 +1,5 @@
+
 use super::*;
-use crate::graphql::auth::{can_approve, can_change_status, can_create_set, can_edit_set};
 use crate::types::Auth;
 use entity::prelude::Sets;
 use entity::sea_orm_active_enums::SetStatus;
@@ -19,6 +19,7 @@ use entity::sets;
 pub struct SetsQuery;
 #[Object]
 impl SetsQuery {
+
     async fn set_uuids_by_status(
         &self,
         ctx: &Context<'_>,
@@ -31,6 +32,7 @@ impl SetsQuery {
             .await?;
         Ok(sets)
     }
+    /*
     async fn creation_ts(&self, ctx: &Context<'_>, set_uuid: Uuid) -> Result<i64> {
         let db = ctx.data::<DatabaseConnection>().unwrap();
         if let Some(set) = Sets::find_by_id(set_uuid).one(db).await? {
@@ -245,4 +247,5 @@ impl SetsMutation {
             Err(Error::new("No authorization provided"))
         }
     }
+*/
 }

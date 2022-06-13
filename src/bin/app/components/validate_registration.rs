@@ -6,7 +6,7 @@ use crate::queries::{validate_registration_mutation::Variables,ValidateRegistrat
 use crate::services::network::post_graphql;
 use crate::styles::{form_css, form_elem};
 use crate::types::msg_context::{MsgActions, MsgContext, MsgForm, MsgTheme, new_green_msg_with_std_duration, new_red_msg_with_std_duration, UserMessage};
-use crate::components::login::Login;
+use crate::components::login::{Login, LoginProps};
 use crate::services::utility::map_graphql_errors_to_string;
 
 #[derive(Properties, PartialEq)]
@@ -61,6 +61,9 @@ pub fn validate_registration(props:&ValidateRegistrationProps) -> Html {
     let form_elem = form_elem();
     let button = crate::styles::button();
     let form_css = form_css();
+    let login_props = LoginProps{
+        admin_login:false,
+    };
     html! {
         if !*(display_login.clone()){
     <div class={form_css.clone()}>
@@ -76,7 +79,7 @@ pub fn validate_registration(props:&ValidateRegistrationProps) -> Html {
         </form>
         </div>
             } else {
-            <Login/>
+            <Login ..login_props/>
         }
         }
 }

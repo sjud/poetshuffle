@@ -35,6 +35,7 @@ fn new_lost_password_code() -> Result<String> {
         .map_err(|err|err.into())
 }
 
+
 async fn create_login_with_password(
     db:&DatabaseConnection,
     email:String,
@@ -187,7 +188,7 @@ async fn update_login_with_new_password_given_current_password(
     }
 }
 
-async fn find_login_by_email(db:&DatabaseConnection,email:&str)->Result<Option<entity::logins::Model>>{
+pub async fn find_login_by_email(db:&DatabaseConnection,email:&str)->Result<Option<entity::logins::Model>>{
     LoginsEntity::find()
         .having(entity::logins::Column::Email.eq(email))
         .group_by(entity::logins::Column::UserUuid)
@@ -201,6 +202,7 @@ async fn find_login_by_email(db:&DatabaseConnection,email:&str)->Result<Option<e
 
 #[Object]
 impl LoginMutation{
+
     async fn login(
         &self,
         ctx: &Context<'_>,
@@ -243,8 +245,7 @@ impl LoginMutation{
                 claims.insert("sub", permission);
 
                 // Sign our claims and return functioning JWT.
-                Ok(claims
-                    .sign_with_key(key)?)
+                Ok(claims.sign_with_key(key)?)
             } else {
                 Err(Error::new("No matching Permission."))
             }
