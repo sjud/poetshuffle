@@ -49,6 +49,18 @@ lazy_static! {
         #[cfg(not(feature = "dev"))]
         std::env::var("URL_BASE").unwrap()
     };
+     pub static ref ADMIN_USER: String = {
+        #[cfg(feature = "dev")]
+        return dotenv_codegen::dotenv!("ADMIN_USER").to_string();
+        #[cfg(not(feature = "dev"))]
+        std::env::var("ADMIN_USER").unwrap()
+    };
+       pub static ref ADMIN_PASS: String = {
+        #[cfg(feature = "dev")]
+        return dotenv_codegen::dotenv!("ADMIN_PASS").to_string();
+        #[cfg(not(feature = "dev"))]
+        std::env::var("ADMIN_PASS").unwrap()
+    };
 }
 
 #[tokio::main]

@@ -9,3 +9,4 @@ use sha2::Sha256;
 
 pub mod login;
 pub mod sets;
+pub mod admin;

@@ -1,17 +1,54 @@
+use std::collections::BTreeMap;
 use std::rc::Rc;
+use uuid::Uuid;
+use serde::{Deserialize,Serialize};
+use serde_json::Value;
 use yew::{Reducible, UseReducerHandle};
 
 pub type AuthContext = UseReducerHandle<AuthToken>;
 
-/// AuthToken holds onto a String which should be a JWT token. If it's not a valid JWT token, then
-/// requests requiring authorization should fail.
-#[derive(Default, PartialEq, Clone)]
-pub struct AuthToken {
-    pub(crate) token: String,
+/// This is copied from entities... make sure it is up to date.
+/// I'd prefer one source of truth, but there are wasm target
+/// build conflicts when bringing in the mess dependencies.
+#[derive(Serialize,Deserialize,Debug,Clone,PartialEq)]
+pub enum UserRole {
+    Admin,
+    Listener,
+    Moderator,
+    Poet,
+    SuperAdmin,
 }
 
+/// This is copied from entities... make sure it is up to date.
+/// I'd prefer one source of truth, but there are wasm target
+/// build conflicts when bringing in the mess dependencies.
+#[derive(Serialize,Deserialize,Debug,Clone,PartialEq)]
+pub struct Permissions {
+    pub user_uuid: Uuid,
+    pub user_role: UserRole,
+}
+
+/// AuthToken holds onto a String which should be a JWT token. If it's not a valid JWT token, then
+/// requests requiring authorization should fail.
+#[derive(PartialEq, Clone)]
+pub struct AuthToken {
+    pub(crate) token: Option<String>,
+    pub user_uuid:Option<Uuid>,
+    pub user_role: UserRole,
+}
+impl Default for AuthToken{
+    fn default() -> Self {
+        Self{
+            token: None,
+            user_uuid:None,
+            user_role: UserRole::Listener,
+        }
+    }
+}
+
+
 pub enum AuthTokenAction {
-    Set(String),
+    Set(Option<String>),
 }
 
 impl Reducible for AuthToken {
@@ -19,7 +56,24 @@ impl Reducible for AuthToken {
 
     fn reduce(self: Rc<Self>, action: Self::Action) -> Rc<Self> {
         match action {
-            AuthTokenAction::Set(token) => Self { token }.into(),
+            AuthTokenAction::Set(token) => {
+                if let Some(token) = token {
+                    let payload = token.split(".").collect::<Vec<&str>>()[1];
+                    let payload = base64::decode(payload).unwrap();
+                    if let Value::Object(map) = serde_json::from_slice(&payload).unwrap(){
+                        let perm : Permissions = serde_json::from_value(
+                            map.get("sub").unwrap().clone()
+                        ).unwrap();
+                        return Self{
+                            token: Some(token),
+                            user_uuid: Some(perm.user_uuid),
+                            user_role: perm.user_role
+                        }.into();
+                    }
+                }
+                Self::default().into()
+
+            },
         }
     }
 }

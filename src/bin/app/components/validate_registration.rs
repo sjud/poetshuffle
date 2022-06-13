@@ -5,8 +5,9 @@ use crate::MSG_DURATION;
 use crate::queries::{validate_registration_mutation::Variables,ValidateRegistrationMutation};
 use crate::services::network::post_graphql;
 use crate::styles::{form_css, form_elem};
-use crate::types::msg_context::{MsgActions, MsgContext, MsgForm, MsgTheme, UserMessage};
+use crate::types::msg_context::{MsgActions, MsgContext, MsgForm, MsgTheme, new_green_msg_with_std_duration, new_red_msg_with_std_duration, UserMessage};
 use crate::components::login::Login;
+use crate::services::utility::map_graphql_errors_to_string;
 
 #[derive(Properties, PartialEq)]
 pub struct ValidateRegistrationProps{
@@ -39,28 +40,15 @@ pub fn validate_registration(props:&ValidateRegistrationProps) -> Html {
             // which we dispatch to our AuthToken which will now use it in all future contexts.
             if let Some(ref data) = resp.data {
                 display_login.set(true);
-                msg_context.dispatch(MsgActions::NewMsg(UserMessage{
-                    body: data.validate_user.clone(),
-                    form: MsgForm::WithDuration(MSG_DURATION),
-                    theme: MsgTheme::Green,
-                }));
+                msg_context.dispatch(
+                    new_green_msg_with_std_duration(data.validate_user.clone())
+                );
             }
             // If we have no data then see if we have errors and print those to console.
             else if resp.errors.is_some() {
-                msg_context.dispatch(MsgActions::NewMsg(UserMessage{
-                    body: resp
-                        .errors
-                        .as_ref()
-                        .unwrap()
-                        .into_iter()
-                        .fold(
-                            String::new(),
-                            |acc,err|
-                                format!("{}\n{}",acc,err.message.clone()
-                                )),
-                    form: MsgForm::WithDuration(MSG_DURATION),
-                    theme: MsgTheme::Red,
-                }));
+                msg_context.dispatch(new_red_msg_with_std_duration(
+                    map_graphql_errors_to_string(&resp.errors)
+                ));
                 tracing::error!("{:?}", resp.errors);
             }
             Ok(())

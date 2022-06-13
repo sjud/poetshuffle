@@ -55,7 +55,6 @@ pub fn main_menu_button() -> StyleSource<'static> {
   margin-right: 35px;
   position: relative;
   text-align: center;
-  text-decoration: bold;
   user-select: none;
   -webkit-user-select: none;
   touch-action: manipulation;

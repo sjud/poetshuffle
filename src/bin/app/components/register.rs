@@ -3,12 +3,17 @@ use crate::services::network::post_graphql;
 use web_sys::HtmlInputElement;
 use yew::prelude::*;
 use yew_hooks::prelude::*;
+use crate::MSG_DURATION;
+use crate::services::utility::map_graphql_errors_to_string;
 use crate::styles::{form_css, form_elem};
+use crate::types::msg_context::{MsgContext, new_green_msg_with_std_duration, new_red_msg_with_std_duration};
 
 #[function_component(Register)]
 pub fn login() -> Html {
     // We'll use these node refs in our inputs on our login form.
     let email = use_node_ref();
+    let msg_context = use_context::<MsgContext>().unwrap();
+
     let req = {
         // Clones are required because of the move in our async block.
         let email = email.clone();
@@ -22,11 +27,17 @@ pub fn login() -> Html {
                 .map_err(|err| format!("{:?}", err))?;
             // If we our response has data check it's .login field it ~should~ be a jwt string
             // which we dispatch to our AuthToken which will now use it in all future contexts.
+
             if let Some(ref data) = resp.data {
-                gloo::console::log!(data.register.clone());
+                msg_context.dispatch(new_green_msg_with_std_duration(data.register.clone()));
             }
             // If we have no data then see if we have errors and print those to console.
             else if resp.errors.is_some() {
+                msg_context.dispatch(new_red_msg_with_std_duration(
+                    map_graphql_errors_to_string(
+                        &resp.errors
+                    )
+                ));
                 tracing::error!("{:?}", resp.errors);
             }
             Ok(())

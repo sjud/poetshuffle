@@ -24,15 +24,18 @@ pub fn footer() -> Html {
     let audio_ctx = use_context::<AudioContext>().unwrap();
     let auth_ctx = use_context::<AuthContext>().unwrap();
     let auth_ctx_clone = auth_ctx.clone();
-    let logout = Callback::from(move |_|
+    let history = use_history().unwrap();
+    let logout = Callback::from(move |_| {
         auth_ctx
-            .dispatch(AuthTokenAction::Set("".to_string())));
+            .dispatch(AuthTokenAction::Set(None));
+        //history.push(Route::MainMenu)
+    });
     let base = match footer_ctx.form {
         FooterForm::HomePage => html! {
                 <div class={list.clone()}>
                 <button onclick={about} class = {button.clone()}>{"About"}</button>
                 <button onclick={publish} class = {button.clone()}>{"Publish"}</button>
-            if auth_ctx_clone.token.is_empty() {
+            if auth_ctx_clone.token.is_none() {
                 <button onclick={admin} class = {button.clone()}>{"Login/Register"}</button>
                 } else {
                 <button onclick={logout} class = {button.clone()}>{"Logout"}</button>

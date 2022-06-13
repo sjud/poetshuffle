@@ -1,9 +1,25 @@
 use std::rc::Rc;
 use yew::{Reducible, UseReducerHandle};
+use crate::MSG_DURATION;
 use crate::routes::Route;
 
 pub type MsgContext = UseReducerHandle<UserMessageView>;
 
+
+pub fn new_green_msg_with_std_duration(body:String) -> MsgActions {
+        MsgActions::NewMsg(UserMessage{
+            body,
+            form: MsgForm::WithDuration(MSG_DURATION),
+            theme: MsgTheme::Green,
+        })
+}
+pub fn new_red_msg_with_std_duration(body:String) -> MsgActions {
+    MsgActions::NewMsg(UserMessage{
+        body,
+        form: MsgForm::WithDuration(MSG_DURATION),
+        theme: MsgTheme::Red,
+    })
+}
 
 #[derive(Default,PartialEq, Clone)]
 pub struct UserMessageView {
