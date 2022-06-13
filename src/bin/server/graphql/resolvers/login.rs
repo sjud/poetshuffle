@@ -36,7 +36,7 @@ fn new_lost_password_code() -> Result<String> {
 }
 
 
-async fn create_login_with_password(
+pub async fn create_login_with_password(
     db:&DatabaseConnection,
     email:String,
     password:String,
@@ -212,7 +212,6 @@ impl LoginMutation{
         // Initialize constants.
         let db = ctx.data::<DatabaseConnection>()?;
         let key = ctx.data::<Hmac<Sha256>>()?;
-        let mut claims = BTreeMap::new();
         // If the password and email match we get back the user uuid.
         if let Some(Ok(user_uuid)) = {
             let query = SeaQuery::select()
@@ -241,11 +240,8 @@ impl LoginMutation{
                     ..Default::default()
                 }.update(db).await?;
 
-                // Serialize the permission as the "sub" value of our future token.
-                claims.insert("sub", permission);
+               Ok(crate::auth::jwt(key,permission)?)
 
-                // Sign our claims and return functioning JWT.
-                Ok(claims.sign_with_key(key)?)
             } else {
                 Err(Error::new("No matching Permission."))
             }
@@ -393,54 +389,25 @@ impl LoginMutation{
 mod test {
     use std::sync::{Arc, Mutex};
     use hmac::digest::KeyInit;
+    use entity::prelude::Permissions;
     use super::*;
     use crate::graphql::schema::new_schema;
     use crate::{DATABASE_URL};
     use crate::email::{MockEmail, TestEmail};
+    use crate::graphql::test_util::key_conn_email;
 
-    async fn key_conn_email() -> (Hmac<Sha256>,DatabaseConnection, TestEmail) {
-        (
-            Hmac::new_from_slice(crate::JWT_SECRET.as_bytes())
-                .expect("Expecting valid Hmac<Sha256> from slice."),
-            sea_orm::Database::connect(&*DATABASE_URL)
-                .await
-                .expect("Expecting DB connection given DATABASE_URL."),
-            {
-                let register_code = Arc::new(Mutex::new(String::default()));
-                let reset_pass_code = Arc::new(Mutex::new(String::default()));
-                let mut email = TestEmail {
-                    register_code: register_code.clone(),
-                    reset_pass_code: reset_pass_code.clone(),
-                    email:MockEmail::new(),
-                };
-                email.email.expect_register()
-                    .returning(move |_,lost_password_code| {
-                        let mut data = register_code.lock().unwrap();
-                        *data = lost_password_code;
-                        Ok(())
-                    });
-                email.email.expect_reset_password()
-                    .returning(move |_,lost_password_code| {
-                        let mut data = reset_pass_code.lock().unwrap();
-                        *data = lost_password_code;
-                        Ok(())
-                        });
-                email
-            }
-            )
-    }
     #[tokio::test]
     async fn test_login() {
         let (key,conn,email) = key_conn_email().await;
 
-        create_login_with_password(
+        let user_uuid = create_login_with_password(
             &conn,
             "test@test.com".into(),
             "1234".into())
             .await
             .unwrap();
 
-        let schema = new_schema(conn,key,email);
+        let schema = new_schema(conn.clone(),key.clone(),email);
 
         let result = schema
             .execute(
@@ -451,8 +418,13 @@ mod test {
             .await;
         eprintln!("{:?}",result.errors);
         assert!(result.errors.is_empty());
-        //assert_eq!(result.data.to_string(),
-        //           "{login: \"SOME JWT STRING\"}".to_string()); <- how to test valid jwt?
+        let permission = entity::prelude::Permissions::find_by_id(user_uuid).one(&conn)
+            .await
+            .unwrap()
+            .unwrap();
+        assert_eq!(result.data.to_string(),
+                   format!("{{login: \"{}\"}}",crate::auth::jwt(&key,permission).unwrap()
+            ));
         // Our return value is some token, let's test is later in an integration test.
         let result = schema
             .execute(

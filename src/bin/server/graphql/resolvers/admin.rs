@@ -59,8 +59,106 @@ impl AdminMutation{
                 Err("UnAuthorized".into())
             }
         } else {
-            Err("Can't find login from email.".into())
+            Err("Can't find user to promote given email.".into())
         }
     }
+}
 
+#[cfg(test)]
+mod test{
+    use super::*;
+    use std::sync::{Arc, Mutex};
+    use hmac::digest::KeyInit;
+    use crate::graphql::schema::new_schema;
+    use crate::{DATABASE_URL};
+    use crate::email::{MockEmail, TestEmail};
+    use crate::graphql::resolvers::login::create_login_with_password;
+    use crate::graphql::test_util::key_conn_email;
+    #[tokio::test]
+    async fn test_admin_login() {
+        let (key,conn,email) = key_conn_email().await;
+        let user = &*ADMIN_USER;
+        let pass = &*ADMIN_PASS;
+
+        let schema = new_schema(conn,key,email);
+
+        let result = schema
+            .execute(&format!(
+                "mutation {{
+                adminLogin(email: \"{}\", pass: \"{}\")
+                }}",user,pass),
+            )
+            .await;
+        eprintln!("{:?}",result.errors);
+        assert!(result.errors.is_empty());
+        //assert_eq!(result.data.to_string(),
+        //           "{login: \"SOME JWT STRING\"}".to_string()); <- how to test valid jwt?
+        // Our return value is some token, let's test is later in an integration test.
+        // bad pass
+        let result = schema
+            .execute(&format!(
+                "mutation {{
+                adminLogin(email: \"{}\", pass: \"bad_pass\")
+                }}",user),
+            )
+            .await;
+        assert!(!result.errors.is_empty()); // Should error.
+        // bad user
+        let result = schema
+            .execute(&format!(
+                "mutation {{
+                adminLogin(email: \"bad_user\", pass: \"{}\")
+                }}",pass),
+            )
+            .await;
+        assert!(!result.errors.is_empty()); // Should error.
+    }
+    #[tokio::test]
+    async fn promote_user() {
+        let (key,conn,email) = key_conn_email().await;
+        let schema = new_schema(conn.clone(),key,email);
+        let user_uuid = create_login_with_password(
+            &conn,
+            "soon_to_be_poet@test.com".into(),
+            "1234".into())
+            .await
+            .unwrap();
+        let result = schema
+            .execute(async_graphql::Request::from(
+                "mutation {
+                promoteUser(email: \"soon_to_be_poet@test.com\", newUserRole: \"POET\")
+                }"
+            ).data(Auth(
+                    Some(entity::permissions::Model{ user_uuid: Uuid::nil(), user_role: UserRole::Moderator })
+                )))
+            .await;
+        eprintln!("{:?}",result.errors);
+        assert!(result.errors.is_empty());
+        let permission = entity::prelude::Permissions::find_by_id(user_uuid)
+            .one(&conn)
+            .await
+            .unwrap()
+            .unwrap();
+        assert_eq!(permission.user_role,UserRole::Poet);
+        let result = schema
+            .execute(async_graphql::Request::from(
+                "mutation {
+                promoteUser(email: \"soon_to_be_poet@test.com\", newUserRole: \"ADMIN\")
+                }"
+            ).data(Auth(
+                Some(entity::permissions::Model{ user_uuid: Uuid::nil(), user_role: UserRole::Moderator })
+            )))
+            .await;
+        assert_eq!(result.errors[0].message,"UnAuthorized".to_string());
+        let result = schema
+            .execute(async_graphql::Request::from(
+                "mutation {
+                promoteUser(email: \"who???@test.com\", newUserRole: \"ADMIN\")
+                }"
+            ).data(Auth(
+                Some(entity::permissions::Model{ user_uuid: Uuid::nil(), user_role: UserRole::Moderator })
+            )))
+            .await;
+        assert_eq!(result.errors[0].message,"Can't find user to promote given email.".to_string());
+    }
 }

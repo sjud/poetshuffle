@@ -15,6 +15,7 @@ mod local_cdn;
 mod storage;
 mod types;
 mod email;
+mod auth;
 
 lazy_static! {
     /// i.e postgresql://postgres:PASSWORD@0.0.0.0:5432/postgres
