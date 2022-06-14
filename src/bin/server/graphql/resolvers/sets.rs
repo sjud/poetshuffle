@@ -1,6 +1,6 @@
 
 use super::*;
-use crate::types::Auth;
+use crate::types::auth::Auth;
 use entity::prelude::Sets;
 use entity::sea_orm_active_enums::SetStatus;
 use entity::sets;

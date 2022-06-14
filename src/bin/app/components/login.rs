@@ -97,6 +97,5 @@ pub fn login(props: &LoginProps) -> Html {
         { "Sign in" } </button>
             </form>
         </div>
-
     }
 }

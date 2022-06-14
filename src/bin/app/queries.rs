@@ -34,3 +34,10 @@ query_path = "app_queries/modify_user_role.graphql",
 response_derives = "Serialize,PartialEq"
 )]
 pub struct ModifyUserRoleMutation;
+#[derive(GraphQLQuery)]
+#[graphql(
+schema_path = "schema.graphql",
+query_path = "app_queries/invite_user.graphql",
+response_derives = "Serialize,PartialEq"
+)]
+pub struct InviteUserMutation;

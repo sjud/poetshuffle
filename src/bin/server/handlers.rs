@@ -1,5 +1,5 @@
 use crate::graphql::schema::PoetShuffleSchema;
-use crate::types::Auth;
+use crate::types::auth::Auth;
 use async_graphql_axum::{GraphQLRequest, GraphQLResponse};
 use axum::http::HeaderMap;
 use axum::Extension;

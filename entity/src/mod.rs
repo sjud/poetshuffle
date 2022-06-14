@@ -14,3 +14,4 @@ pub mod sea_orm_active_enums;
 pub mod set_options;
 pub mod sets;
 pub mod users;
+pub mod invitations;

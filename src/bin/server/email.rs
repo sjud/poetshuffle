@@ -4,6 +4,7 @@ use async_graphql::validators::email;
 use postmark::reqwest::PostmarkClient;
 use crate::{OUTBOUND_EMAIL, URL_BASE};
 use postmark::Query;
+use sea_orm::prelude::Uuid;
 
 
 #[cfg_attr(test,mockall::automock)]
@@ -11,11 +12,14 @@ use postmark::Query;
 pub trait Email {
     async fn register(&self,email:String,lost_password_code:String) -> Result<()>;
     async fn reset_password(&self,email:String,lost_password_code:String) -> Result<()>;
+    async fn invite_user(&self, email:String, invite_uuid:Uuid) -> Result<()>;
 }
+
 #[cfg(test)]
 pub struct TestEmail{
     pub(crate) register_code:Arc<Mutex<String>>,
     pub(crate) reset_pass_code:Arc<Mutex<String>>,
+    pub(crate) invite_uuid:Arc<Mutex<Uuid>>,
     pub(crate) email:MockEmail,
 }
 #[cfg(test)]
@@ -27,6 +31,10 @@ impl Email for TestEmail{
 
     async fn reset_password(&self, email: String, lost_password_code: String) -> Result<()> {
         self.email.reset_password(email,lost_password_code).await
+    }
+
+    async fn invite_user(&self, email: String, invite_uuid:Uuid) -> Result<()> {
+        self.email.invite_user(email,invite_uuid).await
     }
 }
 
@@ -57,6 +65,21 @@ impl Email for Postmark {
                 format!("{}reset_password/{}",
                         &*URL_BASE,
                         lost_password_code)))
+            .build();
+        let _ = req.execute(&self.client).await?;
+        Ok(())
+    }
+
+    async fn invite_user(&self, email:String, invite_uuid:Uuid) -> Result<()> {
+        let req = postmark::api::email::SendEmailRequest::builder()
+            .from(&*OUTBOUND_EMAIL)
+            .to(&email)
+            .subject("PoetShuffle Invitation")
+            .body(postmark::api::email::Body::Text(
+                format!("You've been invited to PoetShuffle.
+                {}accept_invitation/{}",
+                        &*URL_BASE,
+                        invite_uuid)))
             .build();
         let _ = req.execute(&self.client).await?;
         Ok(())

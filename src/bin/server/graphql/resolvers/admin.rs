@@ -8,8 +8,9 @@ use entity::permissions::{
 use hmac::Hmac;
 use jwt::SignWithKey;
 use std::collections::BTreeMap;
+use crate::email::{Email, Postmark, TestEmail};
 use crate::graphql::resolvers::login::find_login_by_email;
-use crate::types::Auth;
+use crate::types::auth::{Auth, OrdRoles};
 #[derive(Default)]
 pub struct AdminMutation;
 
@@ -62,6 +63,44 @@ impl AdminMutation{
             Err("Can't find user to promote given email.".into())
         }
     }
+
+    async fn invite_user(
+        &self,
+        ctx: &Context<'_>,
+        email:String,
+        user_role:UserRole,
+    ) -> Result<String> {
+        let auth = ctx.data::<Auth>()?;
+        let db = ctx.data::<DatabaseConnection>()?;
+        #[cfg(test)]
+            let email_client = ctx.data::<TestEmail>()?;
+        #[cfg(not(test))]
+            let email_client = ctx.data::<Postmark>()?;
+        if auth.can_issue_promotion(user_role) {
+            if let Some(login) =
+                find_login_by_email(db,&email).await? {
+                let perm : entity::permissions::Model = entity::prelude::Permissions::find_by_id(login.user_uuid)
+                    .one(db)
+                    .await?
+                    .ok_or("Server error: Login without valid permissions.")?;
+                if OrdRoles(perm.user_role) >= OrdRoles(user_role) {
+                    Err("User equivalent or greater role")?;
+                }
+            }
+            let invite_uuid = Uuid::new_v4();
+            let invitor_uuid = auth.uuid()?;
+            entity::invitations::ActiveModel{
+                invite_uuid: Set(invite_uuid),
+                invitor_uuid: Set(invitor_uuid),
+                invitee_email: Set(email.clone()),
+                ..Default::default()
+            }.insert(db).await?;
+            email_client.invite_user(email,invite_uuid.into()).await?;
+            Ok("Invitation sent to email.".into())
+        } else {
+            Err(Error::new("Unauthorized."))
+        }
+    }
 }
 
 #[cfg(test)]
@@ -74,6 +113,7 @@ mod test{
     use crate::email::{MockEmail, TestEmail};
     use crate::graphql::resolvers::login::create_login_with_password;
     use crate::graphql::test_util::key_conn_email;
+    use tracing_test::traced_test;
     #[tokio::test]
     async fn test_super_admin_login() {
         let (key,conn,email) = key_conn_email().await;
@@ -160,5 +200,43 @@ mod test{
             )))
             .await;
         assert_eq!(result.errors[0].message,"Can't find user to promote given email.".to_string());
+    }
+    #[tokio::test]
+    #[traced_test]
+    async fn invite_user_test() {
+        let (key,conn,email) = key_conn_email().await;
+        let schema = new_schema(conn.clone(),key,email);
+        let uuid =
+            create_login_with_password(&conn,"mod_email@test.com".into(),
+                                       "1234".into())
+                .await.unwrap();
+        entity::permissions::ActiveModel{
+            user_uuid:Set(uuid),
+            user_role:Set(UserRole::Moderator),
+            ..Default::default()
+        }.update(&conn).await.unwrap();
+
+        let result = schema
+            .execute(async_graphql::Request::from(
+                "mutation {
+                inviteUser(email: \"sOmE_rAnDoM_EmAiL@test.com\", userRole: \"POET\")
+                }"
+            ).data(Auth(
+                Some(entity::permissions::Model{ user_uuid: uuid, user_role: UserRole::Moderator })
+            )))
+            .await;
+        eprintln!("{:?}",result.errors);
+        assert!(result.errors.is_empty());
+        let result = schema
+            .execute(async_graphql::Request::from(
+                "mutation {
+                inviteUser(email: \"sOmE_rAnDoM_EmAiL@test.com\", userRole: \"POET\")
+                }"
+            ).data(Auth(
+                Some(entity::permissions::Model{ user_uuid: uuid, user_role: UserRole::Poet })
+            )))
+            .await;
+        assert_eq!(result.errors[0].message,String::from("Unauthorized."));
+
     }
 }
