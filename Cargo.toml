@@ -52,7 +52,7 @@ base64 = "0.13.0"
 uuid = {version="1.1.1",features=["serde"]}
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
-tokio = {version="1.18.2",features=["full","rt"]}
+tokio = {version="1.18.2",features=["full","rt-multi-thread"]}
 tokio-util = {version="0.7.2",features=["rt"]}
 axum = "0.5.6"
 tower-http = {version="0.3.3",features=["fs","set-header","trace"]}
@@ -73,3 +73,4 @@ passwords = "3.1.9"
 
 [target.'cfg(not(target_arch = "wasm32"))'.dev-dependencies]
 mockall = "0.11.1"
+tracing-test = "0.2.2"

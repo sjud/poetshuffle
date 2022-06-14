@@ -106,6 +106,7 @@ impl Reducible for AuthToken {
                         let perm : Permissions = serde_json::from_value(
                             map.get("sub").unwrap().clone()
                         ).unwrap();
+                        gloo::console::log!(&format!("Uuid: {}\n Role: {:?}",perm.user_uuid,perm.user_role));
                         return Self{
                             token: Some(token),
                             user_uuid: Some(perm.user_uuid),

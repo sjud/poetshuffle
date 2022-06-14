@@ -89,7 +89,7 @@ pub fn modify_user_role() -> Html {
     html! {
         <div class={form_css.clone()}>
         <div>
-            <h4>{ "Find User" }</h4>
+            <h4>{ "Modify User Role" }</h4>
         </div>
             <form {onsubmit}>
                 <input type="email" placeholder="Email" ref={email.clone()}
@@ -102,6 +102,7 @@ pub fn modify_user_role() -> Html {
             <option value="Moderator">{"Moderator"}</option>
             <option value="Admin">{"Admin"}</option>
         </select>
+        <br/>
                 <button type="submit" disabled=false class={button.clone()}>
         { "Modify User Role" } </button>
             </form>
