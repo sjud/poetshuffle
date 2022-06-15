@@ -16,6 +16,7 @@ mod m20220531_000000_alter_logins;
 mod m20220531_000001_alter_logins;
 mod m20220609_000001_alter_users_logins;
 mod m20220614_000001_create_invitations;
+mod m20220615_000001_alter_invitations;
 
 pub struct Migrator;
 
@@ -39,7 +40,7 @@ impl MigratorTrait for Migrator {
             Box::new(m20220531_000001_alter_logins::Migration),
             Box::new(m20220609_000001_alter_users_logins::Migration),
             Box::new(m20220614_000001_create_invitations::Migration),
-
+            Box::new(m20220615_000001_alter_invitations::Migration),
         ]
     }
 }

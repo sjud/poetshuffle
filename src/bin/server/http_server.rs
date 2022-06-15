@@ -82,11 +82,10 @@ pub fn get_index_html() -> MethodRouter {
 #[cfg(feature = "dev")]
 pub async fn example_data(conn:&DatabaseConnection) {
     use crate::graphql::resolvers::login::create_login_with_password;
-    create_login_with_password(conn,
+    let _ = create_login_with_password(conn,
         "dev@test.com".into(),
         "1234".into())
-        .await
-        .unwrap();
+        .await;
 }
 #[cfg(test)]
 mod test {

@@ -1,15 +1,20 @@
+use uuid::Uuid;
 use crate::components::{
     login_register::LoginRegister,
     login::{Login,LoginProps},
     main_menu::MainMenu,
     validate_registration::ValidateRegistration,
     admin::Admin,
+    publish::Publish,
+    accept_invitation::{AcceptInvitationProps,AcceptInvitation},
 };
 use yew::prelude::*;
 use yew_router::prelude::*;
 
 #[derive(Routable, PartialEq, Clone, Debug)]
 pub enum Route {
+    #[at("/accept_invitation/:invite_uuid")]
+    AcceptInvitation{invite_uuid:Uuid},
     #[at("/admin")]
     Admin,
     #[at("/validate_registration/:email/:code")]
@@ -33,7 +38,7 @@ pub(crate) fn switch(routes: &Route) -> Html {
         Route::PoetShuffle => html! {{"PoetShuffle"}},
         Route::About => html! {{"About"}},
         Route::LoginRegister => html! {<LoginRegister/>},
-        Route::Publish => html! {{"Publish"}},
+        Route::Publish => html! {<Publish/>},
         Route::MainMenu => html! {<MainMenu />},
         Route::NotFound => html! { {"404"}},
         Route::ValidateRegistration { email,code } => {
@@ -46,5 +51,11 @@ pub(crate) fn switch(routes: &Route) -> Html {
                 };
         },
         Route::Admin => html!{<Admin/>},
+        Route::AcceptInvitation { invite_uuid } =>{
+            let props = AcceptInvitationProps{invite_uuid:*invite_uuid};
+            return html! {
+                <AcceptInvitation ..props/>
+        };},
+
     }
 }

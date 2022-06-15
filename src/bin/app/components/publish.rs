@@ -45,7 +45,7 @@ pub fn invite_poet() -> Html {
             let resp = post_graphql::<InviteUserMutation>(
                 invite_user_mutation::Variables {
                     email: email.cast::<HtmlInputElement>().unwrap().value(),
-                    UserRole::Poet,
+                    user_role:invite_user_mutation::UserRole::POET,
                 },token)
                 .await
                 .map_err(|err| format!("{:?}", err))?;
@@ -54,7 +54,7 @@ pub fn invite_poet() -> Html {
 
             if let Some(ref data) = resp.data {
                 msg_context.dispatch(new_green_msg_with_std_duration(
-                    data.invite_poet.clone()));
+                    data.invite_user.clone()));
             }
             // If we have no data then see if we have errors and print those to console.
             else if resp.errors.is_some() {

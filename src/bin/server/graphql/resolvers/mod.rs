@@ -10,3 +10,9 @@ use sha2::Sha256;
 pub mod login;
 pub mod sets;
 pub mod admin;
+pub mod publish;
+
+pub fn time_now() -> DateTimeWithTimeZone {
+    use chrono::Utc;
+    DateTimeWithTimeZone::from(Utc::now())
+}

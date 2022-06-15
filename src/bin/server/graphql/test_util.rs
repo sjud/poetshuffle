@@ -45,3 +45,11 @@ pub(crate) async fn key_conn_email() -> (Hmac<Sha256>, DatabaseConnection, TestE
         }
     )
 }
+pub(crate) fn assert_no_graphql_errors_or_print_them(
+    errors:Vec<async_graphql::ServerError>,
+) {
+    if !errors.is_empty(){
+        eprintln!("{:?}",errors);
+    }
+    assert!(errors.is_empty());
+}

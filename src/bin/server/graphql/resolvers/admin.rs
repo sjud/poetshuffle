@@ -8,11 +8,13 @@ use entity::permissions::{
 use hmac::Hmac;
 use jwt::SignWithKey;
 use std::collections::BTreeMap;
-use crate::email::{Email, Postmark, TestEmail};
+use crate::email::{Email, Postmark};
 use crate::graphql::resolvers::login::find_login_by_email;
 use crate::types::auth::{Auth, OrdRoles};
 #[derive(Default)]
 pub struct AdminMutation;
+#[cfg(test)]
+use crate::email::TestEmail;
 
 #[Object]
 impl AdminMutation{
@@ -93,6 +95,7 @@ impl AdminMutation{
                 invite_uuid: Set(invite_uuid),
                 invitor_uuid: Set(invitor_uuid),
                 invitee_email: Set(email.clone()),
+                user_role:Set(user_role),
                 ..Default::default()
             }.insert(db).await?;
             email_client.invite_user(email,invite_uuid.into()).await?;

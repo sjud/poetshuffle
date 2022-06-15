@@ -1,0 +1,3 @@
+mutation AcceptInvitationMutation($password: String!,$invite_uuid: ID!) {
+  acceptInvitation(email: $email,userRole:$user_role)
+}

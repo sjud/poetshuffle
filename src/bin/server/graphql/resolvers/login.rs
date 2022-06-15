@@ -22,7 +22,7 @@ use crate::email::TestEmail;
 #[derive(Default)]
 pub struct LoginMutation;
 #[derive(Iden)]
-pub enum Logins{
+pub enum Logins {
     Table,
     UserUuid,
     Email,
@@ -35,6 +35,27 @@ fn new_lost_password_code() -> Result<String> {
         .map_err(|err|err.into())
 }
 
+pub async fn create_login_with_password_and_role(
+    db:&DatabaseConnection,
+    email:String,
+    password:String,
+    user_role:UserRole,
+    promoter_uuid:Uuid,
+) -> Result<Uuid> {
+    let uuid = create_login_with_password(
+        db,email,password
+    ).await?;
+    entity::users::ActiveModel{
+        user_uuid: Set(uuid),
+        promoter_uuid: Set(Some(promoter_uuid)),
+        ..Default::default()
+    }.update(db).await?;
+    entity::permissions::ActiveModel{
+        user_uuid: Set(uuid),
+        user_role: Set(user_role),
+    }.update(db).await?;
+    Ok(uuid)
+}
 
 pub async fn create_login_with_password(
     db:&DatabaseConnection,
