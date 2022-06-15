@@ -48,3 +48,10 @@ query_path = "app_queries/accept_invitation.graphql",
 response_derives = "Serialize,PartialEq"
 )]
 pub struct AcceptInvitationMutation;
+#[derive(GraphQLQuery)]
+#[graphql(
+schema_path = "schema.graphql",
+query_path = "app_queries/pending_set_by_user.graphql",
+response_derives = "Serialize,PartialEq"
+)]
+pub struct PendingSetByUserQuery;

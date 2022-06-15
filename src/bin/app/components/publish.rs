@@ -1,7 +1,14 @@
+use std::str::FromStr;
+use uuid::Uuid;
 use web_sys::HtmlInputElement;
 use yew::prelude::*;
-use yew_hooks::use_async;
-use crate::queries::{invite_user_mutation, InviteUserMutation};
+use yew_hooks::{use_async, use_is_first_mount};
+use crate::queries::{
+    invite_user_mutation,
+    InviteUserMutation,
+    pending_set_by_user_query,
+    PendingSetByUserQuery,
+};
 use crate::services::network::post_graphql;
 use crate::services::utility::map_graphql_errors_to_string;
 use crate::styles::{form_css, form_elem};
@@ -79,7 +86,7 @@ pub fn invite_poet() -> Html {
     html! {
         <div class={form_css.clone()}>
         <div>
-            <h3>{ "Add Poet" }</h3>
+            <h3>{ "Invite Poet" }</h3>
         </div>
             <form {onsubmit}>
                 <input type="email" placeholder="Email" ref={email.clone()}
@@ -91,10 +98,78 @@ pub fn invite_poet() -> Html {
         </div>
     }
 }
+#[derive(Default,PartialEq,Clone)]
+pub struct EditableSet{
+    pub set_uuid: Uuid,
+    pub collection_title: String,
+    pub collection_link: String,
+}
 #[function_component(PublishMenu)]
 pub fn publish_menu() -> Html {
+    let auth_ctx = use_context::<AuthContext>().unwrap();
+    let msg_context = use_context::<MsgContext>().unwrap();
+    let pending_set : UseStateHandle<Option<EditableSet>> = use_state(||None);
+    // If a user uuid is available find the pending set of the user.
+    if let Some(user_uuid) = auth_ctx.user_uuid {
+        let req = {
+            let token = auth_ctx.token.clone();
+            let pending_set = pending_set.clone();
+            use_async::<_, (), String>(async move {
+                let resp = post_graphql::<PendingSetByUserQuery>(
+                    pending_set_by_user_query::Variables {
+                        user_uuid: user_uuid.to_string(),
+                    }, token)
+                    .await
+                    .map_err(|err| format!("{:?}", err))?;
+                if let Some(ref data) = resp.data {
+                    if let Some(set) = &data.pending_set_by_user {
+                        pending_set.set(Some(EditableSet {
+                            set_uuid: Uuid::from_str(&set.set_uuid)
+                                .unwrap(),
+                            collection_link: set.collection_link.clone(),
+                            collection_title: set.collection_title.clone(),
+                        }));
+                        msg_context.dispatch(
+                            new_green_msg_with_std_duration(
+                                "Pending Set Found, Updating...".to_string())
+                        )
+                    };
+                }
+                // If we have no data then see if we have errors and print those to console.
+                else if resp.errors.is_some() {
+                    msg_context.dispatch(new_red_msg_with_std_duration(
+                        map_graphql_errors_to_string(
+                            &resp.errors
+                        )
+                    ));
+                    tracing::error!("{:?}", resp.errors);
+                }
+                Ok(())
+            })
+        };
+        if use_is_first_mount() {
+            req.run();
+        }
+    };
     html!{
+        <div>
         <h2>{"Publish Menu"}</h2>
+        if (*pending_set).clone().is_some() {
+            <button>{"Edit Pending Set"}</button>
+        } else {
+            <button>{"Create New Set"}</button>
+        }
+        </div>
+    }
+}
+#[derive(Properties,PartialEq)]
+pub struct EditPendingSetProps{
+    editable_set:EditableSet,
+}
+#[function_component(EditPendingSet)]
+pub fn edit_pending_set(props:&EditPendingSetProps) -> Html {
+    html!{
+
     }
 }
 #[function_component(PublicPublishInfo)]

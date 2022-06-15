@@ -7,13 +7,13 @@ use sha2::Sha256;
 use crate::email::Email;
 use crate::graphql::resolvers::admin::AdminMutation;
 use crate::graphql::resolvers::publish::PublishMutation;
-use crate::graphql::resolvers::sets::SetsQuery;
+use crate::graphql::resolvers::sets::{SetMutation, SetsQuery};
 use crate::POSTMARK_API_TRANSACTION;
 
 #[derive(MergedObject, Default)]
 pub struct Query(SetsQuery);
 #[derive(MergedObject, Default)]
-pub struct Mutation(LoginMutation,AdminMutation,PublishMutation);
+pub struct Mutation(LoginMutation,AdminMutation,PublishMutation,SetMutation);
 pub type PoetShuffleSchema = Schema<Query, Mutation, EmptySubscription>;
 
 /// Builds our Schema for our service layer using DB Conn.

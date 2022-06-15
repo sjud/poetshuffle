@@ -3,6 +3,7 @@ use anyhow::Result;
 use entity::permissions::Model as Permissions;
 use sea_orm::prelude::Uuid;
 use std::cmp::Ordering;
+
 pub struct Auth(pub Option<entity::permissions::Model>);
 
 impl Auth{
@@ -15,6 +16,19 @@ impl Auth{
             false
         }
     }
+    pub fn can_read_pending_set(&self, set:&entity::sets::Model)
+    -> bool {
+        if let Some(permission) = &self.0 {
+            if OrdRoles(permission.user_role) >= OrdRoles(UserRole::Moderator) {
+                true
+            } else {
+                set.originator_uuid == permission.user_uuid
+            }
+        } else {
+            false
+        }
+    }
+
     pub fn uuid(&self) -> Result<Uuid> {
         if let Some(permission) = &self.0 {
             // A greater role can issue a promotion to a lesser role.

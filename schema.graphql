@@ -6,12 +6,30 @@ type Mutation {
     modifyUserRole(email:String!,newUserRole: UserRole!): String!
     inviteUser(email:String!,userRole:UserRole!): String!
     acceptInvitation(password:String,inviteUuid:ID!): String!
+    createPendingSet: ID!
 }
 
+type Query {
+    pendingSetByUser(user_uuid:ID!): Set
+}
 enum UserRole {
     LISTENER
     POET
     MODERATOR
     ADMIN
     SUPERADMIN
+}
+enum SetStatus {
+    PENDING
+    PUBLISHED
+}
+type Set {
+    setUuid: ID!
+    creationTs: String!
+    collectionTitle: String!
+    originatorUuid: ID!
+    setStatus: SetStatus!
+    collectionLink: String!
+    editorUuid: ID
+    approved: Boolean!
 }

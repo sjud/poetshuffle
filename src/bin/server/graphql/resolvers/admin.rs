@@ -48,8 +48,8 @@ impl AdminMutation{
         new_user_role:UserRole,
     ) -> Result<String> {
         let auth = ctx.data::<Auth>()?;
-        let db = ctx.data::<DatabaseConnection>()?;
         let key = ctx.data::<Hmac<Sha256>>()?;
+        let db = ctx.data::<DatabaseConnection>()?;
         if let Some(login) = find_login_by_email(db,&email)
             .await? {
             if auth.can_issue_promotion(new_user_role) {

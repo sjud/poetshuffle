@@ -15,237 +15,166 @@ use entity::sets;
    editor_uuid UUID REFERENCES users(user_uuid),
    approved BOOL NOT NULL
 */
+pub async fn find_pending_set_by_user(
+    db:&DatabaseConnection,
+    user_uuid:Uuid
+) -> Result<Option<sets::Model>> {
+    Sets::find()
+        .filter(sets::Column::OriginatorUuid.eq(user_uuid))
+        .filter(sets::Column::SetStatus.eq(SetStatus::Pending))
+        .one(db)
+        .await
+        .map_err(|err|Error::new(format!("{:?}",err)))
+}
+
+#[derive(Default)]
+pub struct SetMutation;
+#[Object]
+impl SetMutation{
+    async fn create_pending_set(
+        &self,
+        ctx: &Context<'_>,
+    ) -> Result<Uuid> {
+        let db = ctx.data::<DatabaseConnection>().unwrap();
+        let auth = ctx.data::<Auth>()?;
+        if let Some(permission) = auth.0.clone() {
+            if find_pending_set_by_user(db,permission.user_uuid)
+                .await?
+                .is_none() {
+                let set_uuid = Uuid::new_v4();
+                entity::sets::ActiveModel{
+                    set_uuid: Set(set_uuid),
+                    collection_title: Set(String::new()),
+                    originator_uuid: Set(permission.user_uuid),
+                    set_status: Set(SetStatus::Pending),
+                    collection_link: Set(String::new()),
+                    editor_uuid: Set(None),
+                    approved: Set(false),
+                    ..Default::default()
+                }.insert(db).await?;
+                Ok(set_uuid)
+            } else {
+                Err(Error::new("You have an ongoing pending set."))
+            }
+        } else {
+            Err(Error::new("Not logged in."))
+        }
+    }
+}
+
 #[derive(Default)]
 pub struct SetsQuery;
 #[Object]
 impl SetsQuery {
-
-    async fn set_uuids_by_status(
+    async fn pending_set_by_user(
         &self,
         ctx: &Context<'_>,
-        status: SetStatus,
-    ) -> Result<Vec<sets::Model>> {
+        user_uuid: Uuid,
+    ) -> Result<Option<sets::Model>> {
         let db = ctx.data::<DatabaseConnection>().unwrap();
-        let sets = Sets::find()
-            .filter(sets::Column::SetStatus.eq(status))
-            .all(db)
-            .await?;
-        Ok(sets)
-    }
-    /*
-    async fn creation_ts(&self, ctx: &Context<'_>, set_uuid: Uuid) -> Result<i64> {
-        let db = ctx.data::<DatabaseConnection>().unwrap();
-        if let Some(set) = Sets::find_by_id(set_uuid).one(db).await? {
-            Ok(set.creation_ts.timestamp())
-        } else {
-            Err(Error::new(format!(
-                "Set not found, given uuid {}",
-                set_uuid
-            )))
-        }
-    }
-    async fn collection_title(&self, ctx: &Context<'_>, set_uuid: Uuid) -> Result<String> {
-        let db = ctx.data::<DatabaseConnection>().unwrap();
-        if let Some(set) = Sets::find_by_id(set_uuid).one(db).await? {
-            Ok(set.collection_title)
-        } else {
-            Err(Error::new(format!(
-                "Set not found, given uuid {}",
-                set_uuid
-            )))
-        }
-    }
-    async fn originator_uuid(&self, ctx: &Context<'_>, set_uuid: Uuid) -> Result<Uuid> {
-        let db = ctx.data::<DatabaseConnection>().unwrap();
-        if let Some(set) = Sets::find_by_id(set_uuid).one(db).await? {
-            Ok(set.originator_uuid)
-        } else {
-            Err(Error::new(format!(
-                "Set not found, given uuid {}",
-                set_uuid
-            )))
-        }
-    }
-    async fn set_status(&self, ctx: &Context<'_>, set_uuid: Uuid) -> Result<SetStatus> {
-        let db = ctx.data::<DatabaseConnection>().unwrap();
-        if let Some(set) = Sets::find_by_id(set_uuid).one(db).await? {
-            Ok(set.set_status)
-        } else {
-            Err(Error::new(format!(
-                "Set not found, given uuid {}",
-                set_uuid
-            )))
-        }
-    }
-    async fn collection_link(&self, ctx: &Context<'_>, set_uuid: Uuid) -> Result<String> {
-        let db = ctx.data::<DatabaseConnection>().unwrap();
-        if let Some(set) = Sets::find_by_id(set_uuid).one(db).await? {
-            Ok(set.collection_link)
-        } else {
-            Err(Error::new(format!(
-                "Set not found, given uuid {}",
-                set_uuid
-            )))
-        }
-    }
-    async fn approved(&self, ctx: &Context<'_>, set_uuid: Uuid) -> Result<bool> {
-        let db = ctx.data::<DatabaseConnection>().unwrap();
-        if let Some(set) = Sets::find_by_id(set_uuid).one(db).await? {
-            Ok(set.approved)
-        } else {
-            Err(Error::new(format!(
-                "Set not found, given uuid {}",
-                set_uuid
-            )))
-        }
+        let auth = ctx.data::<Auth>()?;
+        Ok({if let Some(set) = find_pending_set_by_user(db,user_uuid).await? {
+            if auth.can_read_pending_set(&set) {
+                Some(set)
+            } else {
+                // We need the ? to return error early...
+                Err(Error::new("Unauthorized."))?
+            }
+        } else { None }
+        })
     }
 }
-#[derive(Default)]
-pub struct SetsMutation;
-async fn create_set(
-    db:&DatabaseConnection,
-    collection_title: String,
-              originator_uuid: Uuid,
-              collection_link: String, ) -> Result<Uuid> {
-    let uuid = Uuid::new_v4();
-    sets::ActiveModel {
-        set_uuid: Set(uuid),
-        collection_title: Set(collection_title),
-        originator_uuid: Set(originator_uuid),
-        set_status: Set(SetStatus::Pending),
-        collection_link: Set(collection_link),
-        approved: Set(false),
-        ..Default::default()
-    }
-        .insert(db)
-        .await?;
-    Ok(uuid)
-}
-#[Object]
-impl SetsMutation {
-    async fn create_set(
-        &self,
-        ctx: &Context<'_>,
-        collection_title: String,
-        originator_uuid: Uuid,
-        collection_link: String,
-    ) -> Result<Uuid> {
-        if let Auth(Some(perm)) = ctx.data::<Auth>().unwrap() {
-            let db = ctx.data::<DatabaseConnection>().unwrap();
-            if can_create_set(perm, originator_uuid)? {
-                create_set(db,collection_title,originator_uuid,collection_link,).await
-            } else {
-                Err(Error::new("Unauthorized"))
-            }
-        } else {
-            Err(Error::new("No authorization provided"))
-        }
-    }
-    async fn approved(&self, ctx: &Context<'_>, set_uuid: Uuid, approved: bool) -> Result<Uuid> {
-        if let Auth(Some(perm)) = ctx.data::<Auth>().unwrap() {
-            let db = ctx.data::<DatabaseConnection>().unwrap();
-            if can_approve(perm)? {
-                sets::ActiveModel {
-                    set_uuid: Set(set_uuid),
-                    approved: Set(approved),
-                    ..Default::default()
-                }
-                .update(db)
-                .await?;
-            }
-            Ok(set_uuid)
-        } else {
-            Err(Error::new("No authorization provided"))
-        }
-    }
-    async fn set_status(
-        &self,
-        ctx: &Context<'_>,
-        set_uuid: Uuid,
-        set_status: SetStatus,
-    ) -> Result<Uuid> {
-        if let Auth(Some(perm)) = ctx.data::<Auth>().unwrap() {
-            let db = ctx.data::<DatabaseConnection>().unwrap();
-            if let Some(set) = Sets::find_by_id(set_uuid).one(db).await? {
-                if can_change_status(perm, set.originator_uuid)? {
-                    sets::ActiveModel {
-                        set_uuid: Set(set_uuid),
-                        set_status: Set(set_status),
-                        ..Default::default()
-                    }
-                    .update(db)
-                    .await?;
-                }
-                Ok(set_uuid)
-            } else {
-                Err(Error::new(format!(
-                    "Set not found, given uuid {}",
-                    set_uuid
-                )))
-            }
-        } else {
-            Err(Error::new("No authorization provided"))
-        }
-    }
+#[cfg(test)]
+mod test {
+    use super::*;
+    use tracing_test::traced_test;
+    use entity::sea_orm_active_enums::UserRole;
+    use crate::graphql::resolvers::login::create_login_with_password;
+    use crate::graphql::schema::new_schema;
+    use crate::graphql::test_util::key_conn_email;
 
-    async fn collection_title(
-        &self,
-        ctx: &Context<'_>,
-        set_uuid: Uuid,
-        collection_title: String,
-    ) -> Result<Uuid> {
-        if let Auth(Some(perm)) = ctx.data::<Auth>().unwrap() {
-            let db = ctx.data::<DatabaseConnection>().unwrap();
-            if let Some(set) = Sets::find_by_id(set_uuid).one(db).await? {
-                if can_edit_set(perm, set.originator_uuid)? {
-                    sets::ActiveModel {
-                        set_uuid: Set(set_uuid),
-                        collection_title: Set(collection_title),
-                        ..Default::default()
-                    }
-                    .update(db)
-                    .await?;
-                }
-                Ok(set_uuid)
-            } else {
-                Err(Error::new(format!(
-                    "Set not found, given uuid {}",
-                    set_uuid
-                )))
-            }
-        } else {
-            Err(Error::new("No authorization provided"))
-        }
+    #[tokio::test]
+    #[traced_test]
+    async fn test_pending_set_by_user() {
+        let (key,conn,email) = key_conn_email().await;
+        let schema = new_schema(conn.clone(),key,email);
+        let user_uuid = create_login_with_password(
+            &conn,
+            "test_pending_set_by_user@test.com".to_string(),
+            "1234".to_string()
+        ).await.unwrap();
+        let set_uuid = Uuid::new_v4();
+        entity::sets::ActiveModel{
+            set_uuid: Set(set_uuid),
+            collection_title: Set(String::from("Hello")),
+            originator_uuid: Set(user_uuid),
+            set_status: Set(SetStatus::Pending),
+            collection_link: Set(String::new()),
+            editor_uuid: Set(None),
+            approved: Set(false),
+            ..Default::default()
+        }.insert(&conn).await.unwrap();
+        let result = schema
+            .execute(async_graphql::Request::from(
+                format!("query {{
+                pendingSetByUser(userUuid:\"{}\") {{
+                    setUuid
+                    collectionTitle
+                    collectionLink
+                    }}
+                }}",user_uuid.to_string())
+            ).data(Auth(
+                Some(entity::permissions::Model{ user_uuid, user_role: UserRole::Poet })
+            )))
+            .await;
+        crate::graphql::test_util::assert_no_graphql_errors_or_print_them(
+            result.errors
+        );
+        assert_eq!(result.data.to_string(),
+                   format!("{{pendingSetByUser: \
+                   {{setUuid: \"{}\",collectionTitle: \"Hello\",collectionLink: \"\"}}}}",set_uuid));
     }
+    #[tokio::test]
+    #[traced_test]
+    async fn test_create_pending_set() {
+        let (key,conn,email) = key_conn_email().await;
+        let schema = new_schema(conn.clone(),key,email);
+        let user_uuid = create_login_with_password(
+            &conn,
+            "test_create_pending_set_@test.com".to_string(),
+            "1234".to_string()
+        ).await.unwrap();
+        let result = schema
+            .execute(async_graphql::Request::from(
+                "mutation{
+                    createPendingSet
+                }"
+            ).data(Auth(
+            Some(entity::permissions::Model{ user_uuid, user_role: UserRole::Poet })
+        )))
+        .await;
+        crate::graphql::test_util::assert_no_graphql_errors_or_print_them(
+            result.errors
+        );
+        let result = schema
+            .execute(async_graphql::Request::from(
+                "mutation{
+                    createPendingSet
+                }"
+            ).data(Auth(
+                None
+            ))).await;
+        assert_eq!(result.errors[0].to_string(),"Not logged in.".to_string());
+        let result = schema
+            .execute(async_graphql::Request::from(
+                "mutation{
+                    createPendingSet
+                }"
+            ).data(Auth(
+                Some(entity::permissions::Model{ user_uuid, user_role: UserRole::Poet })
+            )))
+            .await;
+        assert_eq!(result.errors[0].to_string(),"You have an ongoing pending set.".to_string());
 
-    async fn collection_link(
-        &self,
-        ctx: &Context<'_>,
-        set_uuid: Uuid,
-        collection_link: String,
-    ) -> Result<Uuid> {
-        if let Auth(Some(perm)) = ctx.data::<Auth>().unwrap() {
-            let db = ctx.data::<DatabaseConnection>().unwrap();
-            if let Some(set) = Sets::find_by_id(set_uuid).one(db).await? {
-                if can_edit_set(perm, set.originator_uuid)? {
-                    sets::ActiveModel {
-                        set_uuid: Set(set_uuid),
-                        collection_link: Set(collection_link),
-                        ..Default::default()
-                    }
-                    .update(db)
-                    .await?;
-                }
-                Ok(set_uuid)
-            } else {
-                Err(Error::new(format!(
-                    "Set not found, given uuid {}",
-                    set_uuid
-                )))
-            }
-        } else {
-            Err(Error::new("No authorization provided"))
-        }
     }
-*/
 }
