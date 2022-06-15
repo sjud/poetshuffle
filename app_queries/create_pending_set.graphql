@@ -1,3 +1,3 @@
-mutation CreatePendingSetMutation($email: String!) {
+mutation CreatePendingSetMutation {
   createPendingSet
 }

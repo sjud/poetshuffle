@@ -2,13 +2,18 @@ use std::str::FromStr;
 use uuid::Uuid;
 use web_sys::HtmlInputElement;
 use yew::prelude::*;
-use yew_hooks::{use_async, use_is_first_mount};
+use yew_hooks::{use_async, use_is_first_mount, use_mount};
+use yew_router::history::History;
+use yew_router::prelude::use_history;
 use crate::queries::{
     invite_user_mutation,
     InviteUserMutation,
     pending_set_by_user_query,
     PendingSetByUserQuery,
+    CreatePendingSetMutation,
+    create_pending_set_mutation,
 };
+use crate::routes::Route;
 use crate::services::network::post_graphql;
 use crate::services::utility::map_graphql_errors_to_string;
 use crate::styles::{form_css, form_elem};
@@ -109,11 +114,17 @@ pub fn publish_menu() -> Html {
     let auth_ctx = use_context::<AuthContext>().unwrap();
     let msg_context = use_context::<MsgContext>().unwrap();
     let pending_set : UseStateHandle<Option<EditableSet>> = use_state(||None);
+    let new_edit_flag = use_state(||false);
+    if use_is_first_mount() {
+        new_edit_flag.set(true);
+    }
     // If a user uuid is available find the pending set of the user.
     if let Some(user_uuid) = auth_ctx.user_uuid {
         let req = {
             let token = auth_ctx.token.clone();
             let pending_set = pending_set.clone();
+            let msg_context = msg_context.clone();
+            let new_edit_flag = new_edit_flag.clone();
             use_async::<_, (), String>(async move {
                 let resp = post_graphql::<PendingSetByUserQuery>(
                     pending_set_by_user_query::Variables {
@@ -147,17 +158,48 @@ pub fn publish_menu() -> Html {
                 Ok(())
             })
         };
-        if use_is_first_mount() {
+        if *new_edit_flag {
             req.run();
+            new_edit_flag.set(false);
         }
     };
+    let create_new_set_req = {
+        let token = auth_ctx.token.clone();
+        let msg_context = msg_context.clone();
+        let new_edit_flag = new_edit_flag.clone();
+        use_async::<_, (), String>(async move {
+            let resp = post_graphql::<CreatePendingSetMutation>(
+                create_pending_set_mutation::Variables {}, token)
+                .await
+                .map_err(|err| format!("{:?}", err))?;
+            if let Some(ref data) = resp.data {
+                new_edit_flag.set(true);
+                    msg_context.dispatch(
+                        new_green_msg_with_std_duration(
+                            "Set Created".to_string())
+                    )
+            } else if resp.errors.is_some() {
+                msg_context.dispatch(new_red_msg_with_std_duration(
+                    map_graphql_errors_to_string(
+                        &resp.errors
+                    )
+                ));
+                tracing::error!("{:?}", resp.errors);
+            }
+            Ok(())
+        })
+    };
+    let create_set = Callback::from(move |_| {
+        create_new_set_req.run();
+
+    });
     html!{
         <div>
         <h2>{"Publish Menu"}</h2>
         if (*pending_set).clone().is_some() {
             <button>{"Edit Pending Set"}</button>
         } else {
-            <button>{"Create New Set"}</button>
+            <button onclick={create_set.clone()}>{"Create New Set"}</button>
         }
         </div>
     }
