@@ -13,6 +13,13 @@ pub fn new_green_msg_with_std_duration(body:String) -> MsgActions {
             theme: MsgTheme::Green,
         })
 }
+pub fn green_msg(body:String) -> MsgActions {
+    MsgActions::NewMsg(UserMessage{
+        body,
+        form: MsgForm::Standard,
+        theme: MsgTheme::Green,
+    })
+}
 pub fn new_red_msg_with_std_duration(body:String) -> MsgActions {
     MsgActions::NewMsg(UserMessage{
         body,
