@@ -50,8 +50,8 @@ pub fn footer() -> Html {
     };
     html!{
         <div class={list.clone()}>
-        {base}
         <UserMsg/>
+        {base}
         if audio_ctx.is_visible {<AudioFooter/>}
         </div>
     }

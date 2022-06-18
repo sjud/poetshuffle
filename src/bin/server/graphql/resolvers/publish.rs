@@ -8,6 +8,8 @@ use crate::graphql::resolvers::login::{create_login_with_password_and_role, find
 #[derive(Default)]
 pub struct PublishMutation;
 
+
+
 #[Object]
 impl PublishMutation{
     async fn accept_invitation (

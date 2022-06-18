@@ -1,0 +1,3 @@
+mutation UpdateTitleMutation($set_uuid: String!, $title: String!) {
+  updateTitle(setUuid: $set_uuid, title: $title)
+}

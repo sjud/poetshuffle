@@ -12,11 +12,11 @@ pub fn login_register_style() -> StyleSource<'static> {
     )
 }
 pub fn main_menu_style() -> StyleSource<'static> {
-    // 77vh because of footer
+    // 70vh because of footer
     css!(
         r#"
           display: flex;
-  height: 77vh;
+  height: 70vh;
   justify-content: center;
   align-items: center;
   text-align: center;

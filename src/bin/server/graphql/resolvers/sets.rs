@@ -1,7 +1,7 @@
-
 use super::*;
 use crate::types::auth::Auth;
 use entity::prelude::Sets;
+use entity::sets::ActiveModel as ActiveModelSet;
 use entity::sea_orm_active_enums::SetStatus;
 use entity::sets;
 
@@ -26,11 +26,58 @@ pub async fn find_pending_set_by_user(
         .await
         .map_err(|err|Error::new(format!("{:?}",err)))
 }
+pub async fn find_set_by_uuid(
+    db:&DatabaseConnection,
+    set_uuid:Uuid
+) -> Result<Option<sets::Model>> {
+    Sets::find_by_id(set_uuid)
+        .one(db)
+        .await
+        .map_err(|err|Error::new(format!("{:?}",err)))
+}
+
 
 #[derive(Default)]
 pub struct SetMutation;
 #[Object]
 impl SetMutation{
+    async fn update_title(&self,ctx:&Context<'_>,set_uuid:Uuid,title:String) -> Result<Uuid> {
+        let db = ctx.data::<DatabaseConnection>().unwrap();
+        let auth = ctx.data::<Auth>()?;
+        if let Ok(Some(set)) = find_set_by_uuid(db,set_uuid).await {
+            if auth.can_edit_set(&set) {
+                ActiveModelSet{
+                    set_uuid:Set(set.set_uuid),
+                    collection_title:Set(title),
+                    ..Default::default()
+                }.update(db).await?;
+                Ok(set_uuid)
+            } else {
+                Err(Error::new("Unauthorized"))
+            }
+        } else {
+            Err(Error::new("Set not found."))
+        }
+    }
+    async fn update_link(&self,ctx:&Context<'_>,set_uuid:Uuid,link:String) -> Result<()> {
+        let db = ctx.data::<DatabaseConnection>().unwrap();
+        let auth = ctx.data::<Auth>()?;
+        if let Ok(Some(set)) = find_set_by_uuid(db,set_uuid).await {
+            if auth.can_edit_set(&set) {
+                ActiveModelSet{
+                    set_uuid:Set(set.set_uuid),
+                    collection_link:Set(link),
+                    ..Default::default()
+                }.update(db).await?;
+                Ok(set_uuid)
+            } else {
+                Err(Error::new("Unauthorized"))
+            }
+        } else {
+            Err(Error::new("Set not found."))
+        }
+    }
+
     async fn create_pending_set(
         &self,
         ctx: &Context<'_>,

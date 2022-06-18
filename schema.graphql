@@ -7,6 +7,8 @@ type Mutation {
     inviteUser(email:String!,userRole:UserRole!): String!
     acceptInvitation(password:String,inviteUuid:ID!): String!
     createPendingSet: ID!
+    updateTitle(setUuid: ID!, title:String!) : ID!
+    updateLink(setUuid: ID!, link:String!) : ID!
 }
 
 type Query {

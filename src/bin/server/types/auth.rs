@@ -7,6 +7,19 @@ use std::cmp::Ordering;
 pub struct Auth(pub Option<entity::permissions::Model>);
 
 impl Auth{
+    pub fn can_edit_set(&self,set:&entity::sets::Model) -> bool {
+        // Can only edit sets that haven't been approved.
+        if !set.approved {
+            if let Some(permission) = &self.0 {
+                // If you created the set you can edit the title.
+              set.originator_uuid == permission.user_uuid
+            } else {
+                false
+            }
+        } else {
+            false
+        }
+    }
     pub fn can_issue_promotion(&self,user_role:UserRole) -> bool {
         if let Some(permission) = &self.0 {
             // A greater role can issue a promotion to a lesser role.

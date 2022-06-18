@@ -62,3 +62,17 @@ query_path = "app_queries/create_pending_set.graphql",
 response_derives = "Serialize,PartialEq"
 )]
 pub struct CreatePendingSetMutation;
+#[derive(GraphQLQuery)]
+#[graphql(
+schema_path = "schema.graphql",
+query_path = "app_queries/update_title.graphql",
+response_derives = "Serialize,PartialEq"
+)]
+pub struct UpdateTitleMutation;
+#[derive(GraphQLQuery)]
+#[graphql(
+schema_path = "schema.graphql",
+query_path = "app_queries/update_link.graphql",
+response_derives = "Serialize,PartialEq"
+)]
+pub struct UpdateLinkMutation;
