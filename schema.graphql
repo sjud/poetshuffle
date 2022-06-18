@@ -7,12 +7,14 @@ type Mutation {
     inviteUser(email:String!,userRole:UserRole!): String!
     acceptInvitation(password:String,inviteUuid:ID!): String!
     createPendingSet: ID!
-    updateTitle(setUuid: ID!, title:String!) : ID!
-    updateLink(setUuid: ID!, link:String!) : ID!
+    updateTitle(setUuid: ID!, title:String!) : String!
+    updateLink(setUuid: ID!, link:String!) : String!
+    addPoem(setUuid:ID!, idx:Int!) : ID!
 }
 
 type Query {
     pendingSetByUser(user_uuid:ID!): Set
+    poemUuidsBySetUuid(setUuid: ID!) : [ID!]!
 }
 enum UserRole {
     LISTENER

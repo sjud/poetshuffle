@@ -76,3 +76,17 @@ query_path = "app_queries/update_link.graphql",
 response_derives = "Serialize,PartialEq"
 )]
 pub struct UpdateLinkMutation;
+#[derive(GraphQLQuery)]
+#[graphql(
+schema_path = "schema.graphql",
+query_path = "app_queries/add_poem.graphql",
+response_derives = "Serialize,PartialEq"
+)]
+pub struct AddPoemMutation;
+#[derive(GraphQLQuery)]
+#[graphql(
+schema_path = "schema.graphql",
+query_path = "app_queries/poem_uuids_by_set_uuid.graphql",
+response_derives = "Serialize,PartialEq"
+)]
+pub struct PoemUuidsBySetUuidQuery;

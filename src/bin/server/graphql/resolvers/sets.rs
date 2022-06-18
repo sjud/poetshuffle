@@ -1,5 +1,4 @@
 use super::*;
-use crate::types::auth::Auth;
 use entity::prelude::Sets;
 use entity::sets::ActiveModel as ActiveModelSet;
 use entity::sea_orm_active_enums::SetStatus;
@@ -35,13 +34,33 @@ pub async fn find_set_by_uuid(
         .await
         .map_err(|err|Error::new(format!("{:?}",err)))
 }
-
+pub async fn create_pending_set(
+    db:&DatabaseConnection,
+    user_uuid:Uuid
+) -> Result<Uuid> {
+    let set_uuid = Uuid::new_v4();
+    entity::sets::ActiveModel{
+        set_uuid: Set(set_uuid),
+        collection_title: Set(String::new()),
+        originator_uuid: Set(user_uuid),
+        set_status: Set(SetStatus::Pending),
+        collection_link: Set(String::new()),
+        editor_uuid: Set(None),
+        approved: Set(false),
+        ..Default::default()
+    }.insert(db).await?;
+    Ok(set_uuid)
+}
 
 #[derive(Default)]
 pub struct SetMutation;
 #[Object]
 impl SetMutation{
-    async fn update_title(&self,ctx:&Context<'_>,set_uuid:Uuid,title:String) -> Result<Uuid> {
+    async fn update_title(
+        &self,
+        ctx:&Context<'_>,
+        set_uuid:Uuid,
+        title:String) -> Result<String> {
         let db = ctx.data::<DatabaseConnection>().unwrap();
         let auth = ctx.data::<Auth>()?;
         if let Ok(Some(set)) = find_set_by_uuid(db,set_uuid).await {
@@ -51,7 +70,7 @@ impl SetMutation{
                     collection_title:Set(title),
                     ..Default::default()
                 }.update(db).await?;
-                Ok(set_uuid)
+                Ok("".into())
             } else {
                 Err(Error::new("Unauthorized"))
             }
@@ -59,7 +78,7 @@ impl SetMutation{
             Err(Error::new("Set not found."))
         }
     }
-    async fn update_link(&self,ctx:&Context<'_>,set_uuid:Uuid,link:String) -> Result<()> {
+    async fn update_link(&self,ctx:&Context<'_>,set_uuid:Uuid,link:String) -> Result<String> {
         let db = ctx.data::<DatabaseConnection>().unwrap();
         let auth = ctx.data::<Auth>()?;
         if let Ok(Some(set)) = find_set_by_uuid(db,set_uuid).await {
@@ -69,7 +88,7 @@ impl SetMutation{
                     collection_link:Set(link),
                     ..Default::default()
                 }.update(db).await?;
-                Ok(set_uuid)
+                Ok("".into())
             } else {
                 Err(Error::new("Unauthorized"))
             }
@@ -88,18 +107,10 @@ impl SetMutation{
             if find_pending_set_by_user(db,permission.user_uuid)
                 .await?
                 .is_none() {
-                let set_uuid = Uuid::new_v4();
-                entity::sets::ActiveModel{
-                    set_uuid: Set(set_uuid),
-                    collection_title: Set(String::new()),
-                    originator_uuid: Set(permission.user_uuid),
-                    set_status: Set(SetStatus::Pending),
-                    collection_link: Set(String::new()),
-                    editor_uuid: Set(None),
-                    approved: Set(false),
-                    ..Default::default()
-                }.insert(db).await?;
-                Ok(set_uuid)
+                create_pending_set(
+                    db,
+                    permission.user_uuid,
+                ).await
             } else {
                 Err(Error::new("You have an ongoing pending set."))
             }
@@ -111,6 +122,7 @@ impl SetMutation{
 
 #[derive(Default)]
 pub struct SetsQuery;
+
 #[Object]
 impl SetsQuery {
     async fn pending_set_by_user(

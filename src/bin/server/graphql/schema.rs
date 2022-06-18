@@ -6,14 +6,21 @@ use sea_orm::DatabaseConnection;
 use sha2::Sha256;
 use crate::email::Email;
 use crate::graphql::resolvers::admin::AdminMutation;
+use crate::graphql::resolvers::poems::{PoemMutation, PoemQuery};
 use crate::graphql::resolvers::publish::PublishMutation;
 use crate::graphql::resolvers::sets::{SetMutation, SetsQuery};
 use crate::POSTMARK_API_TRANSACTION;
 
 #[derive(MergedObject, Default)]
-pub struct Query(SetsQuery);
+pub struct Query(SetsQuery,PoemQuery);
 #[derive(MergedObject, Default)]
-pub struct Mutation(LoginMutation,AdminMutation,PublishMutation,SetMutation);
+pub struct Mutation(
+    LoginMutation,
+    AdminMutation,
+    PublishMutation,
+    SetMutation,
+    PoemMutation,
+);
 pub type PoetShuffleSchema = Schema<Query, Mutation, EmptySubscription>;
 
 /// Builds our Schema for our service layer using DB Conn.

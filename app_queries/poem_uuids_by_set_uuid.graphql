@@ -1,0 +1,3 @@
+query PoemUuidsBySetUuidQuery($set_uuid: ID!) {
+  poemUuidsBySetUuid(setUuid: $set_uuid)
+}
