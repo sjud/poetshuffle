@@ -2,9 +2,10 @@ use sea_orm::ActiveValue;
 use super::*;
 use entity::prelude::Sets;
 use entity::sets::ActiveModel as ActiveModelSet;
+use entity::edit_set_history::ActiveModel as ActiveSetHistory;
 use entity::sea_orm_active_enums::SetStatus;
 use entity::sets;
-use crate::graphql::resolvers::poems::build_approve_value;
+use crate::graphql::resolvers::poems::{build_approve_value, build_history_value_option};
 
 pub fn build_edit_set_value<V:Into<sea_orm::Value>+ migration::Nullable>(auth:&Auth,v:Option<V>,set:&sets::Model)
                                                                           -> Result<ActiveValue<V>> {
@@ -84,12 +85,26 @@ impl SetMutation{
         if let Ok(Some(set)) = find_set_by_uuid(db,set_uuid).await {
                 ActiveModelSet{
                     set_uuid:build_edit_set_value(auth,Some(set_uuid),&set)?,
-                    title:build_edit_set_value(auth,title,&set)?,
+                    title:build_edit_set_value(auth,title.clone(),&set)?,
                     link:build_edit_set_value(auth,link,&set)?,
                     is_deleted:build_edit_set_value(auth,delete,&set)?,
                     is_approved:build_approve_value(auth,approve)?,
                     ..Default::default()
                 }.update(db).await?;
+            ActiveSetHistory{
+                history_uuid:Set(Uuid::new_v4()),
+                user_uuid:Set(
+                    auth.0
+                        .as_ref()
+                        //Checked above when inserting with poem_uuid... Test confirms.
+                        .unwrap()
+                        .user_uuid),
+                set_uuid:Set(set_uuid),
+                edit_title:build_history_value_option(title,)?,
+                is_deleted:build_history_value_option(delete,)?,
+                is_approved:build_history_value_option(approve)?,
+                ..Default::default()
+            }.insert(db).await?;
                 Ok("".into())
         } else {
             Err(Error::new("Can't update set. Set not found."))

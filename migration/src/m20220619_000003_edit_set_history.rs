@@ -15,7 +15,7 @@ impl MigrationTrait for Migration {
         history_uuid UUID PRIMARY KEY,
     user_uuid UUID NOT NULL REFERENCES users(user_uuid),
     creation_ts TIMESTAMPTZ NOT NULL DEFAULT current_timestamp,
-    set_uuid UUID REFERENCES sets(set_uuid),
+    set_uuid UUID REFERENCES sets(set_uuid) NOT NULL,
     edit_title VARCHAR,
     edit_link VARCHAR,
     edit_status set_status,
