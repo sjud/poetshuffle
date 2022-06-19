@@ -1,19 +1,33 @@
+use sea_orm::ActiveValue;
 use super::*;
 use entity::prelude::Sets;
 use entity::sets::ActiveModel as ActiveModelSet;
 use entity::sea_orm_active_enums::SetStatus;
 use entity::sets;
+use crate::graphql::resolvers::poems::build_approve_value;
 
-/*
-   set_uuid UUID NOT NULL PRIMARY KEY,
-   creation_ts TIMESTAMPTZ NOT NULL DEFAULT current_timestamp,
-   collection_title VARCHAR(100) NOT NULL,
-   originator_uuid UUID NOT NULL REFERENCES users(user_uuid),
-   set_status set_status NOT NULL,
-   collection_link VARCHAR(250) NOT NULL,
-   editor_uuid UUID REFERENCES users(user_uuid),
-   approved BOOL NOT NULL
-*/
+pub fn build_edit_set_value<V:Into<sea_orm::Value>+ migration::Nullable>(auth:&Auth,v:Option<V>,set:&sets::Model)
+                                                                          -> Result<ActiveValue<V>> {
+    if let Some(value) = v {
+        if auth.can_edit_set(&set) {
+            return Ok(ActiveValue::set(value));
+        } else {
+            Err(Error::new("Unauthorized update."))?;
+        }
+    }
+    Ok(ActiveValue::not_set())
+}
+pub fn build_edit_poem_value_option<V:Into<sea_orm::Value>+ migration::Nullable>(auth:&Auth,v:Option<V>,set:&sets::Model)
+                                                                                 -> Result<ActiveValue<Option<V>>> {
+    if let Some(value) = v {
+        if auth.can_edit_set(&set) {
+            return Ok(ActiveValue::set(Some(value)));
+        } else {
+            Err(Error::new("Unauthorized update."))?;
+        }
+    }
+    Ok(ActiveValue::not_set())
+}
 pub async fn find_pending_set_by_user(
     db:&DatabaseConnection,
     user_uuid:Uuid
@@ -62,35 +76,23 @@ impl SetMutation{
         set_uuid:Uuid,
         title:Option<String>,
         link:Option<String>,
+        delete:Option<bool>,
+        approve:Option<bool>,
     ) -> Result<String> {
         let db = ctx.data::<DatabaseConnection>().unwrap();
         let auth = ctx.data::<Auth>()?;
         if let Ok(Some(set)) = find_set_by_uuid(db,set_uuid).await {
-            if auth.can_edit_set(&set) {
                 ActiveModelSet{
-                    set_uuid:Set(set.set_uuid),
-                    title:{
-                        if let Some(title) = title {
-                            Set(title)
-                        } else {
-                            Default::default()
-                        }
-                    },
-                    link:{
-                        if let Some(link) = link {
-                            Set(link)
-                        } else {
-                            Default::default()
-                        }
-                    },
+                    set_uuid:build_edit_set_value(auth,Some(set_uuid),&set)?,
+                    title:build_edit_set_value(auth,title,&set)?,
+                    link:build_edit_set_value(auth,link,&set)?,
+                    is_deleted:build_edit_set_value(auth,delete,&set)?,
+                    is_approved:build_approve_value(auth,approve)?,
                     ..Default::default()
                 }.update(db).await?;
                 Ok("".into())
-            } else {
-                Err(Error::new("Unauthorized"))
-            }
         } else {
-            Err(Error::new("Set not found."))
+            Err(Error::new("Can't update set. Set not found."))
         }
     }
 
@@ -147,7 +149,92 @@ mod test {
     use crate::graphql::resolvers::login::create_login_with_password;
     use crate::graphql::schema::new_schema;
     use crate::graphql::test_util::{key_conn_email, no_graphql_errors_or_print_them};
-
+    #[tokio::test]
+    #[traced_test]
+    async fn test_set_update() {
+        let (key,conn,email) = key_conn_email().await;
+        let user_uuid = create_login_with_password(
+            &conn,
+            "test_set_update@test.com".into(),
+            "1234".into())
+            .await
+            .unwrap();
+        let schema = new_schema(conn.clone(),key.clone(),email);
+        let set_uuid = create_pending_set(&conn,user_uuid)
+            .await
+            .unwrap();
+        let result = schema
+            .execute(async_graphql::Request::from(
+                format!("mutation {{
+                updateSet(setUuid:\"{}\",title:\"\")
+                }}",set_uuid)
+            ).data(Auth(
+                Some(entity::permissions::Model{ user_uuid, user_role: UserRole::Poet })
+            )))
+            .await;
+        no_graphql_errors_or_print_them(result.errors).unwrap();
+        assert_eq!(result.data.to_string(), "{updateSet: \"\"}".to_string());
+        let result = schema
+            .execute(async_graphql::Request::from(
+                format!("mutation {{
+                updateSet(setUuid:\"{}\",title:\"\")
+                }}",set_uuid)
+            ).data(Auth(
+                Some(entity::permissions::Model{ user_uuid:Uuid::new_v4(), user_role: UserRole::Poet })
+            )))
+            .await;
+        assert_eq!(result.errors[0].message,"Unauthorized update.".to_string());
+      let result = schema
+            .execute(async_graphql::Request::from(
+                format!("mutation {{
+                updateSet(setUuid:\"{}\",title:\"\")
+                }}",set_uuid)
+            ).data(Auth(
+                None
+            )))
+            .await;
+        assert_eq!(result.errors[0].message,"Unauthorized update.".to_string());
+        let result = schema
+            .execute(async_graphql::Request::from(
+                format!("mutation {{
+                updateSet(setUuid:\"{}\",title:\"\")
+                }}",Uuid::new_v4())
+            ).data(Auth(
+                Some(entity::permissions::Model{ user_uuid, user_role: UserRole::Poet })
+            )))
+            .await;
+        assert_eq!(result.errors[0].message,"Can't update set. Set not found.".to_string());
+        let result = schema
+            .execute(async_graphql::Request::from(
+                format!("mutation {{
+                updateSet(setUuid:\"{}\",title:\"title\",link:\"link\",delete:false)
+                }}",set_uuid)
+            ).data(Auth(
+                Some(entity::permissions::Model{ user_uuid, user_role: UserRole::Poet })
+            )))
+            .await;
+        no_graphql_errors_or_print_them(result.errors).unwrap();
+        let result = schema
+            .execute(async_graphql::Request::from(
+                format!("mutation {{
+                updateSet(setUuid:\"{}\",approve:true)
+                }}",set_uuid)
+            ).data(Auth(
+                Some(entity::permissions::Model{ user_uuid, user_role: UserRole::Poet })
+            )))
+            .await;
+        assert_eq!(result.errors[0].message,"Unauthorized approval.".to_string());
+        let result = schema
+            .execute(async_graphql::Request::from(
+                format!("mutation {{
+                updateSet(setUuid:\"{}\",approve:true)
+                }}",set_uuid)
+            ).data(Auth(
+                Some(entity::permissions::Model{ user_uuid, user_role: UserRole::Moderator })
+            )))
+            .await;
+        no_graphql_errors_or_print_them(result.errors).unwrap();
+    }
     #[tokio::test]
     #[traced_test]
     async fn test_pending_set_by_user() {

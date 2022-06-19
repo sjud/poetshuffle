@@ -128,6 +128,49 @@ impl PoemMutation {
             Err(Error::new("Unauthorized."))
         }
     }
+    async fn update_poem(
+        &self,
+        ctx:&Context<'_>,
+        poem_uuid:Uuid,
+        banter_uuid:Option<Uuid>,
+        title:Option<String>,
+        idx:Option<i32>,
+        delete:Option<bool>,
+        approve:Option<bool>,
+    ) -> Result<String> {
+        let db = ctx.data::<DatabaseConnection>().unwrap();
+        let auth = ctx.data::<Auth>()?;
+        if let Some(poem) = find_poem(db,poem_uuid).await? {
+            ActivePoem{
+                poem_uuid:build_edit_poem_value(auth,Some(poem_uuid),&poem)?,
+                banter_uuid:build_edit_poem_value_option(auth,banter_uuid,&poem)?,
+                title:build_edit_poem_value(auth,title.clone(),&poem)?,
+                idx:build_edit_poem_value(auth,idx,&poem)?,
+                is_deleted:build_edit_poem_value(auth,delete,&poem)?,
+                is_approved:build_approve_value(auth,approve)?,
+                ..Default::default()
+            }.update(db).await?;
+            ActivePoemHistory{
+                history_uuid:Set(Uuid::new_v4()),
+                user_uuid:Set(
+                    auth.0
+                        .as_ref()
+                        //Checked above when inserting with poem_uuid... Test confirms.
+                        .unwrap()
+                        .user_uuid),
+                poem_uuid:Set(poem_uuid),
+                edit_title:build_history_value_option(title,)?,
+                edit_idx:build_history_value_option(idx,)?,
+                edit_is_deleted:build_history_value_option(delete,)?,
+                edit_is_approved:build_history_value_option(approve)?,
+                edit_banter_uuid:build_history_value_option(banter_uuid)?,
+                ..Default::default()
+            }.insert(db).await?;
+            Ok("".into())
+        } else {
+            Err(Error::new("Can't update poem. Poem not found."))
+        }
+    }
 }
 #[Object]
 impl PoemQuery {
@@ -147,49 +190,7 @@ impl PoemQuery {
         } else { None }
         })
     }
-    async fn update_poem(
-        &self,
-        ctx:&Context<'_>,
-        poem_uuid:Uuid,
-        banter_uuid:Option<Uuid>,
-        title:Option<String>,
-        idx:Option<i32>,
-        is_deleted:Option<bool>,
-        is_approved:Option<bool>,
-    ) -> Result<String> {
-        let db = ctx.data::<DatabaseConnection>().unwrap();
-        let auth = ctx.data::<Auth>()?;
-        if let Some(poem) = find_poem(db,poem_uuid).await? {
-            ActivePoem{
-                poem_uuid:build_edit_poem_value(auth,Some(poem_uuid),&poem)?,
-                    banter_uuid:build_edit_poem_value_option(auth,banter_uuid,&poem)?,
-                    title:build_edit_poem_value(auth,title.clone(),&poem)?,
-                    idx:build_edit_poem_value(auth,idx,&poem)?,
-                    is_deleted:build_edit_poem_value(auth,is_deleted,&poem)?,
-                    is_approved:build_approve_value(auth,is_approved)?,
-                    ..Default::default()
-                }.update(db).await?;
-            ActivePoemHistory{
-                history_uuid:Set(Uuid::new_v4()),
-                user_uuid:Set(
-                    auth.0
-                        .as_ref()
-                        //Checked above when inserting with poem_uuid... Test confirms.
-                        .unwrap()
-                        .user_uuid),
-                poem_uuid:Set(poem_uuid),
-                edit_title:build_history_value_option(title,)?,
-                edit_idx:build_history_value_option(idx,)?,
-                edit_is_deleted:build_history_value_option(is_deleted,)?,
-                edit_is_approved:build_history_value_option(is_approved)?,
-                edit_banter_uuid:build_history_value_option(banter_uuid)?,
-                ..Default::default()
-            }.insert(db).await?;
-                Ok("".into())
-        } else {
-            Err(Error::new("Can't update poem. Poem not found."))
-        }
-    }
+
     async fn poem_uuids_by_set_uuid(
         &self,
         ctx:&Context<'_>,
@@ -253,7 +254,7 @@ mod test {
             .unwrap();
         let result = schema
             .execute(async_graphql::Request::from(
-                format!("query {{
+                format!("mutation {{
                 updatePoem(poemUuid:\"{}\",idx:1)
                 }}",poem_uuid)
             ).data(Auth(
@@ -264,7 +265,7 @@ mod test {
         assert_eq!(result.data.to_string(), "{updatePoem: \"\"}".to_string());
         let result = schema
             .execute(async_graphql::Request::from(
-                format!("query {{
+                format!("mutation {{
                 updatePoem(poemUuid:\"{}\",idx:2)
                 }}",poem_uuid)
             ).data(Auth(
@@ -275,7 +276,7 @@ mod test {
         assert_eq!(result.errors[0].message,"Unauthorized update.".to_string());
         let result = schema
             .execute(async_graphql::Request::from(
-                format!("query {{
+                format!("mutation {{
                 updatePoem(poemUuid:\"{}\")
                 }}",poem_uuid)
             ).data(Auth(
@@ -285,7 +286,7 @@ mod test {
         assert_eq!(result.errors[0].message,"Query Error: error returned from database: syntax error at or near \"WHERE\"".to_string());
         let result = schema
             .execute(async_graphql::Request::from(
-                format!("query {{
+                format!("mutation {{
                 updatePoem(poemUuid:\"{}\",idx:3)
                 }}",poem_uuid)
             ).data(Auth(
@@ -295,7 +296,7 @@ mod test {
         assert_eq!(result.errors[0].message,"Unauthorized update.".to_string());
         let result = schema
             .execute(async_graphql::Request::from(
-                format!("query {{
+                format!("mutation {{
                 updatePoem(poemUuid:\"{}\",idx:4)
                 }}",Uuid::new_v4())
             ).data(Auth(
@@ -305,8 +306,8 @@ mod test {
         assert_eq!(result.errors[0].message,"Can't update poem. Poem not found.".to_string());
         let result = schema
             .execute(async_graphql::Request::from(
-                format!("query {{
-                updatePoem(poemUuid:\"{}\",title:\"title\",idx:4,isDeleted:false)
+                format!("mutation {{
+                updatePoem(poemUuid:\"{}\",title:\"title\",idx:4,delete:false)
                 }}",poem_uuid)
             ).data(Auth(
                 Some(entity::permissions::Model{ user_uuid, user_role: UserRole::Poet })
@@ -315,16 +316,24 @@ mod test {
         no_graphql_errors_or_print_them(result.errors).unwrap();
         let result = schema
             .execute(async_graphql::Request::from(
-                format!("query {{
-                updatePoem(poemUuid:\"{}\",isApproved:true)
+                format!("mutation {{
+                updatePoem(poemUuid:\"{}\",approve:true)
                 }}",poem_uuid)
             ).data(Auth(
                 Some(entity::permissions::Model{ user_uuid, user_role: UserRole::Poet })
             )))
             .await;
         assert_eq!(result.errors[0].message,"Unauthorized approval.".to_string());
-
-
+        let result = schema
+            .execute(async_graphql::Request::from(
+                format!("mutation {{
+                updatePoem(poemUuid:\"{}\",approve:true)
+                }}",poem_uuid)
+            ).data(Auth(
+                Some(entity::permissions::Model{ user_uuid, user_role: UserRole::Moderator })
+            )))
+            .await;
+        no_graphql_errors_or_print_them(result.errors).unwrap();
     }
 
     #[tokio::test]
