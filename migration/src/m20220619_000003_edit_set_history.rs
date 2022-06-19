@@ -12,7 +12,8 @@ impl MigrationName for Migration {
 impl MigrationTrait for Migration {
     async fn up(&self, manager: &SchemaManager) -> Result<(), DbErr> {
         let sql = r#"CREATE TABLE IF NOT EXISTS edit_set_history(
-    user_uuid UUID NOT NULL PRIMARY KEY,
+        history_uuid UUID PRIMARY KEY,
+    user_uuid UUID NOT NULL REFERENCES users(user_uuid),
     creation_ts TIMESTAMPTZ NOT NULL DEFAULT current_timestamp,
     set_uuid UUID REFERENCES sets(set_uuid),
     edit_title VARCHAR,

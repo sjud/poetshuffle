@@ -15,6 +15,7 @@ impl EntityName for Entity {
 
 #[derive(Clone, Debug, PartialEq, DeriveModel, DeriveActiveModel, Serialize, Deserialize)]
 pub struct Model {
+    pub history_uuid: Uuid,
     pub user_uuid: Uuid,
     pub creation_ts: DateTimeWithTimeZone,
     pub set_uuid: Option<Uuid>,
@@ -27,6 +28,7 @@ pub struct Model {
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveColumn)]
 pub enum Column {
+    HistoryUuid,
     UserUuid,
     CreationTs,
     SetUuid,
@@ -39,7 +41,7 @@ pub enum Column {
 
 #[derive(Copy, Clone, Debug, EnumIter, DerivePrimaryKey)]
 pub enum PrimaryKey {
-    UserUuid,
+    HistoryUuid,
 }
 
 impl PrimaryKeyTrait for PrimaryKey {
@@ -52,12 +54,14 @@ impl PrimaryKeyTrait for PrimaryKey {
 #[derive(Copy, Clone, Debug, EnumIter)]
 pub enum Relation {
     Sets,
+    Users,
 }
 
 impl ColumnTrait for Column {
     type EntityName = Entity;
     fn def(&self) -> ColumnDef {
         match self {
+            Self::HistoryUuid => ColumnType::Uuid.def(),
             Self::UserUuid => ColumnType::Uuid.def(),
             Self::CreationTs => ColumnType::TimestampWithTimeZone.def(),
             Self::SetUuid => ColumnType::Uuid.def().null(),
@@ -77,6 +81,10 @@ impl RelationTrait for Relation {
                 .from(Column::SetUuid)
                 .to(super::sets::Column::SetUuid)
                 .into(),
+            Self::Users => Entity::belongs_to(super::users::Entity)
+                .from(Column::UserUuid)
+                .to(super::users::Column::UserUuid)
+                .into(),
         }
     }
 }
@@ -84,6 +92,12 @@ impl RelationTrait for Relation {
 impl Related<super::sets::Entity> for Entity {
     fn to() -> RelationDef {
         Relation::Sets.def()
+    }
+}
+
+impl Related<super::users::Entity> for Entity {
+    fn to() -> RelationDef {
+        Relation::Users.def()
     }
 }
 

@@ -12,14 +12,16 @@ impl MigrationName for Migration {
 impl MigrationTrait for Migration {
     async fn up(&self, manager: &SchemaManager) -> Result<(), DbErr> {
         let sql = r#"CREATE TABLE IF NOT EXISTS edit_poem_history(
-    user_uuid UUID NOT NULL PRIMARY KEY,
+        history_uuid UUID  PRIMARY KEY,
+    user_uuid UUID NOT NULL REFERENCES users(user_uuid),
     creation_ts TIMESTAMPTZ NOT NULL DEFAULT current_timestamp,
-    poem_uuid UUID REFERENCES poems(poem_uuid),
+    poem_uuid UUID REFERENCES poems(poem_uuid) NOT NULL,
+    edit_banter_uuid UUID REFERENCES banters(banter_uuid),
     edit_title VARCHAR,
     edit_link VARCHAR,
     edit_idx INTEGER,
-    is_approved BOOLEAN,
-    is_deleted BOOLEAN
+    edit_is_approved BOOLEAN,
+    edit_is_deleted BOOLEAN
 );"#;
         let stmt = Statement::from_string(manager.get_database_backend(), sql.to_owned());
         manager.get_connection().execute(stmt).await.map(|_| ())

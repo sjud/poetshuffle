@@ -70,7 +70,7 @@ mod test {
     use entity::sea_orm_active_enums::UserRole;
     use crate::graphql::resolvers::login::{create_login_with_password, find_login_by_email};
     use crate::graphql::schema::new_schema;
-    use crate::graphql::test_util::{assert_no_graphql_errors_or_print_them, key_conn_email};
+    use crate::graphql::test_util::{no_graphql_errors_or_print_them, key_conn_email};
 
     #[tokio::test]
     #[traced_test]
@@ -97,7 +97,7 @@ mod test {
                 }}",invite_uuid
             )))
             .await;
-        assert_no_graphql_errors_or_print_them(result.errors);
+        no_graphql_errors_or_print_them(result.errors);
         // Panic if email isn't associated with a login.
         let _ = find_login_by_email(&conn, invitee_email)
             .await

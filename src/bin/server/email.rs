@@ -3,7 +3,8 @@ use postmark::reqwest::PostmarkClient;
 use crate::{OUTBOUND_EMAIL, URL_BASE};
 use postmark::Query;
 use sea_orm::prelude::Uuid;
-
+#[cfg(test)]
+use std::sync::{Mutex,Arc};
 
 #[cfg_attr(test,mockall::automock)]
 #[async_trait::async_trait]

@@ -1,4 +1,4 @@
-use sea_orm::ActiveValue;
+use sea_orm::{ActiveValue, DbBackend, QueryTrait, Update};
 use crate::graphql::resolvers::sets::find_set_by_uuid;
 use entity::poems::{self,ActiveModel as ActivePoem};
 use entity::edit_poem_history::{ActiveModel as ActivePoemHistory};
@@ -93,6 +93,13 @@ pub fn build_approve_value<V:Into<sea_orm::Value>+ migration::Nullable>(auth:&Au
     }
     Ok(ActiveValue::not_set())
 }
+pub fn build_history_value_option<V:Into<sea_orm::Value>+ migration::Nullable>(v:Option<V>)
+                                                                                 -> Result<ActiveValue<Option<V>>> {
+    if let Some(value) = v {
+        return Ok(ActiveValue::set(Some(value)));
+    }
+    Ok(ActiveValue::not_set())
+}
 #[derive(Default)]
 pub struct PoemMutation;
 #[derive(Default)]
@@ -153,20 +160,35 @@ impl PoemQuery {
         let db = ctx.data::<DatabaseConnection>().unwrap();
         let auth = ctx.data::<Auth>()?;
         if let Some(poem) = find_poem(db,poem_uuid).await? {
-                ActivePoem{
-                    poem_uuid:Set(poem_uuid),
+            ActivePoem{
+                poem_uuid:build_edit_poem_value(auth,Some(poem_uuid),&poem)?,
                     banter_uuid:build_edit_poem_value_option(auth,banter_uuid,&poem)?,
-                    title:build_edit_poem_value(auth,title,&poem)?,
+                    title:build_edit_poem_value(auth,title.clone(),&poem)?,
                     idx:build_edit_poem_value(auth,idx,&poem)?,
                     is_deleted:build_edit_poem_value(auth,is_deleted,&poem)?,
                     is_approved:build_approve_value(auth,is_approved)?,
                     ..Default::default()
                 }.update(db).await?;
+            ActivePoemHistory{
+                history_uuid:Set(Uuid::new_v4()),
+                user_uuid:Set(
+                    auth.0
+                        .as_ref()
+                        //Checked above when inserting with poem_uuid... Test confirms.
+                        .unwrap()
+                        .user_uuid),
+                poem_uuid:Set(poem_uuid),
+                edit_title:build_history_value_option(title,)?,
+                edit_idx:build_history_value_option(idx,)?,
+                edit_is_deleted:build_history_value_option(is_deleted,)?,
+                edit_is_approved:build_history_value_option(is_approved)?,
+                edit_banter_uuid:build_history_value_option(banter_uuid)?,
+                ..Default::default()
+            }.insert(db).await?;
                 Ok("".into())
         } else {
             Err(Error::new("Can't update poem. Poem not found."))
         }
-
     }
     async fn poem_uuids_by_set_uuid(
         &self,
@@ -204,8 +226,106 @@ mod test {
     use crate::graphql::resolvers::login::create_login_with_password;
     use crate::graphql::resolvers::sets::create_pending_set;
     use crate::graphql::schema::new_schema;
-    use crate::graphql::test_util::{assert_no_graphql_errors_or_print_them, key_conn_email};
+    use crate::graphql::test_util::{no_graphql_errors_or_print_them, key_conn_email};
     use sea_orm::QueryTrait;
+
+
+    #[tokio::test]
+    #[traced_test]
+    async fn test_poem_update() {
+        let (key,conn,email) = key_conn_email().await;
+        let user_uuid = create_login_with_password(
+            &conn,
+            "test_poem_update@test.com".into(),
+            "1234".into())
+            .await
+            .unwrap();
+        let schema = new_schema(conn.clone(),key.clone(),email);
+        let set_uuid = create_pending_set(&conn,user_uuid)
+            .await
+            .unwrap();
+        let poem_uuid = add_poem(
+            &conn,
+            user_uuid,
+            set_uuid,
+            0)
+            .await
+            .unwrap();
+        let result = schema
+            .execute(async_graphql::Request::from(
+                format!("query {{
+                updatePoem(poemUuid:\"{}\",idx:1)
+                }}",poem_uuid)
+            ).data(Auth(
+                Some(entity::permissions::Model{ user_uuid, user_role: UserRole::Poet })
+            )))
+            .await;
+        no_graphql_errors_or_print_them(result.errors).unwrap();
+        assert_eq!(result.data.to_string(), "{updatePoem: \"\"}".to_string());
+        let result = schema
+            .execute(async_graphql::Request::from(
+                format!("query {{
+                updatePoem(poemUuid:\"{}\",idx:2)
+                }}",poem_uuid)
+            ).data(Auth(
+                Some(entity::permissions::Model{ user_uuid:Uuid::new_v4(), user_role: UserRole::Poet })
+            )))
+            .await;
+
+        assert_eq!(result.errors[0].message,"Unauthorized update.".to_string());
+        let result = schema
+            .execute(async_graphql::Request::from(
+                format!("query {{
+                updatePoem(poemUuid:\"{}\")
+                }}",poem_uuid)
+            ).data(Auth(
+                Some(entity::permissions::Model{ user_uuid, user_role: UserRole::Poet })
+            )))
+            .await;
+        assert_eq!(result.errors[0].message,"Query Error: error returned from database: syntax error at or near \"WHERE\"".to_string());
+        let result = schema
+            .execute(async_graphql::Request::from(
+                format!("query {{
+                updatePoem(poemUuid:\"{}\",idx:3)
+                }}",poem_uuid)
+            ).data(Auth(
+                None
+            )))
+            .await;
+        assert_eq!(result.errors[0].message,"Unauthorized update.".to_string());
+        let result = schema
+            .execute(async_graphql::Request::from(
+                format!("query {{
+                updatePoem(poemUuid:\"{}\",idx:4)
+                }}",Uuid::new_v4())
+            ).data(Auth(
+                Some(entity::permissions::Model{ user_uuid, user_role: UserRole::Poet })
+            )))
+            .await;
+        assert_eq!(result.errors[0].message,"Can't update poem. Poem not found.".to_string());
+        let result = schema
+            .execute(async_graphql::Request::from(
+                format!("query {{
+                updatePoem(poemUuid:\"{}\",title:\"title\",idx:4,isDeleted:false)
+                }}",poem_uuid)
+            ).data(Auth(
+                Some(entity::permissions::Model{ user_uuid, user_role: UserRole::Poet })
+            )))
+            .await;
+        no_graphql_errors_or_print_them(result.errors).unwrap();
+        let result = schema
+            .execute(async_graphql::Request::from(
+                format!("query {{
+                updatePoem(poemUuid:\"{}\",isApproved:true)
+                }}",poem_uuid)
+            ).data(Auth(
+                Some(entity::permissions::Model{ user_uuid, user_role: UserRole::Poet })
+            )))
+            .await;
+        assert_eq!(result.errors[0].message,"Unauthorized approval.".to_string());
+
+
+    }
 
     #[tokio::test]
     #[traced_test]
@@ -232,7 +352,7 @@ mod test {
                 Some(entity::permissions::Model{ user_uuid, user_role: UserRole::Poet })
             )))
             .await;
-        assert_no_graphql_errors_or_print_them(result.errors);
+        no_graphql_errors_or_print_them(result.errors).unwrap();
 
     }
     #[tokio::test]
@@ -259,7 +379,7 @@ mod test {
                 Some(entity::permissions::Model{ user_uuid, user_role: UserRole::Poet })
             )))
             .await;
-        assert_no_graphql_errors_or_print_them(result.errors);
+        no_graphql_errors_or_print_them(result.errors).unwrap();
     }
 
 }

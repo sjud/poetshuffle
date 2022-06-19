@@ -9,7 +9,7 @@ pub struct Auth(pub Option<Permission>);
 impl Auth{
     pub fn can_edit_set(&self,set:&entity::sets::Model) -> bool {
         // Can only edit sets that haven't been approved.
-        if !set.approved {
+        if !set.is_approved {
             if let Some(permission) = &self.0 {
                 // If you created the set you can edit the set.
               set.originator_uuid == permission.user_uuid

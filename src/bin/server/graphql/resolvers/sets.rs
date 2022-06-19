@@ -41,12 +41,12 @@ pub async fn create_pending_set(
     let set_uuid = Uuid::new_v4();
     entity::sets::ActiveModel{
         set_uuid: Set(set_uuid),
-        collection_title: Set(String::new()),
+        title: Set(String::new()),
         originator_uuid: Set(user_uuid),
         set_status: Set(SetStatus::Pending),
-        collection_link: Set(String::new()),
+        link: Set(String::new()),
         editor_uuid: Set(None),
-        approved: Set(false),
+        is_approved: Set(false),
         ..Default::default()
     }.insert(db).await?;
     Ok(set_uuid)
@@ -69,14 +69,14 @@ impl SetMutation{
             if auth.can_edit_set(&set) {
                 ActiveModelSet{
                     set_uuid:Set(set.set_uuid),
-                    collection_title:{
+                    title:{
                         if let Some(title) = title {
                             Set(title)
                         } else {
                             Default::default()
                         }
                     },
-                    collection_link:{
+                    link:{
                         if let Some(link) = link {
                             Set(link)
                         } else {
@@ -146,7 +146,7 @@ mod test {
     use entity::sea_orm_active_enums::UserRole;
     use crate::graphql::resolvers::login::create_login_with_password;
     use crate::graphql::schema::new_schema;
-    use crate::graphql::test_util::key_conn_email;
+    use crate::graphql::test_util::{key_conn_email, no_graphql_errors_or_print_them};
 
     #[tokio::test]
     #[traced_test]
@@ -161,12 +161,11 @@ mod test {
         let set_uuid = Uuid::new_v4();
         entity::sets::ActiveModel{
             set_uuid: Set(set_uuid),
-            collection_title: Set(String::from("Hello")),
+            title: Set(String::from("Hello")),
             originator_uuid: Set(user_uuid),
             set_status: Set(SetStatus::Pending),
-            collection_link: Set(String::new()),
+            link: Set(String::new()),
             editor_uuid: Set(None),
-            approved: Set(false),
             ..Default::default()
         }.insert(&conn).await.unwrap();
         let result = schema
@@ -174,20 +173,19 @@ mod test {
                 format!("query {{
                 pendingSetByUser(userUuid:\"{}\") {{
                     setUuid
-                    collectionTitle
-                    collectionLink
+                    title
+                    link
                     }}
                 }}",user_uuid.to_string())
             ).data(Auth(
                 Some(entity::permissions::Model{ user_uuid, user_role: UserRole::Poet })
             )))
             .await;
-        crate::graphql::test_util::assert_no_graphql_errors_or_print_them(
-            result.errors
-        );
+        no_graphql_errors_or_print_them(result.errors).unwrap();
+
         assert_eq!(result.data.to_string(),
                    format!("{{pendingSetByUser: \
-                   {{setUuid: \"{}\",collectionTitle: \"Hello\",collectionLink: \"\"}}}}",set_uuid));
+                   {{setUuid: \"{}\",title: \"Hello\",link: \"\"}}}}",set_uuid));
     }
     #[tokio::test]
     #[traced_test]
@@ -208,9 +206,8 @@ mod test {
             Some(entity::permissions::Model{ user_uuid, user_role: UserRole::Poet })
         )))
         .await;
-        crate::graphql::test_util::assert_no_graphql_errors_or_print_them(
-            result.errors
-        );
+        no_graphql_errors_or_print_them(result.errors).unwrap();
+
         let result = schema
             .execute(async_graphql::Request::from(
                 "mutation{

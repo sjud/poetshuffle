@@ -2,6 +2,7 @@
 
 use super::sea_orm_active_enums::SetStatus;
 use sea_orm::entity::prelude::*;
+use serde::{Deserialize, Serialize};
 
 #[derive(Copy, Clone, Default, Debug, DeriveEntity)]
 pub struct Entity;
@@ -18,24 +19,28 @@ use async_graphql::*;
 pub struct Model {
     pub set_uuid: Uuid,
     pub creation_ts: DateTimeWithTimeZone,
-    pub collection_title: String,
     pub originator_uuid: Uuid,
     pub set_status: SetStatus,
-    pub collection_link: String,
     pub editor_uuid: Option<Uuid>,
-    pub approved: bool,
+    pub title: String,
+    pub link: String,
+    pub is_approved: bool,
+    pub is_deleted: bool,
+    pub last_edit_ts: Option<DateTimeUtc>,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveColumn)]
 pub enum Column {
     SetUuid,
     CreationTs,
-    CollectionTitle,
     OriginatorUuid,
     SetStatus,
-    CollectionLink,
     EditorUuid,
-    Approved,
+    Title,
+    Link,
+    IsApproved,
+    IsDeleted,
+    LastEditTs,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DerivePrimaryKey)]
@@ -54,11 +59,12 @@ impl PrimaryKeyTrait for PrimaryKey {
 pub enum Relation {
     Users2,
     Users1,
-    Poems,
     Intros,
     Comments,
-    SetOptions,
+    Poems,
     Orders,
+    EditSetHistory,
+    SetOptions,
 }
 
 impl ColumnTrait for Column {
@@ -67,12 +73,14 @@ impl ColumnTrait for Column {
         match self {
             Self::SetUuid => ColumnType::Uuid.def(),
             Self::CreationTs => ColumnType::TimestampWithTimeZone.def(),
-            Self::CollectionTitle => ColumnType::String(Some(100u32)).def(),
             Self::OriginatorUuid => ColumnType::Uuid.def(),
             Self::SetStatus => SetStatus::db_type(),
-            Self::CollectionLink => ColumnType::String(Some(250u32)).def(),
             Self::EditorUuid => ColumnType::Uuid.def().null(),
-            Self::Approved => ColumnType::Boolean.def(),
+            Self::Title => ColumnType::String(None).def(),
+            Self::Link => ColumnType::String(None).def(),
+            Self::IsApproved => ColumnType::Boolean.def(),
+            Self::IsDeleted => ColumnType::Boolean.def(),
+            Self::LastEditTs => ColumnType::Timestamp.def().null(),
         }
     }
 }
@@ -88,18 +96,13 @@ impl RelationTrait for Relation {
                 .from(Column::OriginatorUuid)
                 .to(super::users::Column::UserUuid)
                 .into(),
-            Self::Poems => Entity::has_many(super::poems::Entity).into(),
             Self::Intros => Entity::has_many(super::intros::Entity).into(),
             Self::Comments => Entity::has_many(super::comments::Entity).into(),
-            Self::SetOptions => Entity::has_many(super::set_options::Entity).into(),
+            Self::Poems => Entity::has_many(super::poems::Entity).into(),
             Self::Orders => Entity::has_many(super::orders::Entity).into(),
+            Self::EditSetHistory => Entity::has_many(super::edit_set_history::Entity).into(),
+            Self::SetOptions => Entity::has_many(super::set_options::Entity).into(),
         }
-    }
-}
-
-impl Related<super::poems::Entity> for Entity {
-    fn to() -> RelationDef {
-        Relation::Poems.def()
     }
 }
 
@@ -115,15 +118,27 @@ impl Related<super::comments::Entity> for Entity {
     }
 }
 
-impl Related<super::set_options::Entity> for Entity {
+impl Related<super::poems::Entity> for Entity {
     fn to() -> RelationDef {
-        Relation::SetOptions.def()
+        Relation::Poems.def()
     }
 }
 
 impl Related<super::orders::Entity> for Entity {
     fn to() -> RelationDef {
         Relation::Orders.def()
+    }
+}
+
+impl Related<super::edit_set_history::Entity> for Entity {
+    fn to() -> RelationDef {
+        Relation::EditSetHistory.def()
+    }
+}
+
+impl Related<super::set_options::Entity> for Entity {
+    fn to() -> RelationDef {
+        Relation::SetOptions.def()
     }
 }
 
