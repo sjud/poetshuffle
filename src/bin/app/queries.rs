@@ -90,3 +90,10 @@ query_path = "app_queries/poem_uuids_by_set_uuid.graphql",
 response_derives = "Serialize,PartialEq"
 )]
 pub struct PoemUuidsBySetUuidQuery;
+#[derive(GraphQLQuery)]
+#[graphql(
+schema_path = "schema.graphql",
+query_path = "app_queries/poem.graphql",
+response_derives = "Serialize,PartialEq"
+)]
+pub struct PoemQuery;

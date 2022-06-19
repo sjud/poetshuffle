@@ -1,5 +1,7 @@
+use sea_orm::ActiveValue;
 use crate::graphql::resolvers::sets::find_set_by_uuid;
 use entity::poems::{self,ActiveModel as ActivePoem};
+use entity::edit_poem_history::{ActiveModel as ActivePoemHistory};
 use entity::sea_orm_active_enums::SetStatus;
 use super::*;
 
@@ -8,7 +10,6 @@ struct PoemUuidResult {
     uuid:Uuid,
 }
 
-#[tracing::instrument(err)]
 pub async fn find_poem_uuids_by_set_uuid(
     db:&DatabaseConnection,
     set_uuid:Uuid)
@@ -48,6 +49,50 @@ pub async fn add_poem(
     }.insert(db).await?;
     Ok(poem_uuid)
 }
+pub async fn find_poem(
+    db:&DatabaseConnection,
+    poem_uuid:Uuid,
+) -> Result<Option<poems::Model>> {
+    entity::poems::Entity::find_by_id(poem_uuid)
+        .one(db)
+        .await
+        .map_err(|err|{
+            Error::new(format!("Sea-orm: {:?}",err))
+        })
+}
+pub fn build_edit_poem_value<V:Into<sea_orm::Value>+ migration::Nullable>(auth:&Auth,v:Option<V>,poem:&poems::Model)
+    -> Result<ActiveValue<V>> {
+    if let Some(value) = v {
+        if auth.can_edit_poem(&poem) {
+            return Ok(ActiveValue::set(value));
+        } else {
+            Err(Error::new("Unauthorized update."))?;
+        }
+    }
+    Ok(ActiveValue::not_set())
+}
+pub fn build_edit_poem_value_option<V:Into<sea_orm::Value>+ migration::Nullable>(auth:&Auth,v:Option<V>,poem:&poems::Model)
+                                                                        -> Result<ActiveValue<Option<V>>> {
+    if let Some(value) = v {
+        if auth.can_edit_poem(&poem) {
+            return Ok(ActiveValue::set(Some(value)));
+        } else {
+            Err(Error::new("Unauthorized update."))?;
+        }
+    }
+    Ok(ActiveValue::not_set())
+}
+pub fn build_approve_value<V:Into<sea_orm::Value>+ migration::Nullable>(auth:&Auth,v:Option<V>)
+                                                                               -> Result<ActiveValue<V>> {
+    if let Some(value) = v {
+        if auth.can_approve() {
+            return Ok(ActiveValue::set(value));
+        } else {
+            Err(Error::new("Unauthorized approval."))?;
+        }
+    }
+    Ok(ActiveValue::not_set())
+}
 #[derive(Default)]
 pub struct PoemMutation;
 #[derive(Default)]
@@ -79,6 +124,50 @@ impl PoemMutation {
 }
 #[Object]
 impl PoemQuery {
+    async fn poem(
+        &self,
+        ctx:&Context<'_>,
+        poem_uuid:Uuid
+    ) -> Result<Option<poems::Model>> {
+        let db = ctx.data::<DatabaseConnection>().unwrap();
+        let auth = ctx.data::<Auth>()?;
+        Ok({if let Some(poem) = find_poem(db,poem_uuid).await? {
+            if auth.can_read_poem(&poem) {
+                Some(poem)
+            } else {
+                Err(Error::new("Unauthorized."))?
+            }
+        } else { None }
+        })
+    }
+    async fn update_poem(
+        &self,
+        ctx:&Context<'_>,
+        poem_uuid:Uuid,
+        banter_uuid:Option<Uuid>,
+        title:Option<String>,
+        idx:Option<i32>,
+        is_deleted:Option<bool>,
+        is_approved:Option<bool>,
+    ) -> Result<String> {
+        let db = ctx.data::<DatabaseConnection>().unwrap();
+        let auth = ctx.data::<Auth>()?;
+        if let Some(poem) = find_poem(db,poem_uuid).await? {
+                ActivePoem{
+                    poem_uuid:Set(poem_uuid),
+                    banter_uuid:build_edit_poem_value_option(auth,banter_uuid,&poem)?,
+                    title:build_edit_poem_value(auth,title,&poem)?,
+                    idx:build_edit_poem_value(auth,idx,&poem)?,
+                    is_deleted:build_edit_poem_value(auth,is_deleted,&poem)?,
+                    is_approved:build_approve_value(auth,is_approved)?,
+                    ..Default::default()
+                }.update(db).await?;
+                Ok("".into())
+        } else {
+            Err(Error::new("Can't update poem. Poem not found."))
+        }
+
+    }
     async fn poem_uuids_by_set_uuid(
         &self,
         ctx:&Context<'_>,

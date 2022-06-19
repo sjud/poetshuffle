@@ -1,21 +1,41 @@
 use entity::sea_orm_active_enums::UserRole;
 use anyhow::Result;
-use entity::permissions::Model as Permissions;
+use entity::permissions::Model as Permission;
 use sea_orm::prelude::Uuid;
 use std::cmp::Ordering;
 
-pub struct Auth(pub Option<entity::permissions::Model>);
+pub struct Auth(pub Option<Permission>);
 
 impl Auth{
     pub fn can_edit_set(&self,set:&entity::sets::Model) -> bool {
         // Can only edit sets that haven't been approved.
         if !set.approved {
             if let Some(permission) = &self.0 {
-                // If you created the set you can edit the title.
+                // If you created the set you can edit the set.
               set.originator_uuid == permission.user_uuid
             } else {
                 false
             }
+        } else {
+            false
+        }
+    }
+    pub fn can_edit_poem(&self, poem: &entity::poems::Model) -> bool {
+        if !poem.is_approved {
+            if let Some(permission) = &self.0 {
+                // If you created the poem you can edit the poem.
+                poem.originator_uuid == permission.user_uuid
+            } else {
+                false
+            }
+        } else {
+            false
+        }
+    }
+    /// >= Moderator can approve sets, poems & banter.
+    pub fn can_approve(&self) -> bool {
+        if let Some(permission) = &self.0 {
+            OrdRoles(permission.user_role) >= OrdRoles(UserRole::Moderator)
         } else {
             false
         }
@@ -27,6 +47,20 @@ impl Auth{
         } else {
             // Someone with no permissions can't promote.
             false
+        }
+    }
+    pub fn can_read_poem(&self, poem: &entity::poems::Model) -> bool {
+        // Everyone can read approved poems
+        if poem.is_approved {
+            true
+        } else {
+            // To read in progress poems you must be the author or a moderator.
+            if let Some(permission) = &self.0 {
+                permission.user_uuid == poem.originator_uuid
+                || OrdRoles(permission.user_role) >= OrdRoles(UserRole::Moderator)
+            } else {
+                false
+            }
         }
     }
     pub fn can_read_pending_set(&self, set:&entity::sets::Model)

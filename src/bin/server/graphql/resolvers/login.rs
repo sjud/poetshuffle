@@ -1,11 +1,6 @@
 use super::*;
 use hmac::Hmac;
-use jwt::SignWithKey;
-use std::collections::BTreeMap;
 use chrono::Utc;
-use passwords::PasswordGenerator;
-use postmark::reqwest::PostmarkClient;
-use sea_orm::IntoSimpleExpr;
 use sea_query::SimpleExpr;
 use sea_query::value::Nullable;
 use entity::logins::ActiveModel as LoginsActiveModel;
@@ -13,7 +8,6 @@ use entity::prelude::Logins as LoginsEntity;
 use sea_orm::QuerySelect;
 use entity::sea_orm_active_enums::UserRole;
 
-use crate::{OUTBOUND_EMAIL, URL_BASE};
 use crate::email::{Email, Postmark};
 
 #[cfg(test)]

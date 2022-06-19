@@ -1,5 +1,4 @@
-use sea_orm::{ConnectionTrait, Statement, TryFromU64};
-use sea_orm::prelude::DateTimeWithTimeZone;
+use sea_orm::{ConnectionTrait, Statement};
 use sea_orm_migration::prelude::*;
 pub struct Migration;
 
@@ -8,7 +7,6 @@ impl MigrationName for Migration {
         file!()
     }
 }
-use sea_orm::sea_query::Iden;
 
 
 #[async_trait::async_trait]

@@ -1,5 +1,4 @@
 use crate::graphql::resolvers::login::{LoginMutation};
-use postmark::reqwest::PostmarkClient;
 use async_graphql::{extensions::Tracing, *};
 use hmac::Hmac;
 use sea_orm::DatabaseConnection;
@@ -9,7 +8,6 @@ use crate::graphql::resolvers::admin::AdminMutation;
 use crate::graphql::resolvers::poems::{PoemMutation, PoemQuery};
 use crate::graphql::resolvers::publish::PublishMutation;
 use crate::graphql::resolvers::sets::{SetMutation, SetsQuery};
-use crate::POSTMARK_API_TRANSACTION;
 
 #[derive(MergedObject, Default)]
 pub struct Query(SetsQuery,PoemQuery);

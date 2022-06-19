@@ -7,31 +7,33 @@ impl MigrationName for Migration {
         file!()
     }
 }
-use sea_orm::sea_query::Iden;
-
-#[derive(Iden)]
-pub enum Invitations {
-    Table,
-}
 
 #[async_trait::async_trait]
 impl MigrationTrait for Migration {
     async fn up(&self, manager: &SchemaManager) -> Result<(), DbErr> {
-        let sql = r#"ALTER TABLE IF EXISTS invitations
-        ADD COLUMN IF NOT EXISTS user_role user_role NOT NULL;"#;
+        let sql = r#"CREATE TABLE IF NOT EXISTS edit_set_history(
+    user_uuid UUID NOT NULL PRIMARY KEY,
+    creation_ts TIMESTAMPTZ NOT NULL DEFAULT current_timestamp,
+    set_uuid UUID REFERENCES sets(set_uuid),
+    edit_title VARCHAR,
+    edit_link VARCHAR,
+    edit_status set_status,
+    is_approved BOOLEAN,
+    is_deleted BOOLEAN
+);"#;
         let stmt = Statement::from_string(manager.get_database_backend(), sql.to_owned());
         manager.get_connection().execute(stmt).await.map(|_| ())
-            .expect("If this migration doesn't work then invitations won't work.");
-        Ok(())
     }
 
     async fn down(&self, manager: &SchemaManager) -> Result<(), DbErr> {
-        let table = Table::alter()
-            .table(Invitations::Table)
-            .drop_column(  Alias::new("user_role"))
-            .to_owned();
-        manager.exec_stmt(table).await?;
-        Ok(())
+        manager
+            .drop_table(
+                Table::drop()
+                    .table(entity::users::Entity)
+                    .cascade()
+                    .to_owned(),
+            )
+            .await
     }
 }
 

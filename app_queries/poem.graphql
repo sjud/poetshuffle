@@ -1,0 +1,6 @@
+query PoemQuery($poem_uuid: ID!) {
+    poem(poemUuid:$poem_uuid){
+        title
+        idx
+    }
+}

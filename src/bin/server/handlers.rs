@@ -5,7 +5,7 @@ use axum::http::HeaderMap;
 use axum::Extension;
 use entity::permissions::Model as Permissions;
 use hmac::Hmac;
-use jwt::{Header, Token, VerifyWithKey};
+use jwt::VerifyWithKey;
 use reqwest::StatusCode;
 use sha2::Sha256;
 use std::collections::BTreeMap;

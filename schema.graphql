@@ -10,11 +10,13 @@ type Mutation {
     updateTitle(setUuid: ID!, title:String!) : String!
     updateLink(setUuid: ID!, link:String!) : String!
     addPoem(setUuid:ID!, idx:Int!) : ID!
+    updatePoem(poemUuid:ID!, banterUuid:ID, title:String, idx:Int): String!
 }
 
 type Query {
     pendingSetByUser(user_uuid:ID!): Set
     poemUuidsBySetUuid(setUuid: ID!) : [ID!]!
+    poem(poemUuid:ID!) : Poem
 }
 enum UserRole {
     LISTENER
@@ -27,9 +29,21 @@ enum SetStatus {
     PENDING
     PUBLISHED
 }
+type Poem {
+    poem_uuid: ID!
+    originator_uuid: ID!
+    creation_ts: Int!
+    set_uuid: ID!
+    banter_uuid: ID
+    title: String!
+    idx: Int!
+    part_of_poetshuffle: Boolean!
+    editor_uuid: ID
+    approved: Boolean
+}
 type Set {
     setUuid: ID!
-    creationTs: String!
+    creationTs: Int!
     collectionTitle: String!
     originatorUuid: ID!
     setStatus: SetStatus!

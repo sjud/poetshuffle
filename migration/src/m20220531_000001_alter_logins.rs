@@ -1,5 +1,3 @@
-use sea_orm::{ConnectionTrait, Statement, TryFromU64};
-use sea_orm::prelude::DateTimeWithTimeZone;
 use sea_orm_migration::prelude::*;
 pub struct Migration;
 
@@ -12,9 +10,6 @@ use sea_orm::sea_query::Iden;
 #[derive(Iden)]
 pub enum Logins {
     Table,
-    UserUuid,
-    Email,
-    Password,
 }
 
 #[async_trait::async_trait]

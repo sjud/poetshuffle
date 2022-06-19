@@ -8,7 +8,7 @@ use sea_orm::DatabaseConnection;
 use sha2::Sha256;
 use tower_http::trace::TraceLayer;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
-use crate::email::{Email, Postmark};
+use crate::email::Postmark;
 use crate::graphql::schema::PoetShuffleSchema;
 
 /// builds our HTTP server, needs DB conn for GraphQL.

@@ -1,6 +1,4 @@
-use std::sync::{Arc, Mutex};
 use anyhow::Result;
-use async_graphql::validators::email;
 use postmark::reqwest::PostmarkClient;
 use crate::{OUTBOUND_EMAIL, URL_BASE};
 use postmark::Query;

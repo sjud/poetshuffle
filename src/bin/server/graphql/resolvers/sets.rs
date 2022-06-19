@@ -56,36 +56,33 @@ pub async fn create_pending_set(
 pub struct SetMutation;
 #[Object]
 impl SetMutation{
-    async fn update_title(
+    async fn update_set(
         &self,
         ctx:&Context<'_>,
         set_uuid:Uuid,
-        title:String) -> Result<String> {
+        title:Option<String>,
+        link:Option<String>,
+    ) -> Result<String> {
         let db = ctx.data::<DatabaseConnection>().unwrap();
         let auth = ctx.data::<Auth>()?;
         if let Ok(Some(set)) = find_set_by_uuid(db,set_uuid).await {
             if auth.can_edit_set(&set) {
                 ActiveModelSet{
                     set_uuid:Set(set.set_uuid),
-                    collection_title:Set(title),
-                    ..Default::default()
-                }.update(db).await?;
-                Ok("".into())
-            } else {
-                Err(Error::new("Unauthorized"))
-            }
-        } else {
-            Err(Error::new("Set not found."))
-        }
-    }
-    async fn update_link(&self,ctx:&Context<'_>,set_uuid:Uuid,link:String) -> Result<String> {
-        let db = ctx.data::<DatabaseConnection>().unwrap();
-        let auth = ctx.data::<Auth>()?;
-        if let Ok(Some(set)) = find_set_by_uuid(db,set_uuid).await {
-            if auth.can_edit_set(&set) {
-                ActiveModelSet{
-                    set_uuid:Set(set.set_uuid),
-                    collection_link:Set(link),
+                    collection_title:{
+                        if let Some(title) = title {
+                            Set(title)
+                        } else {
+                            Default::default()
+                        }
+                    },
+                    collection_link:{
+                        if let Some(link) = link {
+                            Set(link)
+                        } else {
+                            Default::default()
+                        }
+                    },
                     ..Default::default()
                 }.update(db).await?;
                 Ok("".into())
@@ -136,7 +133,6 @@ impl SetsQuery {
             if auth.can_read_pending_set(&set) {
                 Some(set)
             } else {
-                // We need the ? to return error early...
                 Err(Error::new("Unauthorized."))?
             }
         } else { None }
