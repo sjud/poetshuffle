@@ -35,6 +35,7 @@ pub fn footer() -> Html {
                 <div class={list.clone()}>
                 <button onclick={about} class = {button.clone()}>{"About"}</button>
                 <button onclick={publish} class = {button.clone()}>{"Publish"}</button>
+                <button class = {button.clone()}>{"Source"}</button>
             if auth_ctx_clone.token.is_none() {
                 <button onclick={admin} class = {button.clone()}>{"Login/Register"}</button>
                 } else {

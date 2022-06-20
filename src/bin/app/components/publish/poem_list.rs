@@ -3,15 +3,14 @@ use crate::queries::{PoemQuery,poem_query};
 
 #[derive(Properties,PartialEq)]
 pub struct PoemListProps{
-    poem_uuids:Vec<(Uuid)>,
+    poem_uuids:Vec<Uuid>,
 }
 #[function_component(PoemList)]
 pub fn poem_list(props:&PoemListProps) -> Html {
-    let poems = Vec::new();
 
     html!{}
 }
-#[derive(Properties,PartialEq)]
+#[derive(Properties,PartialEq,Clone)]
 pub struct PoemProps {
     pub title:String,
     pub uuid:Uuid,
