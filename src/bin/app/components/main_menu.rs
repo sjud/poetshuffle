@@ -8,7 +8,6 @@ use yew_router::{hooks::use_history, prelude::History};
 use crate::styles::{button, main_menu_button, main_menu_list, main_menu_style};
 use crate::types::auth_context::{AuthContext,UserRole};
 use crate::types::footer_context::{FooterContext, FooterForm, FooterOptionsActions};
-use crate::types::mouse_move_context::MouseMoveContext;
 
 #[function_component(MainMenu)]
 pub fn main_menu() -> Html {
@@ -25,10 +24,11 @@ pub fn main_menu() -> Html {
     let menu_button = main_menu_button();
     let text = css!(
         r#"  font-weight: bold;
-  color:black;"#
+    color:black;"#
     ); //
     let button = button();
-    let instr_props1 = TypeInstructionProps{
+
+    let mut instr_props1 = TypeInstructionProps{
         msg:"Press PoetShuffle".into()
     };
     let instr_props2 = TypeInstructionProps{
@@ -42,7 +42,6 @@ pub fn main_menu() -> Html {
         <br/>
         <TypeInstruction ..instr_props2/>
         <ul class={menu_list}>
-
             <li class = {menu_list_item.clone()}>
         <button onclick={poet_shuffle.clone()} class = {menu_button.clone()}>
             <span class={text}>{"PoetShuffle"}</span>

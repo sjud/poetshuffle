@@ -1,3 +1,5 @@
+#![feature(entry_insert)]
+
 mod components;
 mod console_writer;
 mod queries;
