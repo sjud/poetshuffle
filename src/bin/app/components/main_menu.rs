@@ -44,3 +44,11 @@ pub fn main_menu() -> Html {
         </div>
     }
 }
+
+#[function_component(MainMenuInstruction)]
+fn main_menu_instruction() -> Html {
+
+    html!{
+
+    }
+}
