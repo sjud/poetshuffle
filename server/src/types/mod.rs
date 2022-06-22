@@ -1,9 +1,5 @@
 pub(crate) mod auth;
 
-
-
-
-
 /*
 fn is_owner(perm: &Permissions, originator_uuid: Uuid) -> Result<bool> {
     if perm.user_uuid != originator_uuid {

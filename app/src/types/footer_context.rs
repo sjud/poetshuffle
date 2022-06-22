@@ -10,20 +10,20 @@ pub struct FooterOptions {
     pub form: FooterForm,
 }
 #[derive(PartialEq, Clone)]
-pub enum FooterForm{
+pub enum FooterForm {
     HomePage,
     LoginPage,
 }
-impl Default for FooterOptions{
+impl Default for FooterOptions {
     fn default() -> Self {
-        Self{
-            form:FooterForm::HomePage,
+        Self {
+            form: FooterForm::HomePage,
         }
     }
 }
 
 pub enum FooterOptionsActions {
-    Transform(FooterForm)
+    Transform(FooterForm),
 }
 
 impl Reducible for FooterOptions {

@@ -1,6 +1,5 @@
 use super::*;
 
-
 #[function_component(InvitePoet)]
 pub fn invite_poet() -> Html {
     // We'll use these node refs in our inputs on our login form.
@@ -19,24 +18,23 @@ pub fn invite_poet() -> Html {
             let resp = post_graphql::<InviteUserMutation>(
                 invite_user_mutation::Variables {
                     email: email.cast::<HtmlInputElement>().unwrap().value(),
-                    user_role:invite_user_mutation::UserRole::POET,
-                },token)
-                .await
-                .map_err(|err| format!("{:?}", err))?;
+                    user_role: invite_user_mutation::UserRole::POET,
+                },
+                token,
+            )
+            .await
+            .map_err(|err| format!("{:?}", err))?;
             // If we our response has data check it's .login field it ~should~ be a jwt string
             // which we dispatch to our AuthToken which will now use it in all future contexts.
 
             if let Some(ref data) = resp.data {
-                msg_context.dispatch(new_green_msg_with_std_duration(
-                    data.invite_user.clone()));
+                msg_context.dispatch(new_green_msg_with_std_duration(data.invite_user.clone()));
             }
             // If we have no data then see if we have errors and print those to console.
             else if resp.errors.is_some() {
-                msg_context.dispatch(new_red_msg_with_std_duration(
-                    map_graphql_errors_to_string(
-                        &resp.errors
-                    )
-                ));
+                msg_context.dispatch(new_red_msg_with_std_duration(map_graphql_errors_to_string(
+                    &resp.errors,
+                )));
                 tracing::error!("{:?}", resp.errors);
             }
             Ok(())

@@ -20,14 +20,13 @@ pub async fn graphql_handler(
     let auth = match headers.get("x-authorization") {
         Some(header) => match header.to_str() {
             Ok(token_str) => {
-                let claims: BTreeMap<String, Permissions> = token_str.verify_with_key(&key)
-                    .map_err(|err| {
-                    tracing::error!("verify {:?}", err);
-                    StatusCode::INTERNAL_SERVER_ERROR
-                })?;
-                let perm: Permissions = claims.get("sub")
-                    .ok_or(StatusCode::BAD_REQUEST)?
-                    .to_owned();
+                let claims: BTreeMap<String, Permissions> =
+                    token_str.verify_with_key(&key).map_err(|err| {
+                        tracing::error!("verify {:?}", err);
+                        StatusCode::INTERNAL_SERVER_ERROR
+                    })?;
+                let perm: Permissions =
+                    claims.get("sub").ok_or(StatusCode::BAD_REQUEST)?.to_owned();
                 Auth(Some(perm))
             }
             Err(err) => {
@@ -43,16 +42,16 @@ pub async fn graphql_handler(
 
 #[cfg(test)]
 mod test {
-    use axum::body::Body;
-    use axum::http::Request;
-    use tower::ServiceExt;
-    use entity::sea_orm_active_enums::UserRole;
+    use super::*;
     use crate::auth::jwt;
     use crate::graphql::schema::new_schema;
     use crate::graphql::test_util::key_conn_email;
     use crate::http_server::{app, http_server};
-    use super::*;
+    use axum::body::Body;
+    use axum::http::Request;
+    use entity::sea_orm_active_enums::UserRole;
     use sea_orm::prelude::Uuid;
+    use tower::ServiceExt;
     use tracing_subscriber::layer::SubscriberExt;
     use tracing_subscriber::util::SubscriberInitExt;
     use tracing_test::traced_test;
@@ -60,10 +59,16 @@ mod test {
     #[tokio::test]
     #[traced_test]
     async fn test_graphql_handler_authorization() {
-        let (key,conn,email) = key_conn_email().await;
-        let schema = new_schema(conn.clone(), key.clone(),email);
-        let jwt = jwt(&key,entity::permissions::Model{
-            user_uuid: Uuid::nil(), user_role: UserRole::Admin }).unwrap();
+        let (key, conn, email) = key_conn_email().await;
+        let schema = new_schema(conn.clone(), key.clone(), email);
+        let jwt = jwt(
+            &key,
+            entity::permissions::Model {
+                user_uuid: Uuid::nil(),
+                user_role: UserRole::Admin,
+            },
+        )
+        .unwrap();
         let response = app(key.clone(),schema)
             .oneshot(
                 Request::builder()

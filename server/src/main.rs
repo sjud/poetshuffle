@@ -1,8 +1,7 @@
 #![feature(async_closure)]
 
 use lazy_static::lazy_static;
-use sea_orm::{prelude::Uuid,Set,ActiveModelTrait};
-
+use sea_orm::{prelude::Uuid, ActiveModelTrait, Set};
 
 use tokio::try_join;
 
@@ -10,14 +9,14 @@ use tokio::try_join;
 use crate::storage::storage;
 use migration::{Migrator, MigratorTrait};
 
+mod auth;
+mod email;
 mod graphql;
 mod handlers;
 mod http_server;
 mod local_cdn;
 mod storage;
 mod types;
-mod email;
-mod auth;
 
 lazy_static! {
     /// i.e postgresql://postgres:PASSWORD@0.0.0.0:5432/postgres
@@ -72,15 +71,20 @@ async fn main() {
     // migration.
     let conn = sea_orm::Database::connect(&*DATABASE_URL)
         .await
-        .expect(&format!("Expecting DB connection given {:?}.",&*DATABASE_URL));
+        .expect(&format!(
+            "Expecting DB connection given {:?}.",
+            &*DATABASE_URL
+        ));
     Migrator::up(&conn, None)
         .await
         .expect("Expecting Successful migration.");
     // Make a nil user for Admin to reference
-    let _ = entity::users::ActiveModel{
-        user_uuid:Set(Uuid::nil()),
+    let _ = entity::users::ActiveModel {
+        user_uuid: Set(Uuid::nil()),
         ..Default::default()
-    }.insert(&conn).await;
+    }
+    .insert(&conn)
+    .await;
     // ...
     #[cfg(feature = "dev")]
     //populate_db_with_test_data(&connection).await.unwrap();
@@ -90,8 +94,7 @@ async fn main() {
         local_cdn::local_cdn().await
     });
     // Spawn our normal HTTP server to handle API calls.
-    let server = tokio::task::spawn(async move {
-        http_server::http_server(conn).await });
+    let server = tokio::task::spawn(async move { http_server::http_server(conn).await });
     // We run all processes until the first error.
     try_join!(test_cdn, server).unwrap();
 }

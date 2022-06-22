@@ -1,15 +1,15 @@
 pub mod edit_pending_set;
 
-use crate::types::edit_set_context::{EditableSet, EditSetContext, EditSetDataActions};
 use super::*;
 use crate::components::publish::menu::edit_pending_set::*;
+use crate::types::edit_set_context::{EditSetContext, EditSetDataActions, EditableSet};
 
 #[function_component(PublishMenu)]
 pub fn publish_menu() -> Html {
     let auth_ctx = use_context::<AuthContext>().unwrap();
     let msg_context = use_context::<MsgContext>().unwrap();
     let edit_set_context = use_context::<EditSetContext>().unwrap();
-    let new_edit_flag = use_state(||false);
+    let new_edit_flag = use_state(|| false);
 
     if use_is_first_mount() {
         new_edit_flag.set(true);
@@ -24,32 +24,34 @@ pub fn publish_menu() -> Html {
                 let resp = post_graphql::<PendingSetByUserQuery>(
                     pending_set_by_user_query::Variables {
                         user_uuid: user_uuid.to_string(),
-                    }, token.clone())
-                    .await
-                    .map_err(|err| format!("{:?}", err))?;
+                    },
+                    token.clone(),
+                )
+                .await
+                .map_err(|err| format!("{:?}", err))?;
                 if let Some(ref data) = resp.data {
                     if let Some(set) = &data.pending_set_by_user {
                         edit_set_ctx.dispatch(EditSetDataActions::EditableSet(Some(EditableSet {
-                            set_uuid: Uuid::from_str(&set.set_uuid)
-                                .unwrap(),
+                            set_uuid: Uuid::from_str(&set.set_uuid).unwrap(),
                             collection_link: set.collection_link.clone(),
                             collection_title: set.collection_title.clone(),
                         })));
                         // Make a new query with the found set uuid
-                        let resp =
-                            post_graphql::<PoemUuidsBySetUuidQuery>(
-                                poem_uuids_by_set_uuid_query::Variables{
-                                    set_uuid:set.set_uuid.clone()
-                                },token)
-                                .await
-                                .map_err(|err| format!("{:?}", err))?;
+                        let resp = post_graphql::<PoemUuidsBySetUuidQuery>(
+                            poem_uuids_by_set_uuid_query::Variables {
+                                set_uuid: set.set_uuid.clone(),
+                            },
+                            token,
+                        )
+                        .await
+                        .map_err(|err| format!("{:?}", err))?;
                         if let Some(ref data) = resp.data {
                             edit_set_ctx.dispatch(EditSetDataActions::PoemUuids(
-                                data
-                                    .poem_uuids_by_set_uuid
+                                data.poem_uuids_by_set_uuid
                                     .iter()
-                                    .map(|uuid|Uuid::from_str(&uuid).unwrap())
-                                    .collect::<Vec<Uuid>>()));
+                                    .map(|uuid| Uuid::from_str(&uuid).unwrap())
+                                    .collect::<Vec<Uuid>>(),
+                            ));
                         } else if resp.errors.is_some() {
                             tracing::error!("{:?}", resp.errors);
                         }
@@ -58,9 +60,7 @@ pub fn publish_menu() -> Html {
                 // If we have no data then see if we have errors and print those to console.
                 else if resp.errors.is_some() {
                     msg_context.dispatch(new_red_msg_with_std_duration(
-                        map_graphql_errors_to_string(
-                            &resp.errors
-                        )
+                        map_graphql_errors_to_string(&resp.errors),
                     ));
                     tracing::error!("{:?}", resp.errors);
                 }
@@ -73,8 +73,7 @@ pub fn publish_menu() -> Html {
         }
     };
 
-
-    html!{
+    html! {
         <div>
         <h2>{"Publish Menu"}</h2>
         <EditPendingSet/>

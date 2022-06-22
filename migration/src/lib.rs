@@ -49,8 +49,6 @@ impl MigratorTrait for Migrator {
             Box::new(m20220619_000002_edit_poem_history::Migration),
             Box::new(m20220619_000003_edit_set_history::Migration),
             Box::new(m20220619_000004_alter_sets::Migration),
-
-
         ]
     }
 }

@@ -5,8 +5,8 @@ mod console_writer;
 mod queries;
 mod routes;
 mod services;
-mod types;
 mod styles;
+mod types;
 
 use crate::{components::app::App, console_writer::WASMConsoleWriter};
 use std::sync::Mutex;
@@ -14,7 +14,7 @@ use std::sync::Mutex;
 #[cfg(test)]
 use wasm_bindgen_test::*;
 
-pub const MSG_DURATION : u8 = 4;
+pub const MSG_DURATION: u8 = 4;
 
 #[global_allocator]
 static ALLOC: wee_alloc::WeeAlloc = wee_alloc::WeeAlloc::INIT;
@@ -30,9 +30,7 @@ fn main() {
     yew::start_app::<App>();
 }
 
-
-#[cfg_attr(test,wasm_bindgen_test)]
+#[cfg_attr(test, wasm_bindgen_test)]
 fn pass() {
-
     assert!(true);
 }

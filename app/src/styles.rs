@@ -34,7 +34,7 @@ pub fn main_menu_list() -> StyleSource<'static> {
     )
 }
 pub fn main_menu_button() -> StyleSource<'static> {
-   css!(
+    css!(
         r#"
   align-items: center;
   background-color:  #fee6e3;
@@ -119,23 +119,29 @@ pub fn button() -> StyleSource<'static> {
   height: 5.5vh;
   :hover {text-decoration:underline;}
   :active {text-decoration:underline;}
-"#)
+"#
+    )
 }
-pub fn form_css() -> StyleSource<'static>{
-    css!(r#"
+pub fn form_css() -> StyleSource<'static> {
+    css!(
+        r#"
          justify-content: center;
   align-items: center;
   text-align: center;
-    "#)
+    "#
+    )
 }
-pub fn form_elem() -> StyleSource<'static>{
-    css!(r#"
+pub fn form_elem() -> StyleSource<'static> {
+    css!(
+        r#"
         padding: 2px 2px;
         margin: 4px 0;
-    "#)
+    "#
+    )
 }
 pub fn user_msg() -> StyleSource<'static> {
-    css!(r#"
+    css!(
+        r#"
             padding:4px;
             max-width:200px;
       display: flex;
@@ -144,16 +150,20 @@ pub fn user_msg() -> StyleSource<'static> {
   align-items: center;
   text-align: center;
     z-index:2;
-    "#)
+    "#
+    )
 }
-pub fn green_user_msg() -> StyleSource<'static>{
-    css!(r#"
+pub fn green_user_msg() -> StyleSource<'static> {
+    css!(
+        r#"
     background-color:Green;
-    "#)
+    "#
+    )
 }
 pub fn red_user_msg() -> StyleSource<'static> {
-    css!(r#"
+    css!(
+        r#"
     background-color:Red;
-    "#)
-
+    "#
+    )
 }

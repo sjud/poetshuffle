@@ -1,12 +1,12 @@
-use stylist::css;
 use crate::routes::Route;
-use crate::types::audio_context::{AudioContext};
-use yew::prelude::*;
-use yew_router::{hooks::use_history, prelude::History};
 use crate::styles::{green_user_msg, menu_list, red_user_msg, user_msg};
+use crate::types::audio_context::AudioContext;
 use crate::types::auth_context::{AuthContext, AuthTokenAction};
 use crate::types::footer_context::{FooterContext, FooterForm};
 use crate::types::msg_context::{MsgActions, MsgContext, MsgForm, MsgTheme};
+use stylist::css;
+use yew::prelude::*;
+use yew_router::{hooks::use_history, prelude::History};
 
 #[function_component(Footer)]
 pub fn footer() -> Html {
@@ -26,37 +26,35 @@ pub fn footer() -> Html {
     let auth_ctx_clone = auth_ctx.clone();
     let history = use_history().unwrap();
     let logout = Callback::from(move |_| {
-        auth_ctx
-            .dispatch(AuthTokenAction::Set(None));
+        auth_ctx.dispatch(AuthTokenAction::Set(None));
         //history.push(Route::MainMenu)
     });
     let base = match footer_ctx.form {
         FooterForm::HomePage => html! {
-                <div class={list.clone()}>
-                <button onclick={about} class = {button.clone()}>{"About"}</button>
-                <button onclick={publish} class = {button.clone()}>{"Publish"}</button>
-                <button class = {button.clone()}>{"Source"}</button>
-            if auth_ctx_clone.token.is_none() {
-                <button onclick={admin} class = {button.clone()}>{"Login/Register"}</button>
-                } else {
-                <button onclick={logout} class = {button.clone()}>{"Logout"}</button>
-            }
-                </div>
-    },
-        FooterForm::LoginPage => html!{
+                    <div class={list.clone()}>
+                    <button onclick={about} class = {button.clone()}>{"About"}</button>
+                    <button onclick={publish} class = {button.clone()}>{"Publish"}</button>
+                    <button class = {button.clone()}>{"Source"}</button>
+                if auth_ctx_clone.token.is_none() {
+                    <button onclick={admin} class = {button.clone()}>{"Login/Register"}</button>
+                    } else {
+                    <button onclick={logout} class = {button.clone()}>{"Logout"}</button>
+                }
+                    </div>
+        },
+        FooterForm::LoginPage => html! {
             <div class={list.clone()}>
             <button onclick={back} class = {button.clone()}>{"Back"}</button>
             </div>
         },
     };
-    html!{
+    html! {
         <div class={list.clone()}>
         <UserMsg/>
         {base}
         if audio_ctx.is_visible {<AudioFooter/>}
         </div>
     }
-
 }
 
 #[function_component(AudioFooter)]
@@ -84,18 +82,20 @@ pub fn user_msg_footer() -> Html {
     let msg_context = use_context::<MsgContext>().unwrap();
     let x = use_node_ref();
     // Haven't lifted return out of this because my IDE doesn't like it O.o
-    if let Some(msg) = msg_context.msg.clone(){
+    if let Some(msg) = msg_context.msg.clone() {
         let theme = match msg.theme {
             MsgTheme::Green => green_user_msg(),
             MsgTheme::Red => red_user_msg(),
         };
         let msg_css = user_msg();
-        let white = css!(r#"
+        let white = css!(
+            r#"
         color:white;
-        "#);
-        match msg.form{
+        "#
+        );
+        match msg.form {
             MsgForm::Standard => {
-                return html!{
+                return html! {
                     <div class={vec![theme.clone(),msg_css.clone()]}>
                     <button ref={x.clone()}>{"X"}</button>
                     <span class={white.clone()}>{msg.body}</span>
@@ -103,13 +103,13 @@ pub fn user_msg_footer() -> Html {
                 };
             }
             MsgForm::WithDuration(duration) => {
-                let msg_context_clone= msg_context.clone();
+                let msg_context_clone = msg_context.clone();
                 spawn_local(async move {
                     // seconds to millis
-                    TimeoutFuture::new(duration as u32 * 1000 ).await;
+                    TimeoutFuture::new(duration as u32 * 1000).await;
                     msg_context_clone.dispatch(MsgActions::Clear);
                 });
-                return html!{
+                return html! {
                     <div class={vec![theme.clone(),msg_css.clone()]}>
                     <span class={white.clone()}>{msg.body}</span>
                     </div>
@@ -119,5 +119,4 @@ pub fn user_msg_footer() -> Html {
     } else {
         return html! {};
     }
-
 }

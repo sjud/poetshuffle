@@ -1,18 +1,18 @@
-use entity::sea_orm_active_enums::UserRole;
 use anyhow::Result;
 use entity::permissions::Model as Permission;
+use entity::sea_orm_active_enums::UserRole;
 use sea_orm::prelude::Uuid;
 use std::cmp::Ordering;
 
 pub struct Auth(pub Option<Permission>);
 
-impl Auth{
-    pub fn can_edit_set(&self,set:&entity::sets::Model) -> bool {
+impl Auth {
+    pub fn can_edit_set(&self, set: &entity::sets::Model) -> bool {
         // Can only edit sets that haven't been approved.
         if !set.is_approved {
             if let Some(permission) = &self.0 {
                 // If you created the set you can edit the set.
-              set.originator_uuid == permission.user_uuid
+                set.originator_uuid == permission.user_uuid
             } else {
                 false
             }
@@ -40,7 +40,7 @@ impl Auth{
             false
         }
     }
-    pub fn can_issue_promotion(&self,user_role:UserRole) -> bool {
+    pub fn can_issue_promotion(&self, user_role: UserRole) -> bool {
         if let Some(permission) = &self.0 {
             // A greater role can issue a promotion to a lesser role.
             OrdRoles(permission.user_role) > OrdRoles(user_role)
@@ -57,14 +57,13 @@ impl Auth{
             // To read in progress poems you must be the author or a moderator.
             if let Some(permission) = &self.0 {
                 permission.user_uuid == poem.originator_uuid
-                || OrdRoles(permission.user_role) >= OrdRoles(UserRole::Moderator)
+                    || OrdRoles(permission.user_role) >= OrdRoles(UserRole::Moderator)
             } else {
                 false
             }
         }
     }
-    pub fn can_read_pending_set(&self, set:&entity::sets::Model)
-    -> bool {
+    pub fn can_read_pending_set(&self, set: &entity::sets::Model) -> bool {
         if let Some(permission) = &self.0 {
             if OrdRoles(permission.user_role) >= OrdRoles(UserRole::Moderator) {
                 true

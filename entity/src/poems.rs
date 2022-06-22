@@ -13,8 +13,11 @@ impl EntityName for Entity {
 }
 
 use async_graphql::*;
-#[derive(Clone, Debug, PartialEq, Serialize,Deserialize,DeriveModel, DeriveActiveModel, SimpleObject)]
-#[graphql(concrete(name = "Poem", params()))]pub struct Model {
+#[derive(
+    Clone, Debug, PartialEq, Serialize, Deserialize, DeriveModel, DeriveActiveModel, SimpleObject,
+)]
+#[graphql(concrete(name = "Poem", params()))]
+pub struct Model {
     pub poem_uuid: Uuid,
     pub originator_uuid: Uuid,
     pub creation_ts: DateTimeWithTimeZone,

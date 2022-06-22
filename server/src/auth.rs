@@ -1,11 +1,9 @@
-use std::collections::BTreeMap;
+use anyhow::Result;
 use hmac::Hmac;
 use jwt::SignWithKey;
 use sha2::Sha256;
-use anyhow::Result;
-pub fn jwt(
-           key:&Hmac<Sha256>,
-    permission:entity::permissions::Model) -> Result<String> {
+use std::collections::BTreeMap;
+pub fn jwt(key: &Hmac<Sha256>, permission: entity::permissions::Model) -> Result<String> {
     let mut claims = BTreeMap::new();
 
     // Serialize the permission as the "sub" value of our future token.

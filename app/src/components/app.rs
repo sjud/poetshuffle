@@ -2,10 +2,10 @@ use crate::components::footer::Footer;
 use crate::routes::{switch, Route};
 use crate::types::audio_context::{AudioContext, AudioOptions};
 use crate::types::auth_context::{AuthContext, AuthToken};
+use crate::types::footer_context::{FooterContext, FooterOptions};
+use crate::types::msg_context::{MsgContext, UserMessageView};
 use yew::{context::ContextProvider, prelude::*};
 use yew_router::prelude::*;
-use crate::types::footer_context::{FooterContext,FooterOptions};
-use crate::types::msg_context::{UserMessageView,MsgContext};
 
 #[function_component(App)]
 pub fn app() -> Html {
@@ -15,7 +15,7 @@ pub fn app() -> Html {
     let footer_options = use_reducer(|| FooterOptions::default());
     let user_msg = use_reducer(|| UserMessageView::default());
 
-        html! {
+    html! {
         <ContextProvider<AuthContext> context={auth_token}>
         <ContextProvider<AudioContext> context={audio_options}>
         <ContextProvider<FooterContext> context={footer_options}>
@@ -36,4 +36,3 @@ pub fn app() -> Html {
 
     }
 }
-

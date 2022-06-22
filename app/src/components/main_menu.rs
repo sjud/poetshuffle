@@ -1,13 +1,13 @@
-use std::sync::Mutex;
 use crate::routes::Route;
+use crate::styles::{button, main_menu_button, main_menu_list, main_menu_style};
+use crate::types::auth_context::{AuthContext, UserRole};
+use crate::types::footer_context::{FooterContext, FooterForm, FooterOptionsActions};
+use std::sync::Mutex;
 use stylist::css;
 use web_sys::HtmlParagraphElement;
 use yew::prelude::*;
 use yew_hooks::use_is_first_mount;
 use yew_router::{hooks::use_history, prelude::History};
-use crate::styles::{button, main_menu_button, main_menu_list, main_menu_style};
-use crate::types::auth_context::{AuthContext,UserRole};
-use crate::types::footer_context::{FooterContext, FooterForm, FooterOptionsActions};
 
 #[function_component(MainMenu)]
 pub fn main_menu() -> Html {
@@ -28,11 +28,11 @@ pub fn main_menu() -> Html {
     ); //
     let button = button();
 
-    let mut instr_props1 = TypeInstructionProps{
-        msg:"Press PoetShuffle".into()
+    let mut instr_props1 = TypeInstructionProps {
+        msg: "Press PoetShuffle".into(),
     };
-    let instr_props2 = TypeInstructionProps{
-        msg:"Discover Poetry.".into()
+    let instr_props2 = TypeInstructionProps {
+        msg: "Discover Poetry.".into(),
     };
     html! {
         <div>
@@ -59,26 +59,26 @@ pub fn main_menu() -> Html {
     }
 }
 
-#[derive(Properties,PartialEq)]
-pub struct TypeInstructionProps{
-    msg:String,
+#[derive(Properties, PartialEq)]
+pub struct TypeInstructionProps {
+    msg: String,
 }
 #[function_component(TypeInstruction)]
-fn type_instruction(props:&TypeInstructionProps) -> Html {
-    let text = use_state(||String::new());
+fn type_instruction(props: &TypeInstructionProps) -> Html {
+    let text = use_state(|| String::new());
     let stmt = props.msg.clone();
     let text_clone = text.clone();
-    if use_is_first_mount()  {
+    if use_is_first_mount() {
         wasm_bindgen_futures::spawn_local(async move {
             let mut text_buf = String::new();
             for c in stmt.chars() {
                 gloo::timers::future::TimeoutFuture::new(100).await;
                 text_buf.push(c);
                 text_clone.set(text_buf.clone());
-            };
+            }
         });
     };
-    html!{
+    html! {
         <div>
         <span>{(*text).clone()}</span>
         </div>

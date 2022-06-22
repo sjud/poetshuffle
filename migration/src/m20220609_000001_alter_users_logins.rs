@@ -1,4 +1,3 @@
-
 use sea_orm_migration::prelude::*;
 pub struct Migration;
 
@@ -14,8 +13,8 @@ pub enum Logins {
 }
 
 #[derive(Iden)]
-pub enum Users{
-    Table
+pub enum Users {
+    Table,
 }
 #[async_trait::async_trait]
 impl MigrationTrait for Migration {
@@ -23,8 +22,7 @@ impl MigrationTrait for Migration {
         // Modify logins so that email is unique.
         let table = Table::alter()
             .table(Logins::Table)
-            .drop_column(
-                Alias::new("is_validated"))
+            .drop_column(Alias::new("is_validated"))
             .to_owned();
         manager.exec_stmt(table).await?;
         let table = Table::alter()
@@ -33,7 +31,8 @@ impl MigrationTrait for Migration {
                 ColumnDef::new(Alias::new("is_validated"))
                     .default(false)
                     .not_null()
-                    .boolean())
+                    .boolean(),
+            )
             .to_owned();
         manager.exec_stmt(table).await?;
         Ok(())
@@ -47,13 +46,13 @@ impl MigrationTrait for Migration {
                     .default(false)
                     .not_null()
                     .boolean()
-                .string())
+                    .string(),
+            )
             .to_owned();
         manager.exec_stmt(table).await?;
         let table = Table::alter()
             .table(Users::Table)
-            .drop_column(
-                Alias::new("is_validated"))
+            .drop_column(Alias::new("is_validated"))
             .to_owned();
         manager.exec_stmt(table).await?;
         Ok(())

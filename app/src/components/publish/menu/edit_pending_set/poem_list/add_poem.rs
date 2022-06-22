@@ -1,7 +1,5 @@
 use super::*;
 
-
-
 #[function_component(AddPoem)]
 pub fn add_poem() -> Html {
     let auth_ctx = use_context::<AuthContext>().unwrap();
@@ -17,21 +15,18 @@ pub fn add_poem() -> Html {
                 let resp = post_graphql::<AddPoemMutation>(
                     add_poem_mutation::Variables {
                         set_uuid: editable_set.set_uuid.to_string(),
-                        idx: edit_set_context.poem_list_data.poem_uuids.len() as i64
-                    }, token)
-                    .await
-                    .map_err(|err| format!("{:?}", err))?;
+                        idx: edit_set_context.poem_list_data.poem_uuids.len() as i64,
+                    },
+                    token,
+                )
+                .await
+                .map_err(|err| format!("{:?}", err))?;
                 if let Some(ref data) = resp.data {
                     edit_set_context.dispatch(EditSetDataActions::NewEditFlag(true));
-                    msg_context.dispatch(
-                        new_green_msg_with_std_duration(
-                            "Updated".to_string()
-                        ));
+                    msg_context.dispatch(new_green_msg_with_std_duration("Updated".to_string()));
                 } else if resp.errors.is_some() {
                     msg_context.dispatch(new_red_msg_with_std_duration(
-                        map_graphql_errors_to_string(
-                            &resp.errors
-                        )
+                        map_graphql_errors_to_string(&resp.errors),
                     ));
                     tracing::error!("{:?}", resp.errors);
                 }
@@ -46,8 +41,8 @@ pub fn add_poem() -> Html {
         <h2>{"Add Poem to Set"}</h2>
             <button onclick={add_poem.clone()}>{"Add Poem"}</button>
         </div>
-        }
+        };
     } else {
-        return html!{}
+        return html! {};
     }
 }

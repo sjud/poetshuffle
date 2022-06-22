@@ -12,28 +12,26 @@ pub enum Poems {
     Table,
 }
 
-
 #[async_trait::async_trait]
 impl MigrationTrait for Migration {
     async fn up(&self, manager: &SchemaManager) -> Result<(), DbErr> {
         // Modify logins so that email is unique.
         let table = Table::alter()
             .table(Poems::Table)
-            .drop_column(
-                Alias::new("approved"))
+            .drop_column(Alias::new("approved"))
             .add_column(
                 ColumnDef::new(Alias::new("is_approved"))
                     .default(false)
                     .not_null()
-                    .boolean())
+                    .boolean(),
+            )
             .add_column(
                 ColumnDef::new(Alias::new("is_deleted"))
                     .default(false)
                     .not_null()
-                    .boolean())
-            .add_column(
-                ColumnDef::new(Alias::new("last_edit_ts"))
-                    .timestamp())
+                    .boolean(),
+            )
+            .add_column(ColumnDef::new(Alias::new("last_edit_ts")).timestamp())
             .to_owned();
         manager.exec_stmt(table).await?;
         Ok(())
@@ -45,7 +43,8 @@ impl MigrationTrait for Migration {
             .add_column(
                 ColumnDef::new(Alias::new("approved"))
                     .default(false)
-                    .boolean())
+                    .boolean(),
+            )
             .drop_column(Alias::new("is_approved"))
             .drop_column(Alias::new("is_deleted"))
             .drop_column(Alias::new("last_edit_ts"))

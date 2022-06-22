@@ -1,9 +1,9 @@
+use serde::{Deserialize, Serialize};
+use serde_json::Value;
 use std::cmp::Ordering;
 use std::collections::BTreeMap;
 use std::rc::Rc;
 use uuid::Uuid;
-use serde::{Deserialize,Serialize};
-use serde_json::Value;
 use yew::{Reducible, UseReducerHandle};
 
 pub type AuthContext = UseReducerHandle<AuthToken>;
@@ -11,7 +11,7 @@ pub type AuthContext = UseReducerHandle<AuthToken>;
 /// This is copied from entities... make sure it is up to date.
 /// I'd prefer one source of truth, but there are wasm target
 /// build conflicts when bringing in the mess dependencies.
-#[derive(Serialize,Deserialize,Debug,Clone,Copy,PartialEq)]
+#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq)]
 pub enum UserRole {
     Admin,
     Listener,
@@ -20,8 +20,8 @@ pub enum UserRole {
     SuperAdmin,
 }
 
-impl UserRole{
-    pub fn from_str(role:&'static str) -> Option<Self> {
+impl UserRole {
+    pub fn from_str(role: &'static str) -> Option<Self> {
         match role {
             "Admin" => Some(Self::Admin),
             "Listener" => Some(Self::Listener),
@@ -32,7 +32,6 @@ impl UserRole{
         }
     }
 }
-
 
 impl PartialOrd for UserRole {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
@@ -58,13 +57,12 @@ impl PartialOrd for UserRole {
             Some(Ordering::Equal)
         }
     }
-
 }
 
 /// This is copied from entities... make sure it is up to date.
 /// I'd prefer one source of truth, but there are wasm target
 /// build conflicts when bringing in the mess dependencies.
-#[derive(Serialize,Deserialize,Debug,Clone,PartialEq)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct Permissions {
     pub user_uuid: Uuid,
     pub user_role: UserRole,
@@ -75,19 +73,18 @@ pub struct Permissions {
 #[derive(PartialEq, Clone)]
 pub struct AuthToken {
     pub(crate) token: Option<String>,
-    pub user_uuid:Option<Uuid>,
+    pub user_uuid: Option<Uuid>,
     pub user_role: UserRole,
 }
-impl Default for AuthToken{
+impl Default for AuthToken {
     fn default() -> Self {
-        Self{
+        Self {
             token: None,
-            user_uuid:None,
+            user_uuid: None,
             user_role: UserRole::Listener,
         }
     }
 }
-
 
 pub enum AuthTokenAction {
     Set(Option<String>),
@@ -102,21 +99,23 @@ impl Reducible for AuthToken {
                 if let Some(token) = token {
                     let payload = token.split(".").collect::<Vec<&str>>()[1];
                     let payload = base64::decode(payload).unwrap();
-                    if let Value::Object(map) = serde_json::from_slice(&payload).unwrap(){
-                        let perm : Permissions = serde_json::from_value(
-                            map.get("sub").unwrap().clone()
-                        ).unwrap();
-                        gloo::console::log!(&format!("Uuid: {}\n Role: {:?}",perm.user_uuid,perm.user_role));
-                        return Self{
+                    if let Value::Object(map) = serde_json::from_slice(&payload).unwrap() {
+                        let perm: Permissions =
+                            serde_json::from_value(map.get("sub").unwrap().clone()).unwrap();
+                        gloo::console::log!(&format!(
+                            "Uuid: {}\n Role: {:?}",
+                            perm.user_uuid, perm.user_role
+                        ));
+                        return Self {
                             token: Some(token),
                             user_uuid: Some(perm.user_uuid),
-                            user_role: perm.user_role
-                        }.into();
+                            user_role: perm.user_role,
+                        }
+                        .into();
                     }
                 }
                 Self::default().into()
-
-            },
+            }
         }
     }
 }

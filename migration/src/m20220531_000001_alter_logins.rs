@@ -23,10 +23,12 @@ impl MigrationTrait for Migration {
         manager.exec_stmt(table).await?;
         let table = Table::alter()
             .table(Logins::Table)
-            .add_column(  ColumnDef::new(Alias::new("email"))
-                .unique_key()
-                .not_null()
-                .string())
+            .add_column(
+                ColumnDef::new(Alias::new("email"))
+                    .unique_key()
+                    .not_null()
+                    .string(),
+            )
             .to_owned();
         manager.exec_stmt(table).await?;
         Ok(())
@@ -41,9 +43,7 @@ impl MigrationTrait for Migration {
         manager.exec_stmt(table).await?;
         let table = Table::alter()
             .table(Logins::Table)
-            .add_column(  ColumnDef::new(Alias::new("email"))
-                .not_null()
-                .string())
+            .add_column(ColumnDef::new(Alias::new("email")).not_null().string())
             .to_owned();
         manager.exec_stmt(table).await?;
 

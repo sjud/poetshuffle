@@ -1,12 +1,14 @@
 use crate::queries::{register_mutation::Variables, RegisterMutation};
 use crate::services::network::post_graphql;
+use crate::services::utility::map_graphql_errors_to_string;
+use crate::styles::{form_css, form_elem};
+use crate::types::msg_context::{
+    new_green_msg_with_std_duration, new_red_msg_with_std_duration, MsgContext,
+};
+use crate::MSG_DURATION;
 use web_sys::HtmlInputElement;
 use yew::prelude::*;
 use yew_hooks::prelude::*;
-use crate::MSG_DURATION;
-use crate::services::utility::map_graphql_errors_to_string;
-use crate::styles::{form_css, form_elem};
-use crate::types::msg_context::{MsgContext, new_green_msg_with_std_duration, new_red_msg_with_std_duration};
 
 #[function_component(Register)]
 pub fn login() -> Html {
@@ -20,11 +22,14 @@ pub fn login() -> Html {
         // We run this when we submit our form.
         use_async::<_, (), String>(async move {
             // Get the values from the fields and post a login graphql query to our server
-            let resp = post_graphql::<RegisterMutation>(Variables {
-                email: email.cast::<HtmlInputElement>().unwrap().value(),
-            },None)
-                .await
-                .map_err(|err| format!("{:?}", err))?;
+            let resp = post_graphql::<RegisterMutation>(
+                Variables {
+                    email: email.cast::<HtmlInputElement>().unwrap().value(),
+                },
+                None,
+            )
+            .await
+            .map_err(|err| format!("{:?}", err))?;
             // If we our response has data check it's .login field it ~should~ be a jwt string
             // which we dispatch to our AuthToken which will now use it in all future contexts.
 
@@ -33,11 +38,9 @@ pub fn login() -> Html {
             }
             // If we have no data then see if we have errors and print those to console.
             else if resp.errors.is_some() {
-                msg_context.dispatch(new_red_msg_with_std_duration(
-                    map_graphql_errors_to_string(
-                        &resp.errors
-                    )
-                ));
+                msg_context.dispatch(new_red_msg_with_std_duration(map_graphql_errors_to_string(
+                    &resp.errors,
+                )));
                 tracing::error!("{:?}", resp.errors);
             }
             Ok(())

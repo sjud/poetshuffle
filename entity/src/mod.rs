@@ -4,6 +4,7 @@ pub mod prelude;
 
 pub mod banters;
 pub mod comments;
+pub mod edit_poem_history;
 pub mod edit_set_history;
 pub mod intros;
 pub mod invitations;
@@ -13,7 +14,6 @@ pub mod pen_names;
 pub mod permissions;
 pub mod poems;
 pub mod sea_orm_active_enums;
-pub mod edit_poem_history;
 pub mod seaql_migrations;
 pub mod set_options;
 pub mod sets;

@@ -1,22 +1,24 @@
+use crate::queries::{accept_invitation_mutation, AcceptInvitationMutation};
+use crate::services::network::post_graphql;
+use crate::services::utility::map_graphql_errors_to_string;
+use crate::styles::{form_css, form_elem};
+use crate::types::msg_context::{
+    green_msg, new_green_msg_with_std_duration, new_red_msg_with_std_duration, MsgContext,
+};
 use uuid::Uuid;
 use web_sys::HtmlInputElement;
 use yew::prelude::*;
 use yew_hooks::{use_async, use_is_first_mount};
-use crate::queries::{AcceptInvitationMutation,accept_invitation_mutation};
-use crate::services::network::post_graphql;
-use crate::services::utility::map_graphql_errors_to_string;
-use crate::styles::{form_css, form_elem};
-use crate::types::msg_context::{green_msg, MsgContext, new_green_msg_with_std_duration, new_red_msg_with_std_duration};
 
-#[derive(Properties,PartialEq)]
-pub struct AcceptInvitationProps{
-    pub(crate) invite_uuid:Uuid,
+#[derive(Properties, PartialEq)]
+pub struct AcceptInvitationProps {
+    pub(crate) invite_uuid: Uuid,
 }
 #[function_component(AcceptInvitation)]
-pub fn accept_invitation(props:&AcceptInvitationProps) -> Html {
-    let needs_password = use_state_eq(||false);
+pub fn accept_invitation(props: &AcceptInvitationProps) -> Html {
+    let needs_password = use_state_eq(|| false);
     let msg_context = use_context::<MsgContext>().unwrap();
-    let message = use_state_eq(||String::from("We're processing your invitation."));
+    let message = use_state_eq(|| String::from("We're processing your invitation."));
     let req = {
         let needs_password = needs_password.clone();
         let message = message.clone();
@@ -25,30 +27,25 @@ pub fn accept_invitation(props:&AcceptInvitationProps) -> Html {
             let resp = post_graphql::<AcceptInvitationMutation>(
                 accept_invitation_mutation::Variables {
                     password: None,
-                    invite_uuid: invite_uuid.to_string()
-                },None
-            ).await.map_err(|err| format!("{:?}", err))?;
+                    invite_uuid: invite_uuid.to_string(),
+                },
+                None,
+            )
+            .await
+            .map_err(|err| format!("{:?}", err))?;
 
             if let Some(ref data) = resp.data {
-                if data.accept_invitation.eq("NEEDS_PASSWORD"){
+                if data.accept_invitation.eq("NEEDS_PASSWORD") {
                     needs_password.set(true);
                 } else {
-                    message.set(
-                        String::from(
-                            data
-                                .accept_invitation
-                                .clone()
-                        ));
+                    message.set(String::from(data.accept_invitation.clone()));
                 }
-
             }
             // If we have no data then see if we have errors and print those to console.
             else if resp.errors.is_some() {
-                msg_context.dispatch(new_red_msg_with_std_duration(
-                    map_graphql_errors_to_string(
-                        &resp.errors
-                    )
-                ));
+                msg_context.dispatch(new_red_msg_with_std_duration(map_graphql_errors_to_string(
+                    &resp.errors,
+                )));
                 tracing::error!("{:?}", resp.errors);
             }
             Ok(())
@@ -58,10 +55,10 @@ pub fn accept_invitation(props:&AcceptInvitationProps) -> Html {
         req.run();
     }
 
-    let password_props = PasswordProps{
-        invite_uuid:props.invite_uuid,
+    let password_props = PasswordProps {
+        invite_uuid: props.invite_uuid,
     };
-    html!{
+    html! {
                     <div>
 
                 <h2>{"You've been invited to PoetShuffle\n "}</h2>
@@ -75,12 +72,12 @@ pub fn accept_invitation(props:&AcceptInvitationProps) -> Html {
 
     }
 }
-#[derive(Properties,PartialEq)]
-pub struct PasswordProps{
-    pub(crate) invite_uuid:Uuid,
+#[derive(Properties, PartialEq)]
+pub struct PasswordProps {
+    pub(crate) invite_uuid: Uuid,
 }
 #[function_component(PasswordInput)]
-pub fn password_input(props:&PasswordProps) -> Html {
+pub fn password_input(props: &PasswordProps) -> Html {
     let pass = use_node_ref();
     let msg_context = use_context::<MsgContext>().unwrap();
     let req = {
@@ -90,23 +87,23 @@ pub fn password_input(props:&PasswordProps) -> Html {
         use_async::<_, (), String>(async move {
             let pass = pass.cast::<HtmlInputElement>().unwrap().value();
             let resp = post_graphql::<AcceptInvitationMutation>(
-                accept_invitation_mutation::Variables{
-                    password:Some(pass),
-                    invite_uuid:invite_uuid.to_string()
-                },None
-            ).await.map_err(|err| format!("{:?}", err))?;
+                accept_invitation_mutation::Variables {
+                    password: Some(pass),
+                    invite_uuid: invite_uuid.to_string(),
+                },
+                None,
+            )
+            .await
+            .map_err(|err| format!("{:?}", err))?;
 
             if let Some(ref data) = resp.data {
-                msg_context.dispatch(
-                    green_msg(data.accept_invitation.clone()));
+                msg_context.dispatch(green_msg(data.accept_invitation.clone()));
             }
             // If we have no data then see if we have errors and print those to console.
             else if resp.errors.is_some() {
-                msg_context.dispatch(new_red_msg_with_std_duration(
-                    map_graphql_errors_to_string(
-                        &resp.errors
-                    )
-                ));
+                msg_context.dispatch(new_red_msg_with_std_duration(map_graphql_errors_to_string(
+                    &resp.errors,
+                )));
                 tracing::error!("{:?}", resp.errors);
             }
             Ok(())

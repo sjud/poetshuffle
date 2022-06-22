@@ -1,12 +1,12 @@
 use super::*;
-use hmac::Hmac;
 use chrono::Utc;
-use sea_query::SimpleExpr;
-use sea_query::value::Nullable;
 use entity::logins::ActiveModel as LoginsActiveModel;
 use entity::prelude::Logins as LoginsEntity;
-use sea_orm::QuerySelect;
 use entity::sea_orm_active_enums::UserRole;
+use hmac::Hmac;
+use sea_orm::QuerySelect;
+use sea_query::value::Nullable;
+use sea_query::SimpleExpr;
 
 use crate::email::{Email, Postmark};
 
@@ -25,50 +25,58 @@ pub enum Logins {
 }
 
 fn new_lost_password_code() -> Result<String> {
-    passwords::PasswordGenerator::new().length(32).generate_one()
-        .map_err(|err|err.into())
+    passwords::PasswordGenerator::new()
+        .length(32)
+        .generate_one()
+        .map_err(|err| err.into())
 }
 
 pub async fn create_login_with_password_and_role(
-    db:&DatabaseConnection,
-    email:String,
-    password:String,
-    user_role:UserRole,
-    promoter_uuid:Uuid,
+    db: &DatabaseConnection,
+    email: String,
+    password: String,
+    user_role: UserRole,
+    promoter_uuid: Uuid,
 ) -> Result<Uuid> {
-    let uuid = create_login_with_password(
-        db,email,password
-    ).await?;
-    entity::users::ActiveModel{
+    let uuid = create_login_with_password(db, email, password).await?;
+    entity::users::ActiveModel {
         user_uuid: Set(uuid),
         promoter_uuid: Set(Some(promoter_uuid)),
         ..Default::default()
-    }.update(db).await?;
-    entity::permissions::ActiveModel{
+    }
+    .update(db)
+    .await?;
+    entity::permissions::ActiveModel {
         user_uuid: Set(uuid),
         user_role: Set(user_role),
-    }.update(db).await?;
+    }
+    .update(db)
+    .await?;
     Ok(uuid)
 }
 
 pub async fn create_login_with_password(
-    db:&DatabaseConnection,
-    email:String,
-    password:String,
+    db: &DatabaseConnection,
+    email: String,
+    password: String,
 ) -> Result<Uuid> {
     let uuid = Uuid::new_v4();
     // Create user
-    entity::users::ActiveModel{
-        user_uuid:Set(uuid),
+    entity::users::ActiveModel {
+        user_uuid: Set(uuid),
         ..Default::default()
-    }.insert(db).await?;
+    }
+    .insert(db)
+    .await?;
     // Create default permission
 
-    entity::permissions::ActiveModel{
-        user_uuid:Set(uuid),
-        user_role:Set(UserRole::Listener),
+    entity::permissions::ActiveModel {
+        user_uuid: Set(uuid),
+        user_role: Set(UserRole::Listener),
         ..Default::default()
-    }.insert(db).await?;
+    }
+    .insert(db)
+    .await?;
 
     // Create login
     let query = SeaQuery::insert()
@@ -87,33 +95,45 @@ pub async fn create_login_with_password(
 }
 
 async fn create_login_with_lost_password_code(
-    db:&DatabaseConnection,
-    email:String,
-    lost_password_code:String,
+    db: &DatabaseConnection,
+    email: String,
+    lost_password_code: String,
 ) -> Result<Uuid> {
     let uuid = Uuid::new_v4();
     // Create user
-    entity::users::ActiveModel{
-        user_uuid:Set(uuid),
+    entity::users::ActiveModel {
+        user_uuid: Set(uuid),
         ..Default::default()
-    }.insert(db).await?;
+    }
+    .insert(db)
+    .await?;
     // Create default permission
 
-    entity::permissions::ActiveModel{
-        user_uuid:Set(uuid),
-        user_role:Set(UserRole::Listener),
+    entity::permissions::ActiveModel {
+        user_uuid: Set(uuid),
+        user_role: Set(UserRole::Listener),
         ..Default::default()
-    }.insert(db).await?;
+    }
+    .insert(db)
+    .await?;
 
     let query = SeaQuery::insert()
         .into_table(Logins::Table)
-        .columns(vec![Logins::UserUuid, Logins::Email,Logins::Password, Logins::LostPasswordHash])
+        .columns(vec![
+            Logins::UserUuid,
+            Logins::Email,
+            Logins::Password,
+            Logins::LostPasswordHash,
+        ])
         .exprs(vec![
             Expr::val(uuid).into(),
             Expr::val(email).into(),
-            Expr::cust_with_values("crypt($1, gen_salt('bf'))", vec![
-                passwords::PasswordGenerator::new().length(16).generate_one()?
-            ]),
+            Expr::cust_with_values(
+                "crypt($1, gen_salt('bf'))",
+                vec![passwords::PasswordGenerator::new()
+                    .length(16)
+                    .generate_one()?],
+            ),
             Expr::cust_with_values("crypt($1, gen_salt('bf'))", vec![lost_password_code]),
         ])?
         .to_owned()
@@ -124,16 +144,18 @@ async fn create_login_with_lost_password_code(
 }
 
 async fn update_login_with_password_given_lost_password_code(
-    db:&DatabaseConnection,
-    email:String,
-    password:String,
-    lost_password_code:String,
+    db: &DatabaseConnection,
+    email: String,
+    password: String,
+    lost_password_code: String,
 ) -> Result<Uuid> {
     let query = SeaQuery::update()
         .table(Logins::Table)
-        .col_expr(Logins::Password,
-                  Expr::cust_with_values("crypt($1, gen_salt('bf'))", vec![password]))
-        .col_expr(Logins::LostPasswordHash,SimpleExpr::Value(String::null()))
+        .col_expr(
+            Logins::Password,
+            Expr::cust_with_values("crypt($1, gen_salt('bf'))", vec![password]),
+        )
+        .col_expr(Logins::LostPasswordHash, SimpleExpr::Value(String::null()))
         .and_where(Expr::col(Logins::Email).eq(email))
         .and_where(Expr::cust_with_values(
             "lost_password_hash = crypt($1, lost_password_hash)",
@@ -143,49 +165,48 @@ async fn update_login_with_password_given_lost_password_code(
         .to_owned()
         .to_string(PostgresQueryBuilder);
     let stmt = Statement::from_string(DatabaseBackend::Postgres, query);
-    eprintln!("{:?}",stmt);
-    match  db.query_one(stmt).await? {
-        Some(result) => result.try_get("","user_uuid")
-            .map_err(|err|err.into()),
-        None =>  Err("Can't find given login entry, with email and lost password code.".into()),
+    eprintln!("{:?}", stmt);
+    match db.query_one(stmt).await? {
+        Some(result) => result.try_get("", "user_uuid").map_err(|err| err.into()),
+        None => Err("Can't find given login entry, with email and lost password code.".into()),
     }
 }
 
 async fn update_login_with_lost_password_code(
-    db:&DatabaseConnection,
-    email:String,
-    lost_password_code:String
+    db: &DatabaseConnection,
+    email: String,
+    lost_password_code: String,
 ) -> Result<Uuid> {
     let query = SeaQuery::update()
         .table(Logins::Table)
-        .col_expr(Logins::LostPasswordHash,
-                  Expr::cust_with_values(
-                      "crypt($1, gen_salt('bf'))",
-                      vec![lost_password_code],
-                  ))
+        .col_expr(
+            Logins::LostPasswordHash,
+            Expr::cust_with_values("crypt($1, gen_salt('bf'))", vec![lost_password_code]),
+        )
         .and_where(Expr::col(Logins::Email).eq(email))
         .returning_col(Logins::UserUuid)
         .to_owned()
         .to_string(PostgresQueryBuilder);
     let stmt = Statement::from_string(DatabaseBackend::Postgres, query);
     if let Some(result) = db.query_one(stmt).await? {
-        result.try_get("","user_uuid")
-            .map_err(|err|err.into())
+        result.try_get("", "user_uuid").map_err(|err| err.into())
     } else {
         Err("User doesn't exist.".into())
     }
 }
 
 async fn update_login_with_new_password_given_current_password(
-    db:&DatabaseConnection,
-    email:String,
-    new_password:String,
-    current_password:String,
+    db: &DatabaseConnection,
+    email: String,
+    new_password: String,
+    current_password: String,
 ) -> Result<Uuid> {
     let query = SeaQuery::update()
         .table(Logins::Table)
-        .col_expr(Logins::Password,
-                  Expr::cust_with_values("crypt($1, gen_salt('bf'))", vec![new_password]))
+        .col_expr(
+            Logins::Password,
+            Expr::cust_with_values("crypt($1, gen_salt('bf'))", vec![new_password]),
+        )
         .and_where(Expr::col(Logins::Email).eq(email))
         .and_where(Expr::cust_with_values(
             "password = crypt($1, password)",
@@ -196,34 +217,30 @@ async fn update_login_with_new_password_given_current_password(
         .to_string(PostgresQueryBuilder);
     let stmt = Statement::from_string(DatabaseBackend::Postgres, query);
     if let Some(result) = db.query_one(stmt).await? {
-        result.try_get("","user_uuid")
-            .map_err(|err|err.into())
+        result.try_get("", "user_uuid").map_err(|err| err.into())
     } else {
         Err("Internal Server Error.".into())
     }
 }
 
-pub async fn find_login_by_email(db:&DatabaseConnection,email:&str)->Result<Option<entity::logins::Model>>{
+pub async fn find_login_by_email(
+    db: &DatabaseConnection,
+    email: &str,
+) -> Result<Option<entity::logins::Model>> {
     LoginsEntity::find()
         .having(entity::logins::Column::Email.eq(email))
         .group_by(entity::logins::Column::UserUuid)
         .one(db)
         .await
-        .map_err(|err|{
-            println!("{:?}",err);
-            err.into()})
+        .map_err(|err| {
+            println!("{:?}", err);
+            err.into()
+        })
 }
 
-
 #[Object]
-impl LoginMutation{
-
-    async fn login(
-        &self,
-        ctx: &Context<'_>,
-        email: String,
-        pass: String,
-    ) -> Result<String> {
+impl LoginMutation {
+    async fn login(&self, ctx: &Context<'_>, email: String, pass: String) -> Result<String> {
         // Initialize constants.
         let db = ctx.data::<DatabaseConnection>()?;
         let key = ctx.data::<Hmac<Sha256>>()?;
@@ -232,10 +249,11 @@ impl LoginMutation{
             let query = SeaQuery::select()
                 .column(Logins::UserUuid)
                 .from(Logins::Table)
+                .and_where(Expr::cust_with_values("email = $1", vec![email]).into())
                 .and_where(Expr::cust_with_values(
-                    "email = $1", vec![email]).into())
-                .and_where(Expr::cust_with_values(
-                    "password = crypt($1, password)", vec![pass]))
+                    "password = crypt($1, password)",
+                    vec![pass],
+                ))
                 .to_owned()
                 .to_string(PostgresQueryBuilder);
             let stmt = Statement::from_string(DatabaseBackend::Postgres, query);
@@ -249,14 +267,15 @@ impl LoginMutation{
                 .await?
             {
                 // update last login before we send the permissions
-                LoginsActiveModel{
-                    user_uuid:Set(user_uuid),
-                    last_login:Set(Some(DateTimeWithTimeZone::from(Utc::now()))),
+                LoginsActiveModel {
+                    user_uuid: Set(user_uuid),
+                    last_login: Set(Some(DateTimeWithTimeZone::from(Utc::now()))),
                     ..Default::default()
-                }.update(db).await?;
+                }
+                .update(db)
+                .await?;
 
-               Ok(crate::auth::jwt(key,permission)?)
-
+                Ok(crate::auth::jwt(key, permission)?)
             } else {
                 Err(Error::new("No matching Permission."))
             }
@@ -269,19 +288,18 @@ impl LoginMutation{
     /// create lost_password_code
     /// email lost_password_code to email
     /// store lost_password_hash
-    async fn register(
-        &self,
-        ctx: &Context<'_>,
-        email: String,
-    ) -> Result<String> {
+    async fn register(&self, ctx: &Context<'_>, email: String) -> Result<String> {
         #[cfg(test)]
-            let email_client = ctx.data::<TestEmail>()?;
+        let email_client = ctx.data::<TestEmail>()?;
         #[cfg(not(test))]
-            let email_client = ctx.data::<Postmark>()?;
+        let email_client = ctx.data::<Postmark>()?;
         let db = ctx.data::<DatabaseConnection>()?;
         let lost_password_code = new_lost_password_code()?;
-        if let Some(login) = find_login_by_email(db,&email).await? {
-            if let Some(user) = entity::prelude::Users::find_by_id(login.user_uuid).one(db).await? {
+        if let Some(login) = find_login_by_email(db, &email).await? {
+            if let Some(user) = entity::prelude::Users::find_by_id(login.user_uuid)
+                .one(db)
+                .await?
+            {
                 if user.is_validated {
                     return Ok("Already registered, please log in with your password.".into());
                 } else {
@@ -289,17 +307,14 @@ impl LoginMutation{
                 }
             } else {
                 // This should be impossible...
-                return Err("Internal Server Error: Valid login without valid user.".into())
+                return Err("Internal Server Error: Valid login without valid user.".into());
             }
         } else {
-            create_login_with_lost_password_code(
-                db,
-                email.clone(),
-                lost_password_code.clone()).await?;
-            email_client.register(email,lost_password_code).await?;
+            create_login_with_lost_password_code(db, email.clone(), lost_password_code.clone())
+                .await?;
+            email_client.register(email, lost_password_code).await?;
         }
         Ok("Please check your email for a validation link.".into())
-
     }
     /// THIS IS THE SAME AS RESET BUT WITH VALIDATION UPDATE
     /// WE MAY DELETE UNVALIDATED USERS WHENEVER CONVENIENT.
@@ -315,30 +330,32 @@ impl LoginMutation{
         ctx: &Context<'_>,
         email: String,
         new_password: String,
-        lost_password_code:String,
+        lost_password_code: String,
     ) -> Result<String> {
-
         let db = ctx.data::<DatabaseConnection>()?;
         let uuid = update_login_with_password_given_lost_password_code(
             db,
             email,
             new_password,
             lost_password_code,
-        ).await?;
-        entity::users::ActiveModel{
-            user_uuid:Set(uuid),
-            is_validated:Set(true),
+        )
+        .await?;
+        entity::users::ActiveModel {
+            user_uuid: Set(uuid),
+            is_validated: Set(true),
             ..Default::default()
-        }.update(db).await?;
+        }
+        .update(db)
+        .await?;
         Ok("Account validated. Please use your new password to log in.".into())
-
     }
     /// look up email and old password
     /// if old password hash matched hashed password in db
     /// set the db password to be the hash of the new password
     /// return successfully.
-    async fn change_password(&self,
-        ctx:&Context<'_>,
+    async fn change_password(
+        &self,
+        ctx: &Context<'_>,
         email: String,
         old_password: String,
         new_password: String,
@@ -348,31 +365,29 @@ impl LoginMutation{
             db,
             email,
             new_password,
-            old_password
-        ).await?;
+            old_password,
+        )
+        .await?;
         Ok("Password has been updated.".into())
     }
     /// create lost_password_code
     /// store lost_password_hash
     /// email lost_password_code to the email
     /// respond with a string requesting user to check their email.
-    async fn request_reset_password(&self,
-        ctx:&Context<'_>,
-        email: String,
-    ) -> Result<String> {
+    async fn request_reset_password(&self, ctx: &Context<'_>, email: String) -> Result<String> {
         let db = ctx.data::<DatabaseConnection>()?;
         #[cfg(test)]
         let email_client = ctx.data::<TestEmail>()?;
         #[cfg(not(test))]
-            let email_client = ctx.data::<Postmark>()?;
+        let email_client = ctx.data::<Postmark>()?;
 
         let lost_password_code = new_lost_password_code()?;
-        eprintln!("{}",lost_password_code);
-        let _ = update_login_with_lost_password_code(
-            db,
-            email.clone(),
-            lost_password_code.clone()).await?;
-        email_client.reset_password(email,lost_password_code).await?;
+        eprintln!("{}", lost_password_code);
+        let _ = update_login_with_lost_password_code(db, email.clone(), lost_password_code.clone())
+            .await?;
+        email_client
+            .reset_password(email, lost_password_code)
+            .await?;
         Ok("Please check your email for a validation link.".into())
     }
     /// compare lost_password_code to lost_password_hash
@@ -383,46 +398,43 @@ impl LoginMutation{
     /// tell user to login with new password.
     async fn reset_password(
         &self,
-        ctx:&Context<'_>,
+        ctx: &Context<'_>,
         email: String,
         new_password: String,
-        lost_password_code:String,
+        lost_password_code: String,
     ) -> Result<String> {
-
         let db = ctx.data::<DatabaseConnection>()?;
         let _ = update_login_with_password_given_lost_password_code(
             db,
             email,
             new_password,
             lost_password_code,
-        ).await?;
+        )
+        .await?;
         Ok("You may now login with your new password.".into())
     }
 }
 
 #[cfg(test)]
 mod test {
-    use std::sync::{Arc, Mutex};
-    use hmac::digest::KeyInit;
-    use entity::prelude::Permissions;
     use super::*;
-    use crate::graphql::schema::new_schema;
-    use crate::{DATABASE_URL};
     use crate::email::{MockEmail, TestEmail};
+    use crate::graphql::schema::new_schema;
     use crate::graphql::test_util::key_conn_email;
+    use crate::DATABASE_URL;
+    use entity::prelude::Permissions;
+    use hmac::digest::KeyInit;
+    use std::sync::{Arc, Mutex};
 
     #[tokio::test]
     async fn test_login() {
-        let (key,conn,email) = key_conn_email().await;
+        let (key, conn, email) = key_conn_email().await;
 
-        let user_uuid = create_login_with_password(
-            &conn,
-            "test@test.com".into(),
-            "1234".into())
+        let user_uuid = create_login_with_password(&conn, "test@test.com".into(), "1234".into())
             .await
             .unwrap();
 
-        let schema = new_schema(conn.clone(),key.clone(),email);
+        let schema = new_schema(conn.clone(), key.clone(), email);
 
         let result = schema
             .execute(
@@ -431,15 +443,20 @@ mod test {
                 }",
             )
             .await;
-        eprintln!("{:?}",result.errors);
+        eprintln!("{:?}", result.errors);
         assert!(result.errors.is_empty());
-        let permission = entity::prelude::Permissions::find_by_id(user_uuid).one(&conn)
+        let permission = entity::prelude::Permissions::find_by_id(user_uuid)
+            .one(&conn)
             .await
             .unwrap()
             .unwrap();
-        assert_eq!(result.data.to_string(),
-                   format!("{{login: \"{}\"}}",crate::auth::jwt(&key,permission).unwrap()
-            ));
+        assert_eq!(
+            result.data.to_string(),
+            format!(
+                "{{login: \"{}\"}}",
+                crate::auth::jwt(&key, permission).unwrap()
+            )
+        );
         // Our return value is some token, let's test is later in an integration test.
         let result = schema
             .execute(
@@ -453,11 +470,11 @@ mod test {
 
     #[tokio::test]
     async fn test_register() {
-        let (key,conn,email) = key_conn_email().await;
+        let (key, conn, email) = key_conn_email().await;
         // get our arc to see into later
         let register_code = email.register_code.clone();
         // create graphql schema to test against
-        let schema = new_schema(conn,key,email);
+        let schema = new_schema(conn, key, email);
 
         let result = schema
             .execute(
@@ -467,10 +484,12 @@ mod test {
             )
             .await;
         // print our errors if we have any
-        eprintln!("{:?}",result.errors);
+        eprintln!("{:?}", result.errors);
         assert!(result.errors.is_empty());
-        assert_eq!(result.data.to_string(),
-                   "{register: \"Please check your email for a validation link.\"}".to_string());
+        assert_eq!(
+            result.data.to_string(),
+            "{register: \"Please check your email for a validation link.\"}".to_string()
+        );
         // If we do it again
         let result = schema
             .execute(
@@ -480,10 +499,12 @@ mod test {
             )
             .await;
         // We should get the same result, as we just send a new email and have the same response.
-        eprintln!("{:?}",result.errors);
+        eprintln!("{:?}", result.errors);
         assert!(result.errors.is_empty());
-        assert_eq!(result.data.to_string(),
-                   "{register: \"Please check your email for a validation link.\"}".to_string());
+        assert_eq!(
+            result.data.to_string(),
+            "{register: \"Please check your email for a validation link.\"}".to_string()
+        );
         // We aren't actually testing to see if our postmark client sends emails so expect bugs.
 
         // Check that a register_code was put into our TestEmail struct
@@ -492,14 +513,15 @@ mod test {
 
     #[tokio::test]
     async fn test_validate_user() {
-        let (key,conn,email) = key_conn_email().await;
+        let (key, conn, email) = key_conn_email().await;
         create_login_with_lost_password_code(
             &conn,
             "test2@test.com".into(),
-            "LOSTPASSWORDCODE".into())
-            .await
-            .unwrap();
-        let schema = new_schema(conn.clone(),key,email);
+            "LOSTPASSWORDCODE".into(),
+        )
+        .await
+        .unwrap();
+        let schema = new_schema(conn.clone(), key, email);
         let result = schema
             .execute(
                 "mutation {
@@ -508,27 +530,32 @@ mod test {
                 }",
             )
             .await;
-        eprintln!("{:?}",result.errors);
+        eprintln!("{:?}", result.errors);
         assert!(result.errors.is_empty());
-        assert_eq!(result.data.to_string(),
-                   "{validateUser: \"Account validated. Please use your new password to log in.\"}".to_string());
-        let login = find_login_by_email(&conn,"test2@test.com")
+        assert_eq!(
+            result.data.to_string(),
+            "{validateUser: \"Account validated. Please use your new password to log in.\"}"
+                .to_string()
+        );
+        let login = find_login_by_email(&conn, "test2@test.com")
             .await
             .unwrap()
             .unwrap();
-        let user = entity::prelude::Users::find_by_id(login.user_uuid).one(&conn).await
+        let user = entity::prelude::Users::find_by_id(login.user_uuid)
+            .one(&conn)
+            .await
             .unwrap()
             .unwrap();
-        assert_eq!(user.is_validated,true);
-
+        assert_eq!(user.is_validated, true);
     }
 
     #[tokio::test]
     async fn test_change_password() {
-        let (key,conn,email) = key_conn_email().await;
-        create_login_with_password(&conn,"test4@test.com".into(),"1234".into())
-            .await.unwrap();
-        let schema = new_schema(conn.clone(),key,email);
+        let (key, conn, email) = key_conn_email().await;
+        create_login_with_password(&conn, "test4@test.com".into(), "1234".into())
+            .await
+            .unwrap();
+        let schema = new_schema(conn.clone(), key, email);
         // Change password
         let result = schema
             .execute(
@@ -538,10 +565,12 @@ mod test {
                 }",
             )
             .await;
-        eprintln!("{:?}",result.errors);
+        eprintln!("{:?}", result.errors);
         assert!(result.errors.is_empty());
-        assert_eq!(result.data.to_string(),
-                   "{changePassword: \"Password has been updated.\"}".to_string());
+        assert_eq!(
+            result.data.to_string(),
+            "{changePassword: \"Password has been updated.\"}".to_string()
+        );
         // Then log in with new password.
         let result = schema
             .execute(
@@ -550,21 +579,21 @@ mod test {
                 }",
             )
             .await;
-        eprintln!("{:?}",result.errors);
+        eprintln!("{:?}", result.errors);
         assert!(result.errors.is_empty());
     }
 
     #[tokio::test]
     async fn test_request_reset_password_and_reset_password() {
-        let (key,conn,email) = key_conn_email().await;
+        let (key, conn, email) = key_conn_email().await;
         // get our arc to see into later
         let reset_pass_code = email.reset_pass_code.clone();
-        create_login_with_password(&conn,"test5@test.com".into(),"1234".into())
-                .await
-                .unwrap();
+        create_login_with_password(&conn, "test5@test.com".into(), "1234".into())
+            .await
+            .unwrap();
 
         // create graphql schema to test against
-        let schema = new_schema(conn,key,email);
+        let schema = new_schema(conn, key, email);
         let result = schema
             .execute(
                 "mutation {
@@ -577,40 +606,46 @@ mod test {
             eprintln!("{:?}", result.errors);
         }
         assert!(result.errors.is_empty());
-        assert_eq!(result.data.to_string(),
-                   "{requestResetPassword: \"Please check your email for a validation link.\"}".to_string());
+        assert_eq!(
+            result.data.to_string(),
+            "{requestResetPassword: \"Please check your email for a validation link.\"}"
+                .to_string()
+        );
         let reset_pass_code = (*(reset_pass_code.lock().unwrap())).clone();
         let result = schema
             .execute(&format!(
                 "mutation {{
                 resetPassword(email: \"test5@test.com\" newPassword: \"12345\"
                 lostPasswordCode : \"{}\")
-                }}",reset_pass_code)
-            )
+                }}",
+                reset_pass_code
+            ))
             .await;
-        eprintln!("{:?}",result.errors);
+        eprintln!("{:?}", result.errors);
         assert!(result.errors.is_empty());
-        assert_eq!(result.data.to_string(),
-                   "{resetPassword: \"You may now login with your new password.\"}".to_string());
+        assert_eq!(
+            result.data.to_string(),
+            "{resetPassword: \"You may now login with your new password.\"}".to_string()
+        );
         let result = schema
             .execute(
                 "mutation {
                 login(email: \"test5@test.com\" pass: \"12345\")
-                }"
+                }",
             )
             .await;
-        eprintln!("{:?}",result.errors);
+        eprintln!("{:?}", result.errors);
         assert!(result.errors.is_empty());
-        assert!(!result.data.to_string().is_empty())// Get our JWT
+        assert!(!result.data.to_string().is_empty()) // Get our JWT
     }
 
     #[tokio::test]
     async fn test_register_validate_login() {
-        let (key,conn,email) = key_conn_email().await;
+        let (key, conn, email) = key_conn_email().await;
         // get our arc to see into later
         let register_code = email.register_code.clone();
         // create graphql schema to test against
-        let schema = new_schema(conn,key,email);
+        let schema = new_schema(conn, key, email);
 
         let result = schema
             .execute(
@@ -620,22 +655,28 @@ mod test {
             )
             .await;
         // print our errors if we have any
-        eprintln!("{:?}",result.errors);
+        eprintln!("{:?}", result.errors);
         assert!(result.errors.is_empty());
-        assert_eq!(result.data.to_string(),
-                   "{register: \"Please check your email for a validation link.\"}".to_string());
+        assert_eq!(
+            result.data.to_string(),
+            "{register: \"Please check your email for a validation link.\"}".to_string()
+        );
         let result = schema
             .execute(&format!(
                 "mutation {{
                 validateUser(email: \"test6@test.com\", newPassword:\"1234\",\
                 lostPasswordCode:\"{}\")
-                }}",*(register_code.lock().unwrap()))
-            )
+                }}",
+                *(register_code.lock().unwrap())
+            ))
             .await;
-        eprintln!("{:?}",result.errors);
+        eprintln!("{:?}", result.errors);
         assert!(result.errors.is_empty());
-        assert_eq!(result.data.to_string(),
-                   "{validateUser: \"Account validated. Please use your new password to log in.\"}".to_string());
+        assert_eq!(
+            result.data.to_string(),
+            "{validateUser: \"Account validated. Please use your new password to log in.\"}"
+                .to_string()
+        );
         let result = schema
             .execute(
                 "mutation {
@@ -643,11 +684,7 @@ mod test {
                 }",
             )
             .await;
-        eprintln!("{:?}",result.errors);
+        eprintln!("{:?}", result.errors);
         assert!(result.errors.is_empty());
-
     }
-
-
-
 }
