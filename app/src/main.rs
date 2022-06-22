@@ -11,6 +11,9 @@ mod styles;
 use crate::{components::app::App, console_writer::WASMConsoleWriter};
 use std::sync::Mutex;
 
+#[cfg(test)]
+use wasm_bindgen_test::*;
+
 pub const MSG_DURATION : u8 = 4;
 
 #[global_allocator]
@@ -25,4 +28,11 @@ fn main() {
         .pretty()
         .init();
     yew::start_app::<App>();
+}
+
+
+#[cfg_attr(test,wasm_bindgen_test)]
+fn pass() {
+
+    assert!(true);
 }

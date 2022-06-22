@@ -38,14 +38,14 @@ pub struct ModifyUserRoleMutation;
 #[graphql(
 schema_path = "schema.graphql",
 query_path = "app_queries/invite_user.graphql",
-response_derives = "Serialize,PartialEq"
+response_derives = "Serialize,PartialEq,Clone,Debug"
 )]
 pub struct InviteUserMutation;
 #[derive(GraphQLQuery)]
 #[graphql(
 schema_path = "schema.graphql",
 query_path = "app_queries/accept_invitation.graphql",
-response_derives = "Serialize,PartialEq"
+response_derives = "Serialize,PartialEq,Clone,Debug"
 )]
 pub struct AcceptInvitationMutation;
 #[derive(GraphQLQuery)]

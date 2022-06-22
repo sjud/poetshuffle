@@ -1,0 +1,4 @@
+FROM rustlang/rust:nightly-buster
+COPY . .
+RUN cargo install wasm-bindgen-cli --vers  "0.2.81"
+RUN cargo test --bin app --target wasm32-unknown-unknown

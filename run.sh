@@ -8,7 +8,7 @@ sleep 1;
 done;
 sea migrate up
 # Cargo run instead of test
-cargo run --bin server --features dev
+cargo run --package server --features dev
 # we need to stop it ourself, so data persists between re compiles
 # this is what we want because data here is a result of a manual entry
 

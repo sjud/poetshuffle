@@ -1,6 +1,6 @@
 [build]
 target = "index.html"
-dist = "static/dist"
+dist = "../static/dist"
 public_url = "/static/dist/"
 release = true
 [[proxy]]

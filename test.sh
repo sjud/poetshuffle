@@ -16,6 +16,6 @@ done;
 # we migrate the database once the docker db is up and running.
 sea migrate up
 # we test our server knowing that we can populate the fresh db with whatever
-cargo test --bin server --features dev
+cargo test --package server --features dev
 # we stop our container which deletes it because we passed in --rm earlier.
 docker stop test_db
