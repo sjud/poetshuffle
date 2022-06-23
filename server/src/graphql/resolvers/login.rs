@@ -10,7 +10,7 @@ use sea_query::SimpleExpr;
 
 use crate::email::{Email, Postmark};
 
-#[cfg(test)]
+#[cfg(feature="mock_email")]
 use crate::email::TestEmail;
 
 #[derive(Default)]
@@ -289,9 +289,9 @@ impl LoginMutation {
     /// email lost_password_code to email
     /// store lost_password_hash
     async fn register(&self, ctx: &Context<'_>, email: String) -> Result<String> {
-        #[cfg(test)]
+        #[cfg(feature="mock_email")]
         let email_client = ctx.data::<TestEmail>()?;
-        #[cfg(not(test))]
+        #[cfg(not(feature = "mock_email"))]
         let email_client = ctx.data::<Postmark>()?;
         let db = ctx.data::<DatabaseConnection>()?;
         let lost_password_code = new_lost_password_code()?;
@@ -376,9 +376,9 @@ impl LoginMutation {
     /// respond with a string requesting user to check their email.
     async fn request_reset_password(&self, ctx: &Context<'_>, email: String) -> Result<String> {
         let db = ctx.data::<DatabaseConnection>()?;
-        #[cfg(test)]
-        let email_client = ctx.data::<TestEmail>()?;
-        #[cfg(not(test))]
+        #[cfg(feature="mock_email")]
+            let email_client = ctx.data::<TestEmail>()?;
+        #[cfg(not(feature = "mock_email"))]
         let email_client = ctx.data::<Postmark>()?;
 
         let lost_password_code = new_lost_password_code()?;

@@ -13,6 +13,8 @@ use std::sync::Mutex;
 
 #[cfg(test)]
 use wasm_bindgen_test::*;
+
+
 pub const BASE_URL : &'static str = base_url();
 
 const fn base_url() -> &'static str {

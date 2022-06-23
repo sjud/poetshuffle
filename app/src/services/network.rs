@@ -62,6 +62,30 @@ pub fn parse_graph_ql_resp<Data:Clone>(resp:Result<Arc<graphql_client::Response<
 }
 
 impl AuthToken {
+    #[cfg(test)]
+    pub async fn new_from_login_super_admin() -> Self {
+        match parse_graph_ql_resp(post_graphql::<SuperAdminLoginMutation>(
+            super_admin_login_mutation::Variables {
+                email: crate::services::test_util::ADMIN_USER.to_string(),
+                pass: crate::services::test_util::ADMIN_PASS.to_string(),},
+            None,
+        )
+            .await).expect("resp from super admin login") {
+            GraphQlResp::Data(data) => Self::new_from_token(data.super_admin_login)
+                .unwrap(),
+            GraphQlResp::Err(errs) => {
+                panic!("Expecting login graphql to resolve")
+            }
+        }
+    }
+    pub async fn admin_super_login(&self,email:String,pass:String)
+        -> GraphQlResult<super_admin_login_mutation::ResponseData> {
+        parse_graph_ql_resp(post_graphql::<SuperAdminLoginMutation>(
+            super_admin_login_mutation::Variables { email, pass },
+            self.token.clone(),
+        )
+            .await)
+    }
     pub async fn add_poem(&self,set_uuid:Uuid,idx:i64)
         -> GraphQlResult<add_poem_mutation::ResponseData> {
         parse_graph_ql_resp(post_graphql::<AddPoemMutation>(
@@ -117,7 +141,16 @@ async fn test_invite_poet() {
     match resp {
         GraphQlResp::Data(_) => {}
         GraphQlResp::Err(errors) =>
-            assert_eq!("Unauthorized.",errors.unwrap()[0].message),
+            assert_eq!("Unauthorized.",errors.0.unwrap()[0].message),
+    }
+    let auth = AuthToken::new_from_login_super_admin().await;
+    let resp = auth.invite_poet("test_email@test_email.test_email".into())
+        .await
+        .unwrap();
+    match resp {
+        GraphQlResp::Data(_) => {},
+        GraphQlResp::Err(ref errors) =>
+            no_graphql_errors_or_print_them(errors.0.clone().unwrap()).unwrap()
     }
 }
 pub(crate) fn no_graphql_errors_or_print_them(

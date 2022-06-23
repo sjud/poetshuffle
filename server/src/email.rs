@@ -3,10 +3,10 @@ use anyhow::Result;
 use postmark::reqwest::PostmarkClient;
 use postmark::Query;
 use sea_orm::prelude::Uuid;
-#[cfg(test)]
+#[cfg(feature = "mock_email")]
 use std::sync::{Arc, Mutex};
 
-#[cfg_attr(test, mockall::automock)]
+#[cfg_attr(feature="mock_email", mockall::automock)]
 #[async_trait::async_trait]
 pub trait Email {
     async fn register(&self, email: String, lost_password_code: String) -> Result<()>;
@@ -14,14 +14,14 @@ pub trait Email {
     async fn invite_user(&self, email: String, invite_uuid: Uuid) -> Result<()>;
 }
 
-#[cfg(test)]
+#[cfg(feature = "mock_email")]
 pub struct TestEmail {
     pub(crate) register_code: Arc<Mutex<String>>,
     pub(crate) reset_pass_code: Arc<Mutex<String>>,
     pub(crate) invite_uuid: Arc<Mutex<Uuid>>,
     pub(crate) email: MockEmail,
 }
-#[cfg(test)]
+#[cfg(feature = "mock_email")]
 #[async_trait::async_trait]
 impl Email for TestEmail {
     async fn register(&self, email: String, lost_password_code: String) -> Result<()> {

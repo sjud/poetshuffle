@@ -90,6 +90,26 @@ pub enum AuthTokenAction {
     Set(Option<String>),
 }
 
+impl AuthToken{
+    pub fn new_from_token(token:String) -> Option<Self> {
+        let payload = token.split(".").collect::<Vec<&str>>()[1];
+        let payload = base64::decode(payload).unwrap();
+        if let Value::Object(map) = serde_json::from_slice(&payload).unwrap() {
+            let perm: Permissions =
+                serde_json::from_value(map.get("sub").unwrap().clone()).unwrap();
+            gloo::console::log!(&format!(
+                            "Uuid: {}\n Role: {:?}",
+                            perm.user_uuid, perm.user_role
+                        ));
+            return Some(Self {
+                token: Some(token),
+                user_uuid: Some(perm.user_uuid),
+                user_role: perm.user_role,
+            });
+        }
+        None
+    }
+}
 impl Reducible for AuthToken {
     type Action = AuthTokenAction;
 
@@ -97,21 +117,8 @@ impl Reducible for AuthToken {
         match action {
             AuthTokenAction::Set(token) => {
                 if let Some(token) = token {
-                    let payload = token.split(".").collect::<Vec<&str>>()[1];
-                    let payload = base64::decode(payload).unwrap();
-                    if let Value::Object(map) = serde_json::from_slice(&payload).unwrap() {
-                        let perm: Permissions =
-                            serde_json::from_value(map.get("sub").unwrap().clone()).unwrap();
-                        gloo::console::log!(&format!(
-                            "Uuid: {}\n Role: {:?}",
-                            perm.user_uuid, perm.user_role
-                        ));
-                        return Self {
-                            token: Some(token),
-                            user_uuid: Some(perm.user_uuid),
-                            user_role: perm.user_role,
-                        }
-                        .into();
+                    if let Some(auth) = AuthToken::new_from_token(token) {
+                       return Rc::new(auth);
                     }
                 }
                 Self::default().into()
