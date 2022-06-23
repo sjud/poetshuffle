@@ -1,10 +1,10 @@
-mod add_poem;
 
 use super::*;
 use crate::queries::{poem_query, PoemQuery};
 use add_poem::AddPoem;
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
+use crate::services::network::GraphQlResp;
 
 #[function_component(PoemList)]
 pub fn poem_list() -> Html {
@@ -16,39 +16,28 @@ pub fn poem_list() -> Html {
         use_state(|| Mutex::new(HashMap::new()));
     for uuid in poem_uuids {
         let poem_cards = poem_cards.clone();
-        let token = auth_ctx.token.clone();
+        let auth = auth_ctx.clone();
         let msg_context = msg_context.clone();
         if let Some(true) = edit_set_context.poem_list_data.poem_load_flags.get(&uuid) {
             use_async::<_, (), String>(async move {
-                let resp = post_graphql::<PoemQuery>(
-                    poem_query::Variables {
-                        poem_uuid: uuid.to_string(),
-                    },
-                    token.clone(),
-                )
-                .await
-                .map_err(|err| format!("{:?}", err))?;
-                if let Some(ref data) = resp.data {
-                    if let Some(poem) = &data.poem {
-                        // Turn use_state into Mutex, lock it unwrap to get the guard.
-                        let mut poem_map = (*poem_cards).lock().unwrap();
-                        poem_map.insert(
-                            uuid,
-                            PoemProps {
-                                title: poem.title.clone(),
+                match auth.poem_query(uuid).await? {
+                    GraphQlResp::Data(data) => {
+                        if let Some(poem) = &data.poem {
+                            // Turn use_state into Mutex, lock it unwrap to get the guard.
+                            let mut poem_map = (*poem_cards).lock().unwrap();
+                            poem_map.insert(
                                 uuid,
-                                idx: poem.idx as i32,
-                            },
-                        );
-                        poem_cards.set(Mutex::new(poem_map.clone()));
-                    }
-                    // If we have no data then see if we have errors and print those to console.
-                    else if resp.errors.is_some() {
-                        msg_context.dispatch(new_red_msg_with_std_duration(
-                            map_graphql_errors_to_string(&resp.errors),
-                        ));
-                        tracing::error!("{:?}", resp.errors);
-                    }
+                                PoemProps {
+                                    title: poem.title.clone(),
+                                    uuid,
+                                    idx: poem.idx as i32,
+                                },
+                            );
+                            poem_cards.set(Mutex::new(poem_map.clone()));
+                        }
+                    },
+                    GraphQlResp::Err(errors) =>
+                        msg_context.dispatch(errors.into_msg_action()),
                 }
                 Ok(())
             });

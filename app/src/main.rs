@@ -13,6 +13,14 @@ use std::sync::Mutex;
 
 #[cfg(test)]
 use wasm_bindgen_test::*;
+pub const BASE_URL : &'static str = base_url();
+
+const fn base_url() -> &'static str {
+    let base_url = "https://poetshuffle.com/";
+    #[cfg(test)]
+    let base_url = "http://127.0.0.1:3000/";
+    base_url
+}
 
 pub const MSG_DURATION: u8 = 4;
 
@@ -27,6 +35,7 @@ fn main() {
         .with_writer(Mutex::new(WASMConsoleWriter))
         .pretty()
         .init();
+    tracing::error!("main");
     yew::start_app::<App>();
 }
 

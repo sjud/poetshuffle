@@ -1,6 +1,5 @@
-mod poem_list;
-
-use crate::components::publish::*;
+use crate::services::network::GraphQlResp;
+use super::*;
 use crate::types::edit_set_context::{EditSetContext, EditSetDataActions};
 
 #[function_component(EditPendingSet)]
@@ -37,28 +36,19 @@ pub fn update_set_link() -> Html {
         let title_ref = use_node_ref();
         let link_ref = use_node_ref();
         let update_link = {
-            let token = auth_ctx.token.clone();
+            let auth = auth_ctx.clone();
             let msg_context = msg_context.clone();
             let edit_set_context = edit_set_context.clone();
             let link_ref = link_ref.clone();
             use_async::<_, (), String>(async move {
-                let resp = post_graphql::<UpdateLinkMutation>(
-                    update_link_mutation::Variables {
-                        set_uuid: set_uuid.to_string(),
-                        link: link_ref.cast::<HtmlInputElement>().unwrap().value(),
+                match auth.update_link(set_uuid,link_ref.cast::<HtmlInputElement>().unwrap().value()).await? {
+                    GraphQlResp::Data(data) => {
+                        edit_set_context.dispatch(EditSetDataActions::NewEditFlag(true));
+                        msg_context.dispatch(
+                            new_green_msg_with_std_duration(data.update_link));
                     },
-                    token,
-                )
-                .await
-                .map_err(|err| format!("{:?}", err))?;
-                if let Some(ref data) = resp.data {
-                    edit_set_context.dispatch(EditSetDataActions::NewEditFlag(true));
-                    msg_context.dispatch(new_green_msg_with_std_duration("Updated".to_string()));
-                } else if resp.errors.is_some() {
-                    msg_context.dispatch(new_red_msg_with_std_duration(
-                        map_graphql_errors_to_string(&resp.errors),
-                    ));
-                    tracing::error!("{:?}", resp.errors);
+                    GraphQlResp::Err(errors) => msg_context
+                        .dispatch(errors.into_msg_action())
                 }
                 Ok(())
             })

@@ -1,8 +1,6 @@
-pub mod edit_pending_set;
-
 use super::*;
-use crate::components::publish::menu::edit_pending_set::*;
-use crate::types::edit_set_context::{EditSetContext, EditSetDataActions, EditableSet};
+use crate::components::publish::edit_pending_set::EditPendingSet;
+use crate::types::edit_set_context::{EditableSet, EditSetContext, EditSetDataActions};
 
 #[function_component(PublishMenu)]
 pub fn publish_menu() -> Html {

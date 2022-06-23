@@ -39,7 +39,7 @@ pub(crate) async fn http_server(conn: DatabaseConnection) {
 
     // Using storage() as a base which handles arbitrary file lookups.
     // See Axum docs for standard server boilerplate.
-    axum::Server::bind(&"0.0.0.0:8001".parse().unwrap())
+    axum::Server::bind(&"127.0.0.1:3000".parse().unwrap())
         .serve(app(key, schema).into_make_service())
         .await
         .unwrap();

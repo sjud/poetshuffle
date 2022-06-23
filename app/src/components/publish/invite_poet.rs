@@ -1,3 +1,5 @@
+use std::sync::Arc;
+use crate::services::network::GraphQlResp;
 use super::*;
 
 #[function_component(InvitePoet)]
@@ -11,31 +13,18 @@ pub fn invite_poet() -> Html {
     let req = {
         // Clones are required because of the move in our async block.
         let email = email.clone();
-        let token = auth_ctx.token.clone();
+        let auth = auth_ctx.clone();
         // We run this when we submit our form.
         use_async::<_, (), String>(async move {
-            // Get the values from the fields and post a login graphql query to our server
-            let resp = post_graphql::<InviteUserMutation>(
-                invite_user_mutation::Variables {
-                    email: email.cast::<HtmlInputElement>().unwrap().value(),
-                    user_role: invite_user_mutation::UserRole::POET,
-                },
-                token,
-            )
-            .await
-            .map_err(|err| format!("{:?}", err))?;
-            // If we our response has data check it's .login field it ~should~ be a jwt string
-            // which we dispatch to our AuthToken which will now use it in all future contexts.
-
-            if let Some(ref data) = resp.data {
-                msg_context.dispatch(new_green_msg_with_std_duration(data.invite_user.clone()));
-            }
-            // If we have no data then see if we have errors and print those to console.
-            else if resp.errors.is_some() {
-                msg_context.dispatch(new_red_msg_with_std_duration(map_graphql_errors_to_string(
-                    &resp.errors,
-                )));
-                tracing::error!("{:?}", resp.errors);
+            match auth.invite_poet(email.cast::<HtmlInputElement>().unwrap().value()).await? {
+                GraphQlResp::Data(data) =>
+                    msg_context.dispatch(
+                        new_green_msg_with_std_duration(
+                            data
+                                .invite_user
+                        )),
+                GraphQlResp::Err(errors) =>
+                    msg_context.dispatch(errors.into_msg_action()),
             }
             Ok(())
         })
