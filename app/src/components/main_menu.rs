@@ -6,8 +6,10 @@ use std::sync::Mutex;
 use stylist::css;
 use web_sys::HtmlParagraphElement;
 use yew::prelude::*;
-use yew_hooks::use_is_first_mount;
+use yew_hooks::{use_async, use_is_first_mount};
 use yew_router::{hooks::use_history, prelude::History};
+
+pub const INSTRUCTION_DURATION:u32 = 100;
 
 #[function_component(MainMenu)]
 pub fn main_menu() -> Html {
@@ -27,12 +29,16 @@ pub fn main_menu() -> Html {
     color:black;"#
     ); //
     let button = button();
-
+    let instruction_one = "Press PoetShuffle";
     let mut instr_props1 = TypeInstructionProps {
-        msg: "Press PoetShuffle".into(),
+        msg: instruction_one.into(),
+        wait:0,
+
     };
     let instr_props2 = TypeInstructionProps {
-        msg: "Discover Poetry.".into(),
+        msg: "Discover Poetry".into(),
+        wait:(instruction_one.len() as u32 + 4) * INSTRUCTION_DURATION
+
     };
     html! {
         <div>
@@ -58,29 +64,39 @@ pub fn main_menu() -> Html {
         </div>
     }
 }
-
 #[derive(Properties, PartialEq)]
 pub struct TypeInstructionProps {
     msg: String,
+    wait:u32,
 }
 #[function_component(TypeInstruction)]
 fn type_instruction(props: &TypeInstructionProps) -> Html {
+
     let text = use_state(|| String::new());
     let stmt = props.msg.clone();
+    let wait = props.wait;
     let text_clone = text.clone();
     if use_is_first_mount() {
         wasm_bindgen_futures::spawn_local(async move {
+            gloo::timers::future::TimeoutFuture::new(wait).await;
             let mut text_buf = String::new();
             for c in stmt.chars() {
-                gloo::timers::future::TimeoutFuture::new(100).await;
+                gloo::timers::future::TimeoutFuture::new(INSTRUCTION_DURATION).await;
+                if c == ' ' {
+                    gloo::timers::future::TimeoutFuture::new(INSTRUCTION_DURATION).await;
+                }
                 text_buf.push(c);
                 text_clone.set(text_buf.clone());
             }
         });
     };
+
+    /// \u00A0 is nonbreaking space, it makes sure our span
+    /// exists invisibly and that there is no spacing readjustments
+    /// as text is types.
     html! {
         <div>
-        <span>{(*text).clone()}</span>
+        <span>{"\u{00A0}"}{(*text).clone()}</span>
         </div>
     }
 }

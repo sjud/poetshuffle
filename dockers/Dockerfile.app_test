@@ -1,0 +1,7 @@
+FROM rustlang/rust:nightly-buster
+ENV ADMIN_USER admin@admin.admin
+ENV ADMIN_PASS 1234
+COPY .. .
+RUN cargo install wasm-pack
+CMD ["wasm-pack","--firefox"]
+

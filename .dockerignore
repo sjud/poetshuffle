@@ -1,8 +1,6 @@
-.env
 .dockerignore
-spec.yaml
+docker-compose.yaml
 target/
 deploy/
-tests/
-Dockerfile
 scripts/
+dockers/

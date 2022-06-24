@@ -1,0 +1,8 @@
+FROM rustlang/rust:nightly-buster
+COPY .. .
+ENV JWT_SECRET="Secret"
+ENV DATABASE_URL="postgresql://postgres:password@0.0.0.0:5433/postgres"
+RUN cargo +nightly build --release --package server --features dev,mock_email
+EXPOSE 3000
+ENTRYPOINT ["./target/release/server"]
+
