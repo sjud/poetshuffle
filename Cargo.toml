@@ -5,7 +5,7 @@ edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [workspace]
-members = [".", "entity", "migration","app","server"]
+members = [".", "entity", "migration","app","server","local_cdn"]
 
 [lib]
 name = "poetshuffle"

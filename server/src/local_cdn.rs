@@ -16,7 +16,7 @@ pub async fn local_cdn() {
             ServiceBuilder::new()
                 .layer(SetResponseHeaderLayer::if_not_present(
                     header::ACCESS_CONTROL_ALLOW_ORIGIN,
-                    HeaderValue::from_static("http://127.0.0.1:8000"),
+                    HeaderValue::from_static("*"),
                 ))
                 .service(get_service(ServeDir::new("static")).handle_error(handle_error)),
         )

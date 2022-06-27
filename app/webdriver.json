@@ -1,5 +1,4 @@
 {
   "moz:firefoxOptions": {
-    "args": ["-port 8000"]
   }
 }

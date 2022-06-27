@@ -1,12 +1,11 @@
 use crate::graphql::schema::PoetShuffleSchema;
 use crate::types::auth::Auth;
 use async_graphql_axum::{GraphQLRequest, GraphQLResponse};
-use axum::http::HeaderMap;
+use axum::http::{HeaderMap, StatusCode};
 use axum::Extension;
 use entity::permissions::Model as Permissions;
 use hmac::Hmac;
 use jwt::VerifyWithKey;
-use reqwest::StatusCode;
 use sha2::Sha256;
 use std::collections::BTreeMap;
 
@@ -38,6 +37,9 @@ pub async fn graphql_handler(
         None => Auth(None),
     };
     Ok(schema.execute(req.into_inner().data(auth)).await.into())
+}
+pub async fn health_check() -> StatusCode {
+    StatusCode::OK
 }
 
 #[cfg(test)]

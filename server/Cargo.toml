@@ -9,6 +9,7 @@ name = "server"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [features]
 dev = ["local_cdn","graphiql"]
+app-test = ["dev","mock_email"]
 local_cdn = []
 graphiql = []
 mock_email = ["dep:mockall"]
@@ -49,4 +50,6 @@ chrono = "0.4.19"
 postmark = {version="0.5.0",features=["reqwest"]}
 passwords = "3.1.9"
 mockall = { version="0.11.1",optional=true}
+
+
 

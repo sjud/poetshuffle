@@ -3,7 +3,7 @@ use crate::graphql::schema::PoetShuffleSchema;
 use crate::{
     graphql::schema::new_schema, handlers::graphql_handler, storage, POSTMARK_API_TRANSACTION,
 };
-use axum::routing::MethodRouter;
+use axum::routing::{get, MethodRouter};
 use axum::{extract::Path, response::Html, routing::post, Extension, Router};
 use hmac::digest::KeyInit;
 use hmac::Hmac;
@@ -12,6 +12,9 @@ use sea_orm::DatabaseConnection;
 use sha2::Sha256;
 use tower_http::trace::TraceLayer;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
+use crate::handlers::health_check;
+use crate::SERVER_IP;
+use crate::SERVER_PORT;
 
 /// builds our HTTP server, needs DB conn for GraphQL.
 pub(crate) async fn http_server(conn: DatabaseConnection) {
@@ -39,14 +42,16 @@ pub(crate) async fn http_server(conn: DatabaseConnection) {
 
     // Using storage() as a base which handles arbitrary file lookups.
     // See Axum docs for standard server boilerplate.
-    axum::Server::bind(&"127.0.0.1:8000".parse().unwrap())
+    axum::Server::bind(&format!("{}:{}",&*SERVER_IP,&*SERVER_PORT).parse().unwrap())
         .serve(app(key, schema).into_make_service())
         .await
         .unwrap();
 }
 
 pub fn app(key: Hmac<Sha256>, schema: PoetShuffleSchema) -> Router {
-    let api_routes = Router::new().route("/graphql", post(graphql_handler));
+    let api_routes = Router::new()
+        .route("/graphql", post(graphql_handler))
+        .route("/health_check",get(health_check));
     // For use during development.
     #[cfg(feature = "graphiql")]
     let api_routes = api_routes.route(

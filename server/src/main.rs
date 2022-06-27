@@ -21,10 +21,24 @@ mod types;
 lazy_static! {
     /// i.e postgresql://postgres:PASSWORD@0.0.0.0:5432/postgres
     pub static ref DATABASE_URL: String = {
+        #[cfg(feature = "app-test")]
+        return dotenv_codegen::dotenv!("APP_TEST_DB_URL").to_string();
         #[cfg(feature = "dev")]
         return dotenv_codegen::dotenv!("DATABASE_URL").to_string();
         #[cfg(not(feature = "dev"))]
         std::env::var("DATABASE_URL").unwrap()
+    };
+    pub static ref SERVER_PORT: String = {
+        #[cfg(feature = "dev")]
+        return dotenv_codegen::dotenv!("SERVER_PORT").to_string();
+        #[cfg(not(feature = "dev"))]
+        return std::env::var("SERVER_PORT").unwrap();
+    };
+    pub static ref SERVER_IP: String = {
+        #[cfg(feature = "dev")]
+        return dotenv_codegen::dotenv!("SERVER_IP").to_string();
+        #[cfg(not(feature = "dev"))]
+        return std::env::var("SERVER_IP").unwrap();
     };
     pub static ref JWT_SECRET: String = {
         #[cfg(feature = "dev")]
@@ -47,7 +61,7 @@ lazy_static! {
     /// i.e https://127.0.0.1:8000/
     pub static ref URL_BASE: String = {
         #[cfg(feature = "dev")]
-        return dotenv_codegen::dotenv!("URL_BASE").to_string();
+        return format!("http://{}:{}/",&*SERVER_IP,&*SERVER_PORT);
         #[cfg(not(feature = "dev"))]
         std::env::var("URL_BASE").unwrap()
     };
@@ -85,10 +99,7 @@ async fn main() {
     }
     .insert(&conn)
     .await;
-    // ...
-    #[cfg(feature = "dev")]
-    //populate_db_with_test_data(&connection).await.unwrap();
-    // Spawn test_cdn server on port 8001 during development.
+
     let test_cdn = tokio::task::spawn(async move {
         #[cfg(feature = "local_cdn")]
         local_cdn::local_cdn().await
@@ -98,3 +109,4 @@ async fn main() {
     // We run all processes until the first error.
     try_join!(test_cdn, server).unwrap();
 }
+

@@ -8,7 +8,7 @@ pub async fn post_graphql<Q: GraphQLQuery>(
     jwt: Option<String>,
 ) -> Result<Arc<graphql_client::Response<Q::ResponseData>>> {
     tracing::error!("hi");
-    let req = gloo::net::http::Request::post("http://127.0.0.1:3000/api/graphql");
+    let req = gloo::net::http::Request::post(&format!("{}api/graphql",BASE_URL));
     let req = if jwt.is_some() {
         req.header("x-authorization", &(jwt.unwrap_or(String::default())))
     } else {
@@ -20,17 +20,17 @@ pub async fn post_graphql<Q: GraphQLQuery>(
     Ok(Arc::new(
         req.json(&Q::build_query(vars))?
             .send()
-            .await?
+            .await.unwrap()
             .json()
-            .await?,
+            .await.unwrap(),
     ))
 }
-#[derive(PartialEq, Clone)]
+#[derive(PartialEq, Clone,Debug)]
 pub enum GraphQlResp<ResponseData> {
     Data(ResponseData),
     Err(GraphQlRespErrors),
 }
-#[derive(PartialEq, Clone)]
+#[derive(PartialEq, Clone,Debug)]
 pub struct GraphQlRespErrors(pub Option<Vec<graphql_client::Error>>);
 impl GraphQlRespErrors {
     pub fn into_msg_action(self) -> MsgActions {
@@ -43,6 +43,7 @@ impl GraphQlRespErrors {
 use crate::queries::*;
 #[cfg(test)]
 use wasm_bindgen_test::*;
+use crate::BASE_URL;
 use crate::services::utility::map_graphql_errors_to_string;
 use crate::types::auth_context::{AuthContext, AuthToken, UserRole};
 use crate::types::msg_context::{MsgActions, new_red_msg_with_std_duration};
@@ -136,9 +137,8 @@ async fn test_invite_poet() {
     wasm_bindgen_test_configure!(run_in_browser);
     let auth =  AuthToken::default();
     let resp = auth.invite_poet("test_email@test_email.test_email".into())
-        .await
-        .unwrap();
-    match resp {
+        .await;
+    match resp.unwrap() {
         GraphQlResp::Data(_) => {}
         GraphQlResp::Err(errors) =>
             assert_eq!("Unauthorized.",errors.0.unwrap()[0].message),

@@ -1,0 +1,7 @@
+FROM rustlang/rust:nightly-buster as BUILD
+COPY .. .
+RUN cargo +nightly build --release --package server --features app-test
+EXPOSE 3000
+ENTRYPOINT ["./target/release/server"]
+
+

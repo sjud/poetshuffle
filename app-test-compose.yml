@@ -1,16 +1,20 @@
 version: "3.9"
 services:
-  server_dev:
+  server_app_test:
     build:
       context: .
-      dockerfile: dockers/Dockerfile.server_dev
+      dockerfile: dockers/Dockerfile.server_app_test
     ports:
-      - "3000:8000"
+      - "3000"
+    volumes:
+      - /server
+      - /entity
+      - /migration
     depends_on:
       test_db:
         condition: service_healthy
     healthcheck:
-      test: [ "CMD-SHELL", "curl -f 127.0.0.1:8000" ]
+      test: [ "CMD-SHELL", "curl -f 127.0.0.1:3000/api/health_check || exit 1" ]
       interval: 5s
       timeout: 10s
       retries: 5
@@ -19,7 +23,7 @@ services:
       context: .
       dockerfile: dockers/Dockerfile.test_db
     ports:
-      - "5433:5432"
+      - "5432"
     healthcheck:
       test: [ "CMD-SHELL", "PGPASSWORD=PASSWORD psql --port=5432 --user=postgres --host=0.0.0.0 \
 -XtAc \"SELECT 1 FROM pg_database WHERE datname='postgres'\"" ]
@@ -31,7 +35,11 @@ services:
       context: .
       dockerfile: dockers/Dockerfile.app_test
     ports:
-      - "8000:8000"
+      - "127.0.0.1:8000:8000"
     depends_on:
-      server_dev:
+      server_app_test:
         condition: service_healthy
+    volumes:
+      - /app
+      - /entity
+      - /migration
