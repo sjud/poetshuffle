@@ -1,7 +1,12 @@
 FROM rustlang/rust:nightly-buster as BUILD
 COPY .. .
 RUN cargo +nightly build --release --package server --features app-test
+
+FROM debian:latest
+COPY --from=BUILD ./target/release/server ./server
+RUN apt-get update
+RUN apt-get install -y curl
 EXPOSE 3000
-ENTRYPOINT ["./target/release/server"]
+ENTRYPOINT ["./server"]
 
 

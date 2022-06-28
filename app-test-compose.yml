@@ -6,10 +6,6 @@ services:
       dockerfile: dockers/Dockerfile.server_app_test
     ports:
       - "3000"
-    volumes:
-      - /server
-      - /entity
-      - /migration
     depends_on:
       test_db:
         condition: service_healthy
@@ -40,6 +36,6 @@ services:
       server_app_test:
         condition: service_healthy
     volumes:
-      - /app
-      - /entity
-      - /migration
+      - type: bind
+        source: ./app
+        target: /poetshuffle/app
