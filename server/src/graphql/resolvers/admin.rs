@@ -37,7 +37,7 @@ impl AdminMutation {
             );
             Ok(claims.sign_with_key(key)?)
         } else {
-            Err(Error::new("Nuh-uh-uh."))
+            Err(Error::new("Admin credentials invalid."))
         }
     }
     async fn modify_user_role(

@@ -82,9 +82,10 @@ fn type_instruction(props: &TypeInstructionProps) -> Html {
             let mut text_buf = String::new();
             for c in stmt.chars() {
                 gloo::timers::future::TimeoutFuture::new(INSTRUCTION_DURATION).await;
+                /*
                 if c == ' ' {
                     gloo::timers::future::TimeoutFuture::new(INSTRUCTION_DURATION).await;
-                }
+                }*/
                 text_buf.push(c);
                 text_clone.set(text_buf.clone());
             }

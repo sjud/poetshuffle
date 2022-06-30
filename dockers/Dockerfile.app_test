@@ -8,6 +8,5 @@ RUN apt-get install -y ./google-chrome-stable_current_amd64.deb
 RUN cargo install wasm-pack
 ENV ADMIN_USER admin@admin.admin
 ENV ADMIN_PASS 1234
-EXPOSE 8000
 WORKDIR poetshuffle
 CMD ["wasm-pack","test","--chrome","--headless","app"]

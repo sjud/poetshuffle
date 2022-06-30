@@ -1,6 +1,6 @@
 # See test.sh for comments
 
-docker run --name test_db --rm -d -p 5433:5432 test_db
+docker run --name test_db --rm -d -p 5433:5432 poetshuffle_v2_test_db
 while [[ "$( PGPASSWORD=PASSWORD psql --port=5433 --user=postgres --host=0.0.0.0 \
 -XtAc "SELECT 1 FROM pg_database WHERE datname='postgres'" )" != 1 ]]
 do

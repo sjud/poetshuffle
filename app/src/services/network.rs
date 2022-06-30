@@ -2,14 +2,23 @@ use anyhow::Result;
 use graphql_client::GraphQLQuery;
 use std::sync::Arc;
 use uuid::Uuid;
+use gloo::console::error;
+use reqwest::header::HeaderValue;
+use reqwest::Url;
 
 pub async fn post_graphql<Q: GraphQLQuery>(
     vars: <Q as GraphQLQuery>::Variables,
     jwt: Option<String>,
 ) -> Result<Arc<graphql_client::Response<Q::ResponseData>>> {
-    let req = gloo::net::http::Request::post(&format!("{}api/graphql",BASE_URL));
+    let req = reqwest::Client::new().post(
+        &format!("{}api/graphql",BASE_URL));
+    //let req = gloo::net::http::Request::post(&format!("{}api/graphql",BASE_URL));
     let req = if jwt.is_some() {
-        req.header("x-authorization", &(jwt.unwrap_or(String::default())))
+        req.header(
+            "x-authorization",
+            HeaderValue::from_str(&jwt.unwrap_or(String::default()))?
+        )
+        //req.header("x-authorization", &(jwt.unwrap_or(String::default())))
     } else {
         req
     };
@@ -17,8 +26,8 @@ pub async fn post_graphql<Q: GraphQLQuery>(
     // We need an Arc here because we want to call it from use_async,
     // response is not clone and use_async's future state require clones? (I think, not sure)
     Ok(Arc::new({
-        let req = req.json(&Q::build_query(vars))?;
-        eprintln!("{:?}",req);
+        //let req = req.json(&Q::build_query(vars))?;
+        let req = req.json(&Q::build_query(vars));
         req.send()
             .await?
             .json()
@@ -45,6 +54,7 @@ use crate::queries::*;
 #[cfg(test)]
 use wasm_bindgen_test::*;
 use crate::BASE_URL;
+use crate::services::network::test::no_graphql_errors_or_print_them;
 use crate::services::utility::map_graphql_errors_to_string;
 use crate::types::auth_context::{AuthContext, AuthToken, UserRole};
 use crate::types::msg_context::{MsgActions, new_red_msg_with_std_duration};
@@ -76,7 +86,7 @@ impl AuthToken {
             GraphQlResp::Data(data) => Self::new_from_token(data.super_admin_login)
                 .unwrap(),
             GraphQlResp::Err(errs) => {
-                panic!("Expecting login graphql to resolve")
+                panic!("{:?}",errs)
             }
         }
     }
@@ -130,38 +140,93 @@ impl AuthToken {
 }
 
 
-
-
-#[cfg_attr(test,wasm_bindgen_test(async))]
 #[cfg(test)]
-async fn test_invite_poet() {
+pub mod test {
+    // Required for testing in browser.
     wasm_bindgen_test_configure!(run_in_browser);
-    let auth =  AuthToken::default();
-    let resp = auth.invite_poet("test_email@test_email.test_email".into())
-        .await;
-    match resp.unwrap() {
-        GraphQlResp::Data(_) => {}
-        GraphQlResp::Err(errors) =>
-            assert_eq!("Unauthorized.",errors.0.unwrap()[0].message),
+    use reqwest::{Client, StatusCode};
+    use crate::services::test_util::{ADMIN_PASS, ADMIN_USER};
+    use super::*;
+    /*
+        Integration tests between app and server.
+     */
+    #[wasm_bindgen_test]
+    async fn test_admin_super_login() {
+        let auth = AuthToken::default();
+        let resp = auth
+            .admin_super_login(ADMIN_USER.into(),ADMIN_PASS.into()).await.unwrap();
+        match resp {
+            GraphQlResp::Data(_) => {},
+            GraphQlResp::Err(ref errors) =>
+                no_graphql_errors_or_print_them(errors.0.clone().unwrap()).unwrap()
+        }
     }
-    let auth = AuthToken::new_from_login_super_admin().await;
-    let resp = auth.invite_poet("test_email@test_email.test_email".into())
-        .await
-        .unwrap();
-    match resp {
-        GraphQlResp::Data(_) => {},
-        GraphQlResp::Err(ref errors) =>
-            no_graphql_errors_or_print_them(errors.0.clone().unwrap()).unwrap()
+    #[wasm_bindgen_test]
+    async fn test_add_poem() {
+        let auth = AuthToken::new_from_login_super_admin().await;
+        let resp = auth
+            .add_poem(Uuid::new_v4(),0).await.unwrap();
+        match resp {
+            GraphQlResp::Data(_) => {},
+            GraphQlResp::Err(errors) =>
+                assert_eq!("Set not found", errors.0.unwrap()[0].message),
+
+        }
     }
-}
-pub(crate) fn no_graphql_errors_or_print_them(
-    errors: Vec<graphql_client::Error>,
-) -> Result<(), ()> {
-    if !errors.is_empty() {
-        tracing::error!("{:?}", errors);
+    #[wasm_bindgen_test]
+    async fn test_poem_query() {
+        let auth = AuthToken::default();
+        let resp : GraphQlResp<poem_query::ResponseData> = auth
+            .poem_query(Uuid::new_v4()).await.unwrap();
+        match resp {
+            GraphQlResp::Data(data) =>
+            assert_eq!(data,poem_query::ResponseData{poem:None}),
+            GraphQlResp::Err(errors) =>
+                no_graphql_errors_or_print_them(
+                    errors.0.clone().unwrap())
+                    .unwrap()
+        }
     }
-    if !errors.is_empty() {
-        Err(())?
+    #[wasm_bindgen_test]
+    async fn test_health_check() {
+        let resp = Client::new()
+            .get(&format!("{}api/health_check",BASE_URL))
+            .send()
+            .await
+            .unwrap();
+        assert_eq!(resp.status(), StatusCode::OK);
     }
-    Ok(())
+
+    #[wasm_bindgen_test]
+    async fn test_invite_poet() {
+        let auth = AuthToken::default();
+        let resp = auth.invite_poet("test_email@test_email.test_email".into())
+            .await.unwrap();
+        match resp {
+            GraphQlResp::Data(_) => {}
+            GraphQlResp::Err(errors) =>
+                assert_eq!("Unauthorized.", errors.0.unwrap()[0].message),
+        }
+        let auth = AuthToken::new_from_login_super_admin().await;
+        let resp = auth.invite_poet("test_email@test_email.test_email".into())
+            .await
+            .unwrap();
+        match resp {
+            GraphQlResp::Data(_) => {},
+            GraphQlResp::Err(ref errors) =>
+                no_graphql_errors_or_print_them(errors.0.clone().unwrap()).unwrap()
+        }
+    }
+    // Uses gloo error to print to the console during tests.
+    pub(crate) fn no_graphql_errors_or_print_them(
+        errors: Vec<graphql_client::Error>,
+    ) -> Result<(), ()> {
+        if !errors.is_empty() {
+            error!(format!("{:?}", errors));
+        }
+        if !errors.is_empty() {
+            Err(())?
+        }
+        Ok(())
+    }
 }

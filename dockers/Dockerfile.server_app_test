@@ -1,12 +1,14 @@
-FROM rustlang/rust:nightly-buster as BUILD
-COPY .. .
+FROM rustlang/rust:nightly-bullseye as BUILD
+COPY .. ./poetshuffle/
+WORKDIR poetshuffle
 RUN cargo +nightly build --release --package server --features app-test
 
 FROM debian:latest
-COPY --from=BUILD ./target/release/server ./server
+COPY --from=BUILD /poetshuffle/target/release/server ./bin
 RUN apt-get update
 RUN apt-get install -y curl
 EXPOSE 3000
-ENTRYPOINT ["./server"]
+ENV SERVER_IP=0.0.0.0
+ENTRYPOINT ["server"]
 
 

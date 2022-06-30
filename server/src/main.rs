@@ -35,10 +35,13 @@ lazy_static! {
         return std::env::var("SERVER_PORT").unwrap();
     };
     pub static ref SERVER_IP: String = {
-        #[cfg(feature = "dev")]
-        return dotenv_codegen::dotenv!("SERVER_IP").to_string();
-        #[cfg(not(feature = "dev"))]
-        return std::env::var("SERVER_IP").unwrap();
+        if let Ok(ip) = std::env::var("SERVER_IP") {
+            ip
+        } else {
+            #[cfg(feature = "dev")]
+            return dotenv_codegen::dotenv!("SERVER_IP").to_string();
+            panic!("Expecting server IP to start the server.")
+        }
     };
     pub static ref JWT_SECRET: String = {
         #[cfg(feature = "dev")]

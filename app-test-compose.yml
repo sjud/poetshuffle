@@ -1,11 +1,25 @@
 version: "3.9"
 services:
+  tcpdump:
+    image: nicolaka/netshoot
+    depends_on:
+      - nginx
+    command: tcpdump -i eth0 -w /data/nginx.pcap
+    network_mode: service:nginx
+    volumes:
+      - $PWD/data:/data
+
+  nginx:
+    image: nginx:alpine
+    ports:
+      - 80:80
   server_app_test:
+    container_name: server
     build:
       context: .
       dockerfile: dockers/Dockerfile.server_app_test
     ports:
-      - "3000"
+      - "3000:3000"
     depends_on:
       test_db:
         condition: service_healthy
@@ -14,6 +28,16 @@ services:
       interval: 5s
       timeout: 10s
       retries: 5
+    volumes:
+      - type: bind
+        source: ./server
+        target: /poetshuffle/server
+      - type: bind
+        source: ./entity
+        target: /poetshuffle/entity
+      - type: bind
+        source: ./migration
+        target: /poetshuffle/migration
   test_db:
     build:
       context: .
@@ -27,11 +51,11 @@ services:
       timeout: 10s
       retries: 10
   app_test:
+    environment:
+      - BASE_URL=http://172.19.0.4:3000/
     build:
       context: .
       dockerfile: dockers/Dockerfile.app_test
-    ports:
-      - "127.0.0.1:8000:8000"
     depends_on:
       server_app_test:
         condition: service_healthy
