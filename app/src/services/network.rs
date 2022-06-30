@@ -20,13 +20,12 @@ pub async fn post_graphql<Q: GraphQLQuery>(
     } else {
         req
     };
-    Ok(Arc::new({
-        let req = req.json(&Q::build_query(vars));
-        req.send()
+    Ok(Arc::new(
+        req.json(&Q::build_query(vars))
+            .send()
             .await?
             .json()
             .await?
-        }
     ))
 }
 #[derive(PartialEq, Clone,Debug)]
@@ -62,7 +61,6 @@ pub fn parse_graph_ql_resp<Data:Clone>(resp:Result<Arc<graphql_client::Response<
     return if let Some(data) = resp.as_ref().data.clone() {
         Ok(GraphQlResp::Data(data))
     } else {
-        tracing::error!("{:?}",resp.errors);
         Ok(GraphQlResp::Err(GraphQlRespErrors(resp.as_ref().errors.clone())))
     }
 }
