@@ -12,21 +12,15 @@ pub async fn post_graphql<Q: GraphQLQuery>(
 ) -> Result<Arc<graphql_client::Response<Q::ResponseData>>> {
     let req = reqwest::Client::new().post(
         &format!("{}api/graphql",BASE_URL));
-    //let req = gloo::net::http::Request::post(&format!("{}api/graphql",BASE_URL));
     let req = if jwt.is_some() {
         req.header(
             "x-authorization",
             HeaderValue::from_str(&jwt.unwrap_or(String::default()))?
         )
-        //req.header("x-authorization", &(jwt.unwrap_or(String::default())))
     } else {
         req
     };
-    //Turns our variables into a GraphQL query JSON formatted string.
-    // We need an Arc here because we want to call it from use_async,
-    // response is not clone and use_async's future state require clones? (I think, not sure)
     Ok(Arc::new({
-        //let req = req.json(&Q::build_query(vars))?;
         let req = req.json(&Q::build_query(vars));
         req.send()
             .await?
