@@ -1,12 +1,17 @@
-
 FROM rustlang/rust:nightly-bullseye
 COPY .. ./poetshuffle/
 RUN apt-get update -y
 RUN apt-get install -y wget
 RUN wget -q https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb
 RUN apt-get install -y ./google-chrome-stable_current_amd64.deb
+RUN CHROME_DRIVER_VERSION=`curl -sS https://chromedriver.storage.googleapis.com/LATEST_RELEASE` && \
+ wget -N https://chromedriver.storage.googleapis.com/$CHROME_DRIVER_VERSION/chromedriver_linux64.zip -P ~/
+RUN unzip ~/chromedriver_linux64.zip -d ~/
+RUN mv -f ~/chromedriver /usr/local/bin/chromedriver
+RUN export PATH=$PATH:/usr/local/bin/chromedriver
 RUN cargo install wasm-pack
 ENV ADMIN_USER admin@admin.admin
 ENV ADMIN_PASS 1234
 WORKDIR poetshuffle
+#RUN chromedriver --whitelisted-ips=""
 CMD ["wasm-pack","test","--chrome","--headless","app"]

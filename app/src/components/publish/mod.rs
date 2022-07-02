@@ -1,6 +1,5 @@
 pub mod invite_poet;
 pub mod menu;
-pub mod add_poem;
 pub mod edit_pending_set;
 pub mod poem_list;
 
@@ -11,7 +10,7 @@ use crate::queries::{
     add_poem_mutation, AddPoemMutation, create_pending_set_mutation,
     CreatePendingSetMutation, invite_user_mutation, InviteUserMutation,
     pending_set_by_user_query, PendingSetByUserQuery, poem_uuids_by_set_uuid_query, PoemUuidsBySetUuidQuery,
-    update_link_mutation, update_title_mutation, UpdateLinkMutation, UpdateTitleMutation,
+    update_set_mutation, UpdateSetMutation
 };
 use crate::routes::Route;
 use crate::services::network::post_graphql;

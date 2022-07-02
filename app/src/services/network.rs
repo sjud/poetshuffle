@@ -47,7 +47,6 @@ use crate::queries::*;
 #[cfg(test)]
 use wasm_bindgen_test::*;
 use crate::BASE_URL;
-use crate::services::network::test::no_graphql_errors_or_print_them;
 use crate::services::utility::map_graphql_errors_to_string;
 use crate::types::auth_context::{AuthContext, AuthToken, UserRole};
 use crate::types::msg_context::{MsgActions, new_red_msg_with_std_duration};
@@ -81,6 +80,39 @@ impl AuthToken {
                 panic!("{:?}",errs)
             }
         }
+    }
+    pub async fn update_set(&self,
+                            set_uuid:Uuid,
+                            title:Option<String>,
+        link:Option<String>,approve:Option<bool>,delete:Option<bool>)
+    -> GraphQlResult<update_set_mutation::ResponseData> {
+        parse_graph_ql_resp(
+            post_graphql::<UpdateSetMutation>(
+                update_set_mutation::Variables {
+                    set_uuid: set_uuid.to_string(),
+                    title,link,approve,delete
+                },
+                self.token.clone(),
+            )
+                .await
+        )
+    }
+    pub async fn pending_set_by_user__uuid(&self,user_uuid:Uuid)
+        -> GraphQlResult<pending_set_by_user_query::ResponseData> {
+        parse_graph_ql_resp( post_graphql::<PendingSetByUserQuery>(
+            pending_set_by_user_query::Variables { user_uuid: user_uuid.to_string()},
+            self.token.clone(),
+        )
+            .await)
+    }
+    pub async fn poem_uuids_by_set_uuid(&self,set_uuid:Uuid)
+        -> GraphQlResult<poem_uuids_by_set_uuid_query::ResponseData> {
+        parse_graph_ql_resp(
+        post_graphql::<PoemUuidsBySetUuidQuery>(
+            poem_uuids_by_set_uuid_query::Variables { set_uuid: set_uuid.to_string(), },
+            self.token.clone(),
+        )
+            .await)
     }
     pub async fn admin_super_login(&self,email:String,pass:String)
         -> GraphQlResult<super_admin_login_mutation::ResponseData> {
@@ -119,16 +151,6 @@ impl AuthToken {
             self.token.clone(),
         ).await)
     }
-    pub async fn update_link(&self,set_uuid:Uuid,link:String)
-                             -> GraphQlResult<update_link_mutation::ResponseData> {
-        parse_graph_ql_resp(post_graphql::<UpdateLinkMutation>(
-            update_link_mutation::Variables {
-                set_uuid: set_uuid.to_string(),
-                link,
-            },
-            self.token.clone(),
-        ).await)
-    }
 }
 
 
@@ -142,6 +164,31 @@ pub mod test {
     /*
         Integration tests between app and server.
      */
+    #[wasm_bindgen_test]
+    async fn test_pending_set_by_user__uuid() {
+        let auth = AuthToken::new_from_login_super_admin().await;
+        let resp = auth
+            .pending_set_by_user__uuid(auth.user_uuid.unwrap()).await.unwrap();
+        // Response should return None, not graphql errors.
+        match resp {
+            GraphQlResp::Data(_) => {},
+            GraphQlResp::Err(errors) =>
+                no_graphql_errors_or_print_them(errors.0.clone().unwrap()).unwrap()
+        }
+    }
+    #[wasm_bindgen_test]
+    async fn test_poem_uuids_by_set_uuid() {
+        let auth = AuthToken::new_from_login_super_admin().await;
+        let resp = auth
+            .poem_uuids_by_set_uuid(Uuid::new_v4()).await.unwrap();
+        // Resolve should resolve and tell us set doesn't exist.
+        match resp {
+            GraphQlResp::Data(_) => {},
+            GraphQlResp::Err(errors) =>
+                assert_eq!("Set not found", errors.0.unwrap()[0].message),
+        }
+
+    }
     #[wasm_bindgen_test]
     async fn test_admin_super_login() {
         let auth = AuthToken::default();

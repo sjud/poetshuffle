@@ -1,3 +1,0 @@
-mutation UpdateLinkMutation($set_uuid: String!, $link: String!) {
-  updateLink(setUuid: $set_uuid, link: $link)
-}

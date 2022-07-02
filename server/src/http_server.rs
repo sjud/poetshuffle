@@ -1,10 +1,12 @@
 use crate::email::Postmark;
 use crate::graphql::schema::PoetShuffleSchema;
 use crate::{
-    graphql::schema::new_schema, handlers::graphql_handler, storage, POSTMARK_API_TRANSACTION,
+    graphql::schema::new_schema, handlers::graphql_handler, storage,
 };
 use axum::routing::{get, MethodRouter};
 use axum::{extract::Path, response::Html, routing::post, Extension, Router};
+use axum::http::header::{ACCEPT, AUTHORIZATION};
+use axum::http::Method;
 use hmac::digest::KeyInit;
 use hmac::Hmac;
 use postmark::reqwest::PostmarkClient;
@@ -13,15 +15,45 @@ use sha2::Sha256;
 use tower_http::trace::TraceLayer;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 use crate::handlers::health_check;
-use crate::SERVER_IP;
-use crate::SERVER_PORT;
+use tower_http::cors::{Any, CorsLayer};
+use crate::email::{POSTMARK_API_TRANSACTION};
+
+lazy_static::lazy_static!{
+        pub static ref SERVER_PORT: String = {
+        if let Ok(port) = std::env::var("SERVER_PORT") {
+            port
+        } else {
+            #[cfg(feature = "dev")]
+            return dotenv_codegen::dotenv!("SERVER_PORT").to_string();
+            panic!("Requires server port, not set in .env or environment");
+        }
+    };
+    pub static ref SERVER_IP: String = {
+        if let Ok(ip) = std::env::var("SERVER_IP") {
+            ip
+        } else {
+            #[cfg(feature = "dev")]
+            return dotenv_codegen::dotenv!("SERVER_IP").to_string();
+            panic!("Requires SERVER_IP, not set in .env or environment");
+        }
+    };
+    pub static ref JWT_SECRET: String = {
+        if let Ok(secret) = std::env::var("JWT_SECRET") {
+            secret
+        } else {
+            #[cfg(feature = "dev")]
+            return dotenv_codegen::dotenv!("JWT_SECRET").to_string();
+            panic!("Requires JWT_SECRET, not set in .env or environment");
+        }
+    };
+}
 
 /// builds our HTTP server, needs DB conn for GraphQL.
 pub(crate) async fn http_server(conn: DatabaseConnection) {
     // Create our key for signing JWT's.
-    let key: Hmac<Sha256> = Hmac::new_from_slice(crate::JWT_SECRET.as_bytes())
+    let key: Hmac<Sha256> = Hmac::new_from_slice(JWT_SECRET.as_bytes())
         .expect("Expecting valid Hmac<Sha256> from slice.");
-    // Normal tracing boilerplate to get traces, see tracing docs
+    // Normal tracing boilerplate
     tracing_subscriber::registry()
         .with(tracing_subscriber::EnvFilter::new(
             std::env::var("RUST_LOG").unwrap_or_else(|_| "server=debug,tower_http=debug".into()),
@@ -49,6 +81,14 @@ pub(crate) async fn http_server(conn: DatabaseConnection) {
 }
 
 pub fn app(key: Hmac<Sha256>, schema: PoetShuffleSchema) -> Router {
+    // TODO Figure out what CORS should be in production
+    let cors_layer = CorsLayer::new();
+        #[cfg(feature="dev")]
+        let cors_layer = CorsLayer::new()
+            .allow_headers(Any)
+            .allow_methods(Any)
+            .allow_origin(Any);
+
     let api_routes = Router::new()
         .route("/graphql", post(graphql_handler))
         .route("/health_check",get(health_check));
@@ -72,6 +112,7 @@ pub fn app(key: Hmac<Sha256>, schema: PoetShuffleSchema) -> Router {
         .layer(TraceLayer::new_for_http())
         // Add our Graphql schema for our handler.
         .layer(Extension(schema))
+        .layer(cors_layer)
 }
 
 pub fn get_index_html() -> MethodRouter {

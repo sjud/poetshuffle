@@ -1,10 +1,40 @@
-use crate::{OUTBOUND_EMAIL, URL_BASE};
 use anyhow::Result;
 use postmark::reqwest::PostmarkClient;
 use postmark::Query;
 use sea_orm::prelude::Uuid;
+
 #[cfg(feature = "mock_email")]
 use std::sync::{Arc, Mutex};
+
+lazy_static::lazy_static!{
+    pub static ref POSTMARK_API_TRANSACTION: String = {
+        if let Ok(api_key) = std::env::var("POSTMARK_API_TRANSACTION") {
+            api_key
+        } else {
+             #[cfg(feature = "dev")]
+            return dotenv_codegen::dotenv!("POSTMARK_API_TRANSACTION").to_string();
+            panic!("Requires POSTMARK_API_TRANSACTION, not set in .env or environment");
+        }
+    };
+    pub static ref OUTBOUND_EMAIL: String = {
+        if let Ok(outbound_email) = std::env::var("OUTBOUND_EMAIL") {
+            outbound_email
+        } else {
+             #[cfg(feature = "dev")]
+            return dotenv_codegen::dotenv!("OUTBOUND_EMAIL").to_string();
+            panic!("Requires OUTBOUND_EMAIL, not set in .env or environment");
+        }
+    };
+        /// i.e https://127.0.0.1:8000/
+    pub static ref URL_BASE: String = {
+        use crate::http_server::{SERVER_IP,SERVER_PORT};
+        if let Ok(origin) = std::env::var("URL_BASE") {
+            origin
+        } else {
+            return format!("http://{}:{}/",&*SERVER_IP,&*SERVER_PORT);
+        }
+    };
+}
 
 #[cfg_attr(feature="mock_email", mockall::automock)]
 #[async_trait::async_trait]

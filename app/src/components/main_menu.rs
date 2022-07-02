@@ -9,7 +9,7 @@ use yew::prelude::*;
 use yew_hooks::{use_async, use_is_first_mount};
 use yew_router::{hooks::use_history, prelude::History};
 
-pub const INSTRUCTION_DURATION:u32 = 100;
+pub const INSTRUCTION_DURATION:u32 = 80;
 
 #[function_component(MainMenu)]
 pub fn main_menu() -> Html {
@@ -37,7 +37,7 @@ pub fn main_menu() -> Html {
     };
     let instr_props2 = TypeInstructionProps {
         msg: "Discover Poetry".into(),
-        wait:(instruction_one.len() as u32 + 4) * INSTRUCTION_DURATION
+        wait:(instruction_one.len() as u32 + 3) * INSTRUCTION_DURATION
 
     };
     html! {
@@ -81,11 +81,11 @@ fn type_instruction(props: &TypeInstructionProps) -> Html {
             gloo::timers::future::TimeoutFuture::new(wait).await;
             let mut text_buf = String::new();
             for c in stmt.chars() {
-                gloo::timers::future::TimeoutFuture::new(INSTRUCTION_DURATION).await;
-                /*
-                if c == ' ' {
+                if c != ' ' {
                     gloo::timers::future::TimeoutFuture::new(INSTRUCTION_DURATION).await;
-                }*/
+                } else{
+                    tracing::error!("Space.");
+                }
                 text_buf.push(c);
                 text_clone.set(text_buf.clone());
             }

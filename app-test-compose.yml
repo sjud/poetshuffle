@@ -1,43 +1,24 @@
 version: "3.9"
 services:
-  tcpdump:
-    image: nicolaka/netshoot
-    depends_on:
-      - nginx
-    command: tcpdump -i eth0 -w /data/nginx.pcap
-    network_mode: service:nginx
-    volumes:
-      - $PWD/data:/data
-
-  nginx:
-    image: nginx:alpine
-    ports:
-      - 80:80
   server_app_test:
     container_name: server
     build:
       context: .
       dockerfile: dockers/Dockerfile.server_app_test
     ports:
-      - "3000:3000"
+      - "127.0.0.1:3001:3001"
     depends_on:
       test_db:
         condition: service_healthy
     healthcheck:
-      test: [ "CMD-SHELL", "curl -f 127.0.0.1:3000/api/health_check || exit 1" ]
+      test: [ "CMD-SHELL", "curl -f 127.0.0.1:3001/api/health_check || exit 1" ]
       interval: 5s
       timeout: 10s
       retries: 5
-    volumes:
-      - type: bind
-        source: ./server
-        target: /poetshuffle/server
-      - type: bind
-        source: ./entity
-        target: /poetshuffle/entity
-      - type: bind
-        source: ./migration
-        target: /poetshuffle/migration
+    environment:
+      - SERVER_IP=0.0.0.0
+      - SERVER_PORT=3001
+      - DATABASE_URL=postgresql://postgres:PASSWORD@test_db:5432/postgres
   test_db:
     build:
       context: .
@@ -50,16 +31,4 @@ services:
       interval: 1s
       timeout: 10s
       retries: 10
-  app_test:
-    environment:
-      - BASE_URL=http://172.19.0.4:3000/
-    build:
-      context: .
-      dockerfile: dockers/Dockerfile.app_test
-    depends_on:
-      server_app_test:
-        condition: service_healthy
-    volumes:
-      - type: bind
-        source: ./app
-        target: /poetshuffle/app
+

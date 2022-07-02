@@ -7,8 +7,7 @@ type Mutation {
     inviteUser(email:String!,userRole:UserRole!): String!
     acceptInvitation(password:String,inviteUuid:ID!): String!
     createPendingSet: ID!
-    updateTitle(setUuid: ID!, title:String!) : String!
-    updateLink(setUuid: ID!, link:String!) : String!
+    updateSet(setUuid: ID!, title:String,link:String,delete:Boolean,approve:Boolean): String!
     addPoem(setUuid:ID!, idx:Int!) : ID!
     updatePoem(poemUuid:ID!, banterUuid:ID, title:String, idx:Int): String!
 }
@@ -44,10 +43,10 @@ type Poem {
 type Set {
     setUuid: ID!
     creationTs: Int!
-    collectionTitle: String!
+    title: String!
     originatorUuid: ID!
     setStatus: SetStatus!
-    collectionLink: String!
+    link: String!
     editorUuid: ID
     approved: Boolean!
 }

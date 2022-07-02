@@ -18,7 +18,7 @@ use wasm_bindgen_test::*;
 pub const BASE_URL : &'static str = env!("BASE_URL");
 
 
-pub const MSG_DURATION: u8 = 4;
+pub const MSG_DURATION: u8 = 10;
 
 #[global_allocator]
 static ALLOC: wee_alloc::WeeAlloc = wee_alloc::WeeAlloc::INIT;

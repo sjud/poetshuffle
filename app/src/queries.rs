@@ -65,17 +65,10 @@ pub struct CreatePendingSetMutation;
 #[derive(GraphQLQuery)]
 #[graphql(
     schema_path = "schema.graphql",
-    query_path = "app_queries/update_title.graphql",
+    query_path = "app_queries/update_set.graphql",
 response_derives = "Serialize,PartialEq,Clone,Debug"
 )]
-pub struct UpdateTitleMutation;
-#[derive(GraphQLQuery)]
-#[graphql(
-    schema_path = "schema.graphql",
-    query_path = "app_queries/update_link.graphql",
-response_derives = "Serialize,PartialEq,Clone,Debug"
-)]
-pub struct UpdateLinkMutation;
+pub struct UpdateSetMutation;
 #[derive(GraphQLQuery)]
 #[graphql(
     schema_path = "schema.graphql",

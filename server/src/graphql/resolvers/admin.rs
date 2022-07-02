@@ -2,12 +2,31 @@ use super::*;
 use crate::email::{Email, Postmark};
 use crate::graphql::resolvers::login::find_login_by_email;
 use crate::types::auth::{Auth, OrdRoles};
-use crate::{ADMIN_PASS, ADMIN_USER};
 use entity::permissions::{ActiveModel as ActivePermissions, Model as Permissions};
 use entity::sea_orm_active_enums::UserRole;
 use hmac::Hmac;
 use jwt::SignWithKey;
 use std::collections::BTreeMap;
+lazy_static::lazy_static!{
+    pub static ref ADMIN_USER: String = {
+        if let Ok(user_name) = std::env::var("ADMIN_USER") {
+            user_name
+        } else {
+            #[cfg(feature = "dev")]
+            return dotenv_codegen::dotenv!("ADMIN_USER").to_string();
+            panic!("Requires ADMIN_USER, not set in .env or environment");
+        }
+    };
+    pub static ref ADMIN_PASS: String = {
+        if let Ok(password) = std::env::var("ADMIN_PASS") {
+            password
+        } else {
+            #[cfg(feature = "dev")]
+            return dotenv_codegen::dotenv!("ADMIN_PASS").to_string();
+            panic!("Requires ADMIN_PASS, not set in .env or environment");
+        }
+    };
+}
 #[derive(Default)]
 pub struct AdminMutation;
 #[cfg(test)]

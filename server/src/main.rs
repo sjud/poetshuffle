@@ -21,64 +21,15 @@ mod types;
 lazy_static! {
     /// i.e postgresql://postgres:PASSWORD@0.0.0.0:5432/postgres
     pub static ref DATABASE_URL: String = {
-        #[cfg(feature = "app-test")]
-        return dotenv_codegen::dotenv!("APP_TEST_DB_URL").to_string();
-        #[cfg(feature = "dev")]
-        return dotenv_codegen::dotenv!("DATABASE_URL").to_string();
-        #[cfg(not(feature = "dev"))]
-        std::env::var("DATABASE_URL").unwrap()
-    };
-    pub static ref SERVER_PORT: String = {
-        #[cfg(feature = "dev")]
-        return dotenv_codegen::dotenv!("SERVER_PORT").to_string();
-        #[cfg(not(feature = "dev"))]
-        return std::env::var("SERVER_PORT").unwrap();
-    };
-    pub static ref SERVER_IP: String = {
-        if let Ok(ip) = std::env::var("SERVER_IP") {
-            ip
+        if let Ok(url) = std::env::var("DATABASE_URL") {
+            tracing::debug!("Found DATABASE_URL in environment.\n{:?}",url);
+            url
         } else {
+            tracing::debug!("Attempting to use .env to get DATABASE_URL");
             #[cfg(feature = "dev")]
-            return dotenv_codegen::dotenv!("SERVER_IP").to_string();
-            panic!("Expecting server IP to start the server.")
+            return dotenv_codegen::dotenv!("DATABASE_URL").to_string();
+            panic!("Requires DATABASE URL, not set in .env or environment");
         }
-    };
-    pub static ref JWT_SECRET: String = {
-        #[cfg(feature = "dev")]
-        return dotenv_codegen::dotenv!("JWT_SECRET").to_string();
-        #[cfg(not(feature = "dev"))]
-        std::env::var("JWT_SECRET").unwrap()
-    };
-    pub static ref POSTMARK_API_TRANSACTION: String = {
-        #[cfg(feature = "dev")]
-        return dotenv_codegen::dotenv!("POSTMARK_API_TRANSACTION").to_string();
-        #[cfg(not(feature = "dev"))]
-        std::env::var("POSTMARK_API_TRANSACTION").unwrap()
-    };
-    pub static ref OUTBOUND_EMAIL: String = {
-        #[cfg(feature = "dev")]
-        return dotenv_codegen::dotenv!("OUTBOUND_EMAIL").to_string();
-        #[cfg(not(feature = "dev"))]
-        std::env::var("OUTBOUND_EMAIL").unwrap()
-    };
-    /// i.e https://127.0.0.1:8000/
-    pub static ref URL_BASE: String = {
-        #[cfg(feature = "dev")]
-        return format!("http://{}:{}/",&*SERVER_IP,&*SERVER_PORT);
-        #[cfg(not(feature = "dev"))]
-        std::env::var("URL_BASE").unwrap()
-    };
-     pub static ref ADMIN_USER: String = {
-        #[cfg(feature = "dev")]
-        return dotenv_codegen::dotenv!("ADMIN_USER").to_string();
-        #[cfg(not(feature = "dev"))]
-        std::env::var("ADMIN_USER").unwrap()
-    };
-       pub static ref ADMIN_PASS: String = {
-        #[cfg(feature = "dev")]
-        return dotenv_codegen::dotenv!("ADMIN_PASS").to_string();
-        #[cfg(not(feature = "dev"))]
-        std::env::var("ADMIN_PASS").unwrap()
     };
 }
 

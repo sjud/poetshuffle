@@ -1,7 +1,7 @@
 query PendingSetByUserQuery($user_uuid:ID!) {
   pendingSetByUser(userUuid: $user_uuid) {
         setUuid
-        collectionTitle
-        collectionLink
+        title
+        link
   }
 }

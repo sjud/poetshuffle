@@ -6,75 +6,89 @@ use yew::{Reducible, UseReducerHandle};
 #[derive(Default, PartialEq, Clone)]
 pub struct EditableSet {
     pub set_uuid: Uuid,
-    pub collection_title: String,
-    pub collection_link: String,
+    pub title: String,
+    pub link: String,
 }
 
 pub type EditSetContext = UseReducerHandle<EditSetData>;
 #[derive(Default, PartialEq, Clone)]
 pub struct EditSetData {
     pub(crate) new_edit_flag: bool,
-    pub(crate) poem_list_data: PoemListData,
+    pub(crate) poem_uuids: Vec<Uuid>,
     pub(crate) editable_set: Option<EditableSet>,
 }
-#[derive(Default, PartialEq, Clone)]
-pub struct PoemListData {
-    pub(crate) poem_uuids: Vec<Uuid>,
-    pub(crate) poem_load_flags: HashMap<Uuid, bool>,
-}
+
 impl EditableSet {
     pub fn deconstruct(self) -> (Uuid, String, String) {
-        (self.set_uuid, self.collection_title, self.collection_link)
+        (self.set_uuid, self.title, self.link)
     }
 }
 pub enum EditSetDataActions {
     NewEditFlag(bool),
+    PushPoemUuid(Uuid),
+    DeletePoemUuid(Uuid),
     PoemUuids(Vec<Uuid>),
-    PoemLoadFlag((Uuid, bool)),
     EditableSet(Option<EditableSet>),
+    UpdateTitle(String),
+    UpdateLink(String),
 }
 impl Reducible for EditSetData {
     type Action = EditSetDataActions;
 
     fn reduce(self: Rc<Self>, action: Self::Action) -> Rc<Self> {
         match action {
+            // TODO less clone
+            EditSetDataActions::UpdateTitle(title) => Rc::new( Self{
+                new_edit_flag:self.new_edit_flag,
+                poem_uuids: self.poem_uuids.clone(),
+                editable_set: Some(EditableSet{
+                    set_uuid: self.editable_set.clone().unwrap().set_uuid,
+                    title,
+                    link: self.editable_set.clone().unwrap().link,
+                })
+            }),
+            EditSetDataActions::UpdateLink(link) => Rc::new(Self {
+                new_edit_flag:self.new_edit_flag,
+                poem_uuids: self.poem_uuids.clone(),
+                editable_set: Some(EditableSet{
+                    set_uuid: self.editable_set.clone().unwrap().set_uuid,
+                    title: self.editable_set.clone().unwrap().title,
+                    link,
+                })
+            }),
             EditSetDataActions::NewEditFlag(new_edit_flag) => Rc::new(Self {
                 new_edit_flag,
-                poem_list_data: self.poem_list_data.clone(),
+                poem_uuids: self.poem_uuids.clone(),
+                editable_set: self.editable_set.clone(),
+            }),
+            EditSetDataActions::PushPoemUuid(uuid) => Rc::new(Self {
+                new_edit_flag:self.new_edit_flag,
+                poem_uuids:{
+                    let mut uuids = self.poem_uuids.clone();
+                    uuids.push(uuid);
+                    uuids
+                },
+                editable_set: self.editable_set.clone(),
+            }),
+            EditSetDataActions::DeletePoemUuid(uuid) => Rc::new(Self {
+                new_edit_flag: self.new_edit_flag,
+                poem_uuids:{
+                    let uuids = self.poem_uuids.clone();
+                    uuids.into_iter()
+                        .filter(|&f_uuid|f_uuid != uuid)
+                        .collect::<Vec<Uuid>>()
+                },
                 editable_set: self.editable_set.clone(),
             }),
             EditSetDataActions::PoemUuids(poem_uuids) => Rc::new(Self {
                 new_edit_flag: self.new_edit_flag,
-                poem_list_data: {
-                    PoemListData {
-                        poem_uuids: poem_uuids.clone(),
-                        poem_load_flags: {
-                            let mut map = HashMap::new();
-                            for uuid in poem_uuids {
-                                map.insert(uuid, true);
-                            }
-                            map
-                        },
-                    }
-                },
+                poem_uuids,
                 editable_set: self.editable_set.clone(),
             }),
             EditSetDataActions::EditableSet(editable_set) => Rc::new(Self {
                 new_edit_flag: self.new_edit_flag,
-                poem_list_data: self.poem_list_data.clone(),
+                poem_uuids:self.poem_uuids.clone(),
                 editable_set,
-            }),
-            EditSetDataActions::PoemLoadFlag((uuid, flag)) => Rc::new(Self {
-                new_edit_flag: self.new_edit_flag,
-                poem_list_data: PoemListData {
-                    poem_uuids: self.poem_list_data.poem_uuids.clone(),
-                    poem_load_flags: {
-                        let mut map = self.poem_list_data.poem_load_flags.clone();
-                        map.entry(uuid).insert_entry(flag);
-                        map
-                    },
-                },
-                editable_set: self.editable_set.clone(),
             }),
         }
     }

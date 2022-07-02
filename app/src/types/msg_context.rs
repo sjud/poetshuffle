@@ -73,11 +73,13 @@ impl Reducible for UserMessageView {
     fn reduce(self: Rc<Self>, action: Self::Action) -> Rc<Self> {
         match action {
             // If we get a new msg update msg for current route.
-            MsgActions::NewMsg(msg) => Self {
+            MsgActions::NewMsg(msg) => {
+                tracing::debug!("{}",msg.body);
+                Self {
                 msg: Some(msg),
                 route: self.route.clone(),
             }
-            .into(),
+            .into()},
             // Clear msg for current route.
             MsgActions::Clear => Self {
                 msg: None,
