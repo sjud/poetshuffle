@@ -71,6 +71,20 @@ response_derives = "Serialize,PartialEq,Clone,Debug"
 pub struct UpdateSetMutation;
 #[derive(GraphQLQuery)]
 #[graphql(
+schema_path = "schema.graphql",
+query_path = "app_queries/update_poem.graphql",
+response_derives = "Serialize,PartialEq,Clone,Debug"
+)]
+pub struct UpdatePoemMutation;
+#[derive(GraphQLQuery)]
+#[graphql(
+schema_path = "schema.graphql",
+query_path = "app_queries/update_poem_idx.graphql",
+response_derives = "Serialize,PartialEq,Clone,Debug"
+)]
+pub struct UpdatePoemIdxMutation;
+#[derive(GraphQLQuery)]
+#[graphql(
     schema_path = "schema.graphql",
     query_path = "app_queries/add_poem.graphql",
 response_derives = "Serialize,PartialEq,Clone,Debug"

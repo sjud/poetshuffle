@@ -1,0 +1,3 @@
+mutation UpdatePoemIdxMutation($set_uuid: ID!, $poem_a_idx:Int!, $poem_b_idx:Int!) {
+  updatePoemIdx(setUuid: $set_uuid, poemAIdx:$poem_a_idx, poemBIdx:$poem_b_idx)
+}

@@ -3,7 +3,7 @@ use crate::graphql::resolvers::sets::find_set_by_uuid;
 use entity::edit_poem_history::ActiveModel as ActivePoemHistory;
 use entity::poems::{self, ActiveModel as ActivePoem};
 use entity::sea_orm_active_enums::SetStatus;
-use sea_orm::{ActiveValue, DbBackend, QueryTrait, Update};
+use sea_orm::{ActiveValue, DbBackend, QueryTrait, TransactionTrait, Update};
 
 #[derive(Debug, sea_orm::FromQueryResult)]
 struct PoemUuidResult {
@@ -27,6 +27,7 @@ pub async fn find_poem_uuids_by_set_uuid(
         .map(|poem| uuid::Uuid::from_u128(poem.uuid.as_u128()))
         .collect::<Vec<uuid::Uuid>>())
 }
+
 pub async fn add_poem(
     db: &DatabaseConnection,
     user_uuid: Uuid,
@@ -47,11 +48,20 @@ pub async fn add_poem(
     .await?;
     Ok(poem_uuid)
 }
+
 pub async fn find_poem(db: &DatabaseConnection, poem_uuid: Uuid) -> Result<Option<poems::Model>> {
     entity::poems::Entity::find_by_id(poem_uuid)
         .one(db)
         .await
         .map_err(|err| Error::new(format!("Sea-orm: {:?}", err)))
+}
+pub async fn find_poem_given_idx_set_uuid(db: &DatabaseConnection, set_uuid: Uuid, idx: i32) -> Result<Option<poems::Model>> {
+        poems::Entity::find()
+            .filter(poems::Column::SetUuid.eq(set_uuid))
+            .filter(poems::Column::Idx.eq(idx))
+            .one(db)
+            .await
+            .map_err(|err| Error::new(format!("Sea-orm: {:?}", err)))
 }
 pub fn build_edit_poem_value<V: Into<sea_orm::Value> + migration::Nullable>(
     auth: &Auth,
@@ -67,6 +77,7 @@ pub fn build_edit_poem_value<V: Into<sea_orm::Value> + migration::Nullable>(
     }
     Ok(ActiveValue::not_set())
 }
+
 pub fn build_edit_poem_value_option<V: Into<sea_orm::Value> + migration::Nullable>(
     auth: &Auth,
     v: Option<V>,
@@ -81,6 +92,7 @@ pub fn build_edit_poem_value_option<V: Into<sea_orm::Value> + migration::Nullabl
     }
     Ok(ActiveValue::not_set())
 }
+
 pub fn build_approve_value<V: Into<sea_orm::Value> + migration::Nullable>(
     auth: &Auth,
     v: Option<V>,
@@ -94,6 +106,7 @@ pub fn build_approve_value<V: Into<sea_orm::Value> + migration::Nullable>(
     }
     Ok(ActiveValue::not_set())
 }
+
 pub fn build_history_value_option<V: Into<sea_orm::Value> + migration::Nullable>(
     v: Option<V>,
 ) -> Result<ActiveValue<Option<V>>> {
@@ -102,6 +115,7 @@ pub fn build_history_value_option<V: Into<sea_orm::Value> + migration::Nullable>
     }
     Ok(ActiveValue::not_set())
 }
+
 #[derive(Default)]
 pub struct PoemMutation;
 #[derive(Default)]
@@ -127,24 +141,53 @@ impl PoemMutation {
             Err(Error::new("Unauthorized."))
         }
     }
+    pub async fn update_poem_idx(
+        &self,
+        ctx: &Context<'_>,
+        set_uuid:Uuid,
+        poem_a_idx:i32,
+        poem_b_idx:i32) -> Result<String> {
+        let db = ctx.data::<DatabaseConnection>()?;
+        let auth = ctx.data::<Auth>()?;
+        if let Ok(Some(poem_a)) = find_poem_given_idx_set_uuid(db,set_uuid,poem_a_idx).await {
+            if let Ok(Some(poem_b)) = find_poem_given_idx_set_uuid(db, set_uuid, poem_b_idx).await {
+                let txn = db.begin().await?;
+                ActivePoem{
+                    poem_uuid:build_edit_poem_value(&auth,Some(poem_a.poem_uuid),&poem_a)?,
+                    idx:build_edit_poem_value(&auth, Some(poem_b_idx),&poem_a)?,
+                    ..Default::default()
+                }.save(&txn).await?;
+                ActivePoem{
+                    poem_uuid:build_edit_poem_value(&auth,Some(poem_b.poem_uuid),&poem_b)?,
+                    idx:build_edit_poem_value(&auth, Some(poem_a_idx),&poem_b)?,
+                    ..Default::default()
+                }.save(&txn).await?;
+                txn.commit().await?;
+                Ok("Idx Swap".into())
+            } else {
+                Err(Error::new("Poem B not found."))
+            }
+        } else {
+            Err(Error::new("Poem A not found."))
+        }
+
+    }
     async fn update_poem(
         &self,
         ctx: &Context<'_>,
         poem_uuid: Uuid,
         banter_uuid: Option<Uuid>,
         title: Option<String>,
-        idx: Option<i32>,
         delete: Option<bool>,
         approve: Option<bool>,
     ) -> Result<String> {
-        let db = ctx.data::<DatabaseConnection>().unwrap();
+        let db = ctx.data::<DatabaseConnection>()?;
         let auth = ctx.data::<Auth>()?;
         if let Some(poem) = find_poem(db, poem_uuid).await? {
             ActivePoem {
                 poem_uuid: build_edit_poem_value(auth, Some(poem_uuid), &poem)?,
                 banter_uuid: build_edit_poem_value_option(auth, banter_uuid, &poem)?,
                 title: build_edit_poem_value(auth, title.clone(), &poem)?,
-                idx: build_edit_poem_value(auth, idx, &poem)?,
                 is_deleted: build_edit_poem_value(auth, delete, &poem)?,
                 is_approved: build_approve_value(auth, approve)?,
                 ..Default::default()

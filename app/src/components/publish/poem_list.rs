@@ -3,6 +3,7 @@ use super::*;
 use crate::queries::{poem_query, PoemQuery};
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
+use web_sys::HtmlSelectElement;
 use crate::services::network::GraphQlResp;
 
 #[function_component(PoemList)]
@@ -10,15 +11,22 @@ pub fn poem_list() -> Html {
     let auth_ctx = use_context::<AuthContext>().unwrap();
     let msg_context = use_context::<MsgContext>().unwrap();
     let edit_set_context = use_context::<EditSetContext>().unwrap();
-    let html = edit_set_context.poem_uuids
+    let mut html = edit_set_context.poem_uuids
         .clone()
         .into_iter()
         .map(|uuid|{
             let prop = PoemProps{uuid};
-            html!{
+            (uuid,html!{
                <PoemCard ..prop/>
-            }
-        }).collect::<Html>();
+            })
+        }).collect::<Vec<(Uuid,Html)>>();
+    html.sort_by(|a,b|
+        edit_set_context.poem_idx.get(&a.0).unwrap_or(&0)
+            .partial_cmp(
+                edit_set_context.poem_idx.get(&b.0).unwrap_or(&0)
+        ).unwrap()
+    );
+    let html = html.into_iter().map(|(uuid,html)|html).collect::<Html>();
     return html!{
         <div>
         {html}
@@ -41,12 +49,14 @@ pub struct PoemData {
 pub fn poem_card(props: &PoemProps) -> Html {
     let auth_ctx = use_context::<AuthContext>().unwrap();
     let msg_context = use_context::<MsgContext>().unwrap();
+    let edit_set_ctx = use_context::<EditSetContext>().unwrap();
     let data = use_state(||PoemData::default());
     if use_is_first_mount() {
         {
             let auth = auth_ctx.clone();
             let msg_context = msg_context.clone();
             let poem_data = data.clone();
+            let edit_set_ctx = edit_set_ctx.clone();
             let uuid = props.uuid;
             use_async::<_, (), String>(async move {
                 match auth.poem_query(uuid).await? {
@@ -56,6 +66,7 @@ pub fn poem_card(props: &PoemProps) -> Html {
                             title: poem.title.clone(),
                             idx: poem.idx as i32,
                         });
+                        edit_set_ctx.dispatch(EditSetDataActions::InsertIdx(uuid,poem.idx as i32));
                     },
                     GraphQlResp::Err(errors) => {
                         msg_context.dispatch(errors.into_msg_action());
@@ -66,13 +77,68 @@ pub fn poem_card(props: &PoemProps) -> Html {
         }.run();
     };
     html! {
-        <div key={data.idx}>
+        <div id={"PoemCard"} key={props.uuid.to_string()}>
         <p>{data.title.clone()}</p>
-        <p>{data.idx}</p>
+        <UpdatePoemIdx ..{UpdatePoemIdxProps{idx:data.idx}}/>
+        <UpdatePoemTitle ..props.clone()/>
         </div>
     }
 }
 
+#[derive(Properties,PartialEq)]
+pub struct UpdatePoemIdxProps {
+    idx:i32
+}
+#[function_component(UpdatePoemIdx)]
+pub fn update_poem_idx(props:&UpdatePoemIdxProps) -> Html {
+    let auth_ctx = use_context::<AuthContext>().unwrap();
+    let msg_context = use_context::<MsgContext>().unwrap();
+    let edit_set_ctx = use_context::<EditSetContext>()
+        .unwrap();
+    let set_uuid = edit_set_ctx.editable_set.as_ref().unwrap().set_uuid;
+    let list_len = edit_set_ctx.poem_uuids.len();
+    let poem_a_idx = props.idx;
+    let select_ref = use_node_ref();
+    let select_swap_html = (0..list_len)
+        .into_iter()
+        .map(|i|
+    html!{<option value={i.to_string()}>{i}</option>})
+        .collect::<Html>();
+    let swap = {
+        let auth = auth_ctx.clone();
+        let msg_context = msg_context.clone();
+        let edit_set_ctx = edit_set_ctx.clone();
+        let select_ref = select_ref.clone();
+        use_async::<_, (), String>(async move {
+            // We only cast value when updated.
+            let poem_b_idx = select_ref.cast::<HtmlSelectElement>().unwrap().value();
+            match auth.update_poem_idx(
+                set_uuid,
+                poem_a_idx as i64,
+                i64::from_str(&poem_b_idx)
+                    .map_err(|err|format!("{:?}",err))?).await? {
+                GraphQlResp::Data(data) => {
+                    msg_context.dispatch(new_green_msg_with_std_duration(data.update_poem_idx));
+                }
+                GraphQlResp::Err(errors) =>
+                    msg_context.dispatch(errors.into_msg_action())
+            }
+            Ok(())
+        })
+    };
+    let swap = Callback::from(move |_| {
+        swap.run();
+    });
+    html!{
+        <div>
+        <span>
+        {"Order:" }{poem_a_idx}{" swap to : "}
+        <select ref={select_ref.clone()}>{select_swap_html}</select>
+        </span>
+        <button onclick={swap.clone()}>{"Swap Order"}</button>
+        </div>
+    }
+}
 
 #[function_component(UpdatePoemTitle)]
 pub fn update_set_title(props:&PoemProps) -> Html {
@@ -83,18 +149,19 @@ pub fn update_set_title(props:&PoemProps) -> Html {
     let update_title = {
         let auth = auth_ctx.clone();
         let msg_context = msg_context.clone();
-        let edit_set_ctx = edit_set_context.clone();
         let title_ref = title_ref.clone();
+        let uuid = props.uuid;
+        let title_state = title.clone();
         use_async::<_, (), String>(async move {
             let title = title_ref.cast::<HtmlInputElement>().unwrap().value();
-            match auth.update_set(
-                set_uuid,
+            match auth.update_poem(
+                uuid,
+                None,
                 Some(title.clone()),
                 None,
-                None,
                 None,).await? {
-                GraphQlResp::Data(data) => {
-                    edit_set_ctx.dispatch(EditSetDataActions::UpdateTitle(title));
+                GraphQlResp::Data(_) => {
+                    title_state.set(title);
                     msg_context.dispatch(new_green_msg_with_std_duration("Updated".to_string()));
                 }
                 GraphQlResp::Err(errors) =>
@@ -108,7 +175,7 @@ pub fn update_set_title(props:&PoemProps) -> Html {
     });
     return html! {
             <div>
-            <h4>{title}</h4>
+            <h4>{(*title).clone()}</h4>
             <input ref={title_ref.clone()}/>
             <button onclick={update_title.clone()}>{"Update Title"}</button>
             </div>

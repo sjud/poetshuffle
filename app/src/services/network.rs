@@ -47,6 +47,7 @@ use crate::queries::*;
 #[cfg(test)]
 use wasm_bindgen_test::*;
 use crate::BASE_URL;
+use crate::components::publish::poem_list::UpdatePoemIdxProps;
 use crate::services::utility::map_graphql_errors_to_string;
 use crate::types::auth_context::{AuthContext, AuthToken, UserRole};
 use crate::types::msg_context::{MsgActions, new_red_msg_with_std_duration};
@@ -81,19 +82,51 @@ impl AuthToken {
             }
         }
     }
+    pub async fn update_poem_idx(&self,set_uuid:Uuid,poem_a_idx:i64,poem_b_idx:i64)
+    -> GraphQlResult<update_poem_idx_mutation::ResponseData> {
+        parse_graph_ql_resp(
+            post_graphql::<UpdatePoemIdxMutation>(
+                update_poem_idx_mutation::Variables {
+                    set_uuid: set_uuid.to_string(),
+                    poem_a_idx,
+                    poem_b_idx,
+                },
+                self.token.clone(),
+            )
+                .await
+        )
+    }
     pub async fn update_poem(&self,
-    poem_uuid:Uuid,
-    title:Option<String>)
+                             poem_uuid:Uuid,
+                             banter_uuid: Option<Uuid>,
+                             title: Option<String>,
+                             delete: Option<bool>,
+                             approve: Option<bool>,)
+        -> GraphQlResult<update_poem_mutation::ResponseData> {
+        parse_graph_ql_resp(
+            post_graphql::<UpdatePoemMutation>(
+                update_poem_mutation::Variables {
+                    poem_uuid: poem_uuid.to_string(),
+                    banter_uuid: banter_uuid.map(|uuid|uuid.to_string()),
+                    title, delete,approve
+                },
+                self.token.clone(),
+            )
+                .await
+        )
+    }
     pub async fn update_set(&self,
                             set_uuid:Uuid,
                             title:Option<String>,
-        link:Option<String>,approve:Option<bool>,delete:Option<bool>)
+                            link:Option<String>,
+                            delete:Option<bool>,
+                            approve:Option<bool>,)
     -> GraphQlResult<update_set_mutation::ResponseData> {
         parse_graph_ql_resp(
             post_graphql::<UpdateSetMutation>(
                 update_set_mutation::Variables {
                     set_uuid: set_uuid.to_string(),
-                    title,link,approve,delete
+                    title,link,delete,approve
                 },
                 self.token.clone(),
             )

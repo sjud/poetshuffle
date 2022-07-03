@@ -25,6 +25,7 @@ lazy_static::lazy_static!{
         } else {
             #[cfg(feature = "dev")]
             return dotenv_codegen::dotenv!("SERVER_PORT").to_string();
+            #[allow(dead_code)]
             panic!("Requires server port, not set in .env or environment");
         }
     };
@@ -34,6 +35,7 @@ lazy_static::lazy_static!{
         } else {
             #[cfg(feature = "dev")]
             return dotenv_codegen::dotenv!("SERVER_IP").to_string();
+            #[allow(dead_code)]
             panic!("Requires SERVER_IP, not set in .env or environment");
         }
     };
@@ -43,6 +45,7 @@ lazy_static::lazy_static!{
         } else {
             #[cfg(feature = "dev")]
             return dotenv_codegen::dotenv!("JWT_SECRET").to_string();
+            #[allow(dead_code)]
             panic!("Requires JWT_SECRET, not set in .env or environment");
         }
     };

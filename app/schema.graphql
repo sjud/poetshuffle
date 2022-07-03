@@ -9,7 +9,8 @@ type Mutation {
     createPendingSet: ID!
     updateSet(setUuid: ID!, title:String,link:String,delete:Boolean,approve:Boolean): String!
     addPoem(setUuid:ID!, idx:Int!) : ID!
-    updatePoem(poemUuid:ID!, banterUuid:ID, title:String, idx:Int): String!
+    updatePoem(poemUuid:ID!, banterUuid:ID, title:String,delete:Boolean,approve:Boolean): String!
+    updatePoemIdx(setUuid:ID!, poemAIdx:Int!, poemBIdx:Int!): String!
 }
 
 type Query {
