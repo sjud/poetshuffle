@@ -37,8 +37,7 @@ pub fn publish_menu() -> Html {
                                         data.poem_uuids_by_set_uuid
                                             .iter()
                                             .map(|uuid| Uuid::from_str(&uuid).unwrap())
-                                            .collect::<Vec<Uuid>>(),
-                                    ));
+                                            .collect::<Vec<Uuid>>()));
                                 },
                                 GraphQlResp::Err(errors) => {
                                     msg_context.dispatch(errors.into_msg_action());

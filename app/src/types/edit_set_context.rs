@@ -1,7 +1,8 @@
 use std::collections::HashMap;
 use std::rc::Rc;
 use uuid::Uuid;
-use yew::{Reducible, UseReducerHandle};
+use yew::{Reducible, UseReducerHandle, UseStateHandle};
+use crate::components::publish::poem_list::PoemProps;
 
 #[derive(Default, PartialEq, Clone)]
 pub struct EditableSet {
@@ -11,7 +12,7 @@ pub struct EditableSet {
 }
 
 pub type EditSetContext = UseReducerHandle<EditSetData>;
-#[derive(Default, PartialEq, Clone)]
+#[derive(PartialEq, Clone,Default)]
 pub struct EditSetData {
     pub(crate) new_edit_flag: bool,
     pub(crate) poem_uuids: Vec<Uuid>,
@@ -25,9 +26,8 @@ impl EditableSet {
 }
 pub enum EditSetDataActions {
     NewEditFlag(bool),
-    PushPoemUuid(Uuid),
-    DeletePoemUuid(Uuid),
     PoemUuids(Vec<Uuid>),
+    PushPoemUuid(Uuid),
     EditableSet(Option<EditableSet>),
     UpdateTitle(String),
     UpdateLink(String),
@@ -38,6 +38,7 @@ impl Reducible for EditSetData {
     fn reduce(self: Rc<Self>, action: Self::Action) -> Rc<Self> {
         match action {
             // TODO less clone
+
             EditSetDataActions::UpdateTitle(title) => Rc::new( Self{
                 new_edit_flag:self.new_edit_flag,
                 poem_uuids: self.poem_uuids.clone(),
@@ -62,21 +63,11 @@ impl Reducible for EditSetData {
                 editable_set: self.editable_set.clone(),
             }),
             EditSetDataActions::PushPoemUuid(uuid) => Rc::new(Self {
-                new_edit_flag:self.new_edit_flag,
+                new_edit_flag: self.new_edit_flag,
                 poem_uuids:{
                     let mut uuids = self.poem_uuids.clone();
                     uuids.push(uuid);
                     uuids
-                },
-                editable_set: self.editable_set.clone(),
-            }),
-            EditSetDataActions::DeletePoemUuid(uuid) => Rc::new(Self {
-                new_edit_flag: self.new_edit_flag,
-                poem_uuids:{
-                    let uuids = self.poem_uuids.clone();
-                    uuids.into_iter()
-                        .filter(|&f_uuid|f_uuid != uuid)
-                        .collect::<Vec<Uuid>>()
                 },
                 editable_set: self.editable_set.clone(),
             }),

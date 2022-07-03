@@ -1,6 +1,8 @@
 use crate::services::network::GraphQlResp;
 use super::*;
 use crate::types::edit_set_context::{EditableSet, EditSetContext, EditSetDataActions};
+use poem_list::PoemList;
+
 #[function_component(EditPendingSet)]
 pub fn edit_pending_set() -> Html {
     let auth_ctx = use_context::<AuthContext>().unwrap();
@@ -18,6 +20,8 @@ pub fn edit_pending_set() -> Html {
             <UpdateSetLink ..props.clone()/>
             <br/>
             <AddPoem ..props.clone()/>
+            <br/>
+            <PoemList/>
             </div>
         };
     } else {
@@ -38,7 +42,7 @@ pub fn update_set_link(props:&UpdateSetProps) -> Html {
     let msg_context = use_context::<MsgContext>().unwrap();
     let edit_set_context = use_context::<EditSetContext>().unwrap();
     let editable_set = props.clone().editable_set;
-    let (set_uuid, title, collection_link) = editable_set.deconstruct();
+    let (set_uuid, title, link) = editable_set.deconstruct();
     let title_ref = use_node_ref();
     let link_ref = use_node_ref();
     let update_link = {
@@ -71,7 +75,7 @@ pub fn update_set_link(props:&UpdateSetProps) -> Html {
     return html! {
             <div>
             <h3>{"Link:"}</h3>
-            <a href={collection_link.clone()}/>
+            <h4>{link}</h4>
             <input ref={link_ref.clone()}/>
             <button onclick={update_link.clone()}>{"Update Link"}</button>
             </div>

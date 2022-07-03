@@ -1,6 +1,5 @@
 
 use super::*;
-/*
 use crate::queries::{poem_query, PoemQuery};
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
@@ -11,86 +10,107 @@ pub fn poem_list() -> Html {
     let auth_ctx = use_context::<AuthContext>().unwrap();
     let msg_context = use_context::<MsgContext>().unwrap();
     let edit_set_context = use_context::<EditSetContext>().unwrap();
-    let poem_uuids = edit_set_context.poem_uuids.clone();
-    let poem_cards: UseStateHandle<HashMap<Uuid, PoemProps>> = use_state(|| HashMap::new());
-    let first_fetch = use_state(||true);
-    let unfinished_fetch_count = use_state(||poem_uuids.len());
-    let map: Arc<Mutex<HashMap<Uuid, PoemProps>>> = Arc::new(Mutex::new(HashMap::new()));
-    if *first_fetch && !poem_uuids.is_empty() {
-        for uuid in poem_uuids {
-            let edit_set_context = edit_set_context.clone();
-            let auth = auth_ctx.clone();
-            let msg_context = msg_context.clone();
-            let map = map.clone();
-            let unfinished_fetch_count =
-                Arc::new(Mutex::new(unfinished_fetch_count.clone()));
-            use_async::<_, (), String>(async move {
-                    match auth.poem_query(uuid).await? {
-                        GraphQlResp::Data(data) => {
-                            let poem = &data.poem.unwrap();
-                            map.lock()
-                                .unwrap()
-                                .insert(uuid, PoemProps {
-                                    title: poem.title.clone(),
-                                    uuid,
-                                    idx: poem.idx as i32,
-                                });
-                        },
-                        GraphQlResp::Err(errors) => {
-                            msg_context.dispatch(errors.into_msg_action());
-                        }
-                    };
-                let lock = (*unfinished_fetch_count).lock().unwrap();
-                let count = **lock;
-                lock.set(count-1);
-                    Ok(())
-                }).run();
-        }
-        first_fetch.set(false);
-    } else {
-        unfinished_fetch_count.set(0);
-    }
-    if *unfinished_fetch_count == 0 {
-        poem_cards.set((*map).lock().unwrap().clone());
-        let mut poem_props: Vec<PoemProps> = (*poem_cards)
-            .clone()
-            .into_values().collect();
-        poem_props.sort_by(
-            |prop_a, prop_b|
-                Ord::cmp(&prop_a.idx, &prop_b.idx));
-        let poem_card_html = poem_props
-            .into_iter()
-            .map(|prop| {
-                html! {
-                <div key={prop.uuid.as_u128()}>
-                <PoemCard ..prop/>
-                </div>
+    let html = edit_set_context.poem_uuids
+        .clone()
+        .into_iter()
+        .map(|uuid|{
+            let prop = PoemProps{uuid};
+            html!{
+               <PoemCard ..prop/>
             }
-            })
-            .collect::<Html>();
-
-        return html! {
+        }).collect::<Html>();
+    return html!{
         <div>
-        {poem_card_html}
+        {html}
         </div>
     };
-    } else {
-        return html!{
-            <p>{"loading..."}</p>
-        }
-    }
-
 }
+
 #[derive(Properties, PartialEq, Clone,Debug)]
 pub struct PoemProps {
-    pub title: String,
     pub uuid: Uuid,
-    pub idx: i32,
+}
+
+#[derive(PartialEq,Properties,Default)]
+pub struct PoemData {
+    title: String,
+    idx: i32,
 }
 
 #[function_component(PoemCard)]
 pub fn poem_card(props: &PoemProps) -> Html {
-
-    html! {<p>{"Poem card."}</p>}
+    let auth_ctx = use_context::<AuthContext>().unwrap();
+    let msg_context = use_context::<MsgContext>().unwrap();
+    let data = use_state(||PoemData::default());
+    if use_is_first_mount() {
+        {
+            let auth = auth_ctx.clone();
+            let msg_context = msg_context.clone();
+            let poem_data = data.clone();
+            let uuid = props.uuid;
+            use_async::<_, (), String>(async move {
+                match auth.poem_query(uuid).await? {
+                    GraphQlResp::Data(data) => {
+                        let poem = &data.poem.unwrap();
+                        poem_data.set(PoemData{
+                            title: poem.title.clone(),
+                            idx: poem.idx as i32,
+                        });
+                    },
+                    GraphQlResp::Err(errors) => {
+                        msg_context.dispatch(errors.into_msg_action());
+                    }
+                };
+                Ok(())
+            })
+        }.run();
+    };
+    html! {
+        <div key={data.idx}>
+        <p>{data.title.clone()}</p>
+        <p>{data.idx}</p>
+        </div>
+    }
 }
-*/
+
+
+#[function_component(UpdatePoemTitle)]
+pub fn update_set_title(props:&PoemProps) -> Html {
+    let auth_ctx = use_context::<AuthContext>().unwrap();
+    let msg_context = use_context::<MsgContext>().unwrap();
+    let title_ref = use_node_ref();
+    let title = use_state(||String::new());
+    let update_title = {
+        let auth = auth_ctx.clone();
+        let msg_context = msg_context.clone();
+        let edit_set_ctx = edit_set_context.clone();
+        let title_ref = title_ref.clone();
+        use_async::<_, (), String>(async move {
+            let title = title_ref.cast::<HtmlInputElement>().unwrap().value();
+            match auth.update_set(
+                set_uuid,
+                Some(title.clone()),
+                None,
+                None,
+                None,).await? {
+                GraphQlResp::Data(data) => {
+                    edit_set_ctx.dispatch(EditSetDataActions::UpdateTitle(title));
+                    msg_context.dispatch(new_green_msg_with_std_duration("Updated".to_string()));
+                }
+                GraphQlResp::Err(errors) =>
+                    msg_context.dispatch(errors.into_msg_action())
+            }
+            Ok(())
+        })
+    };
+    let update_title = Callback::from(move |_| {
+        update_title.run();
+    });
+    return html! {
+            <div>
+            <h4>{title}</h4>
+            <input ref={title_ref.clone()}/>
+            <button onclick={update_title.clone()}>{"Update Title"}</button>
+            </div>
+        };
+}

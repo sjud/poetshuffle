@@ -33,7 +33,6 @@ use yew_router::prelude::use_history;
 pub fn publish() -> Html {
     let auth_ctx = use_context::<AuthContext>().unwrap();
     let edit_set_context = use_reducer(|| EditSetData::default());
-
     html! {
         <div>
         if auth_ctx.user_role >= UserRole::Moderator {

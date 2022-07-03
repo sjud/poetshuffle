@@ -81,6 +81,9 @@ impl AuthToken {
             }
         }
     }
+    pub async fn update_poem(&self,
+    poem_uuid:Uuid,
+    title:Option<String>)
     pub async fn update_set(&self,
                             set_uuid:Uuid,
                             title:Option<String>,
