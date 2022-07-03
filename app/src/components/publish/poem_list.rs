@@ -6,29 +6,32 @@ use std::sync::{Arc, Mutex};
 use web_sys::HtmlSelectElement;
 use crate::services::network::GraphQlResp;
 
+
+
 #[function_component(PoemList)]
 pub fn poem_list() -> Html {
     let auth_ctx = use_context::<AuthContext>().unwrap();
     let msg_context = use_context::<MsgContext>().unwrap();
     let edit_set_context = use_context::<EditSetContext>().unwrap();
-    let mut html = edit_set_context.poem_uuids
+    let ready_to_sort = use_state(||false);
+    let fetch_html = edit_set_context.poem_uuids
         .clone()
         .into_iter()
         .map(|uuid|{
             let prop = PoemProps{uuid};
-            (uuid,html!{
-               <PoemCard ..prop/>
-            })
-        }).collect::<Vec<(Uuid,Html)>>();
-    html.sort_by(|a,b|
-        edit_set_context.poem_idx.get(&a.0).unwrap_or(&0)
-            .partial_cmp(
-                edit_set_context.poem_idx.get(&b.0).unwrap_or(&0)
-        ).unwrap()
-    );
-    let html = html.into_iter().map(|(uuid,html)|html).collect::<Html>();
-    return html!{
+            html!{
+               <PoemCardFetch ..prop/>
+            }
+        }).collect::<Html>();
+    let html = edit_set_context
+        .poem_data
+        .clone()
+        .into_iter()
+        .map(|data|html!{<PoemCard ..data/>})
+        .collect::<Html>();
+    return html! {
         <div>
+        {fetch_html}
         {html}
         </div>
     };
@@ -39,34 +42,42 @@ pub struct PoemProps {
     pub uuid: Uuid,
 }
 
-#[derive(PartialEq,Properties,Default)]
+#[derive(PartialEq,Properties,Default,Clone)]
 pub struct PoemData {
-    title: String,
-    idx: i32,
+    pub uuid:Uuid,
+    pub title: String,
+    pub idx: i32,
 }
-
 #[function_component(PoemCard)]
-pub fn poem_card(props: &PoemProps) -> Html {
+pub fn poem_card(props:&PoemData) -> Html {
+    html! {
+        <div id={"PoemCard"} key={props.uuid.to_string()}>
+        <p>{props.title.clone()}</p>
+        <UpdatePoemIdx ..{UpdatePoemIdxProps{idx:props.idx}}/>
+        <UpdatePoemTitle ..{PoemProps{uuid:props.uuid}}/>
+        </div>
+    }
+}
+#[function_component(PoemCardFetch)]
+pub fn poem_card_fetch(props: &PoemProps) -> Html {
     let auth_ctx = use_context::<AuthContext>().unwrap();
     let msg_context = use_context::<MsgContext>().unwrap();
     let edit_set_ctx = use_context::<EditSetContext>().unwrap();
-    let data = use_state(||PoemData::default());
     if use_is_first_mount() {
         {
             let auth = auth_ctx.clone();
             let msg_context = msg_context.clone();
-            let poem_data = data.clone();
             let edit_set_ctx = edit_set_ctx.clone();
             let uuid = props.uuid;
             use_async::<_, (), String>(async move {
                 match auth.poem_query(uuid).await? {
                     GraphQlResp::Data(data) => {
                         let poem = &data.poem.unwrap();
-                        poem_data.set(PoemData{
+                        edit_set_ctx.dispatch(EditSetDataActions::InsertPoemData(PoemData{
+                            uuid,
                             title: poem.title.clone(),
                             idx: poem.idx as i32,
-                        });
-                        edit_set_ctx.dispatch(EditSetDataActions::InsertIdx(uuid,poem.idx as i32));
+                        }));
                     },
                     GraphQlResp::Err(errors) => {
                         msg_context.dispatch(errors.into_msg_action());
@@ -76,13 +87,7 @@ pub fn poem_card(props: &PoemProps) -> Html {
             })
         }.run();
     };
-    html! {
-        <div id={"PoemCard"} key={props.uuid.to_string()}>
-        <p>{data.title.clone()}</p>
-        <UpdatePoemIdx ..{UpdatePoemIdxProps{idx:data.idx}}/>
-        <UpdatePoemTitle ..props.clone()/>
-        </div>
-    }
+    html! {}
 }
 
 #[derive(Properties,PartialEq)]

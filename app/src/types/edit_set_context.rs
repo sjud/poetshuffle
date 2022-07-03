@@ -2,7 +2,7 @@ use std::collections::HashMap;
 use std::rc::Rc;
 use uuid::Uuid;
 use yew::{Reducible, UseReducerHandle, UseStateHandle};
-use crate::components::publish::poem_list::PoemProps;
+use crate::components::publish::poem_list::PoemData;
 
 #[derive(Default, PartialEq, Clone)]
 pub struct EditableSet {
@@ -16,7 +16,7 @@ pub type EditSetContext = UseReducerHandle<EditSetData>;
 pub struct EditSetData {
     pub(crate) new_edit_flag: bool,
     pub(crate) poem_uuids: Vec<Uuid>,
-    pub(crate) poem_idx:HashMap<Uuid,i32>,
+    pub(crate) poem_data:Vec<PoemData>,
     pub(crate) editable_set: Option<EditableSet>,
 }
 
@@ -30,7 +30,7 @@ pub enum EditSetDataActions {
     PoemUuids(Vec<Uuid>),
     PushPoemUuid(Uuid),
     EditableSet(Option<EditableSet>),
-    InsertIdx(Uuid,i32),
+    InsertPoemData(PoemData),
     UpdateTitle(String),
     UpdateLink(String),
 }
@@ -40,14 +40,17 @@ impl Reducible for EditSetData {
     fn reduce(self: Rc<Self>, action: Self::Action) -> Rc<Self> {
         match action {
             // TODO less clone
-            EditSetDataActions::InsertIdx(uuid,idx) => Rc::new( Self {
+            EditSetDataActions::InsertPoemData(poem_data) => Rc::new( Self {
                 new_edit_flag:self.new_edit_flag,
                 poem_uuids: self.poem_uuids.clone(),
                 editable_set: self.editable_set.clone(),
-                poem_idx: {
-                    let mut map = self.poem_idx.clone();
-                    map.insert(uuid,idx);
-                    map
+                poem_data: {
+                    let mut data = self.poem_data.clone();
+                    data.push(poem_data);
+                    data.sort_by(|a, b|
+                        a.idx.partial_cmp(&b.idx).unwrap()
+                    );
+                    data
                 },
             }),
             EditSetDataActions::UpdateTitle(title) => Rc::new( Self{
@@ -58,7 +61,7 @@ impl Reducible for EditSetData {
                     title,
                     link: self.editable_set.clone().unwrap().link,
                 }),
-                poem_idx: self.poem_idx.clone(),
+                poem_data: self.poem_data.clone(),
             }),
             EditSetDataActions::UpdateLink(link) => Rc::new(Self {
                 new_edit_flag:self.new_edit_flag,
@@ -68,13 +71,13 @@ impl Reducible for EditSetData {
                     title: self.editable_set.clone().unwrap().title,
                     link,
                 }),
-                poem_idx: self.poem_idx.clone(),
+                poem_data: self.poem_data.clone(),
             }),
             EditSetDataActions::NewEditFlag(new_edit_flag) => Rc::new(Self {
                 new_edit_flag,
                 poem_uuids: self.poem_uuids.clone(),
                 editable_set: self.editable_set.clone(),
-                poem_idx: self.poem_idx.clone(),
+                poem_data: self.poem_data.clone(),
             }),
             EditSetDataActions::PushPoemUuid(uuid) => Rc::new(Self {
                 new_edit_flag: self.new_edit_flag,
@@ -84,22 +87,19 @@ impl Reducible for EditSetData {
                     uuids
                 },
                 editable_set: self.editable_set.clone(),
-                poem_idx: self.poem_idx.clone(),
-
+                poem_data: self.poem_data.clone(),
             }),
             EditSetDataActions::PoemUuids(poem_uuids) => Rc::new(Self {
                 new_edit_flag: self.new_edit_flag,
                 poem_uuids,
                 editable_set: self.editable_set.clone(),
-                poem_idx: self.poem_idx.clone(),
-
+                poem_data: self.poem_data.clone(),
             }),
             EditSetDataActions::EditableSet(editable_set) => Rc::new(Self {
                 new_edit_flag: self.new_edit_flag,
                 poem_uuids:self.poem_uuids.clone(),
                 editable_set,
-                poem_idx: self.poem_idx.clone(),
-
+                poem_data: self.poem_data.clone(),
             }),
         }
     }
