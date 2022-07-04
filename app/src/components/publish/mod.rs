@@ -1,11 +1,10 @@
 pub mod invite_poet;
-pub mod menu;
 pub mod edit_pending_set;
 pub mod poem_list;
+pub mod edit_poem;
 
 use crate::components::publish::invite_poet::InvitePoet;
-use menu::PublishMenu;
-
+use edit_pending_set::EditPendingSet;
 use crate::queries::{
     add_poem_mutation, AddPoemMutation, create_pending_set_mutation,
     CreatePendingSetMutation, invite_user_mutation, InviteUserMutation,
@@ -17,7 +16,7 @@ use crate::services::network::post_graphql;
 use crate::services::utility::map_graphql_errors_to_string;
 use crate::styles::{form_css, form_elem};
 use crate::types::auth_context::{AuthContext, UserRole};
-use crate::types::edit_set_context::{EditSetContext, EditSetData,EditSetDataActions};
+use crate::types::edit_set_context::{EditSetContext, EditSetData, EditSetActions};
 use crate::types::msg_context::{
     MsgContext, new_green_msg_with_std_duration, new_red_msg_with_std_duration,
 };
@@ -40,7 +39,7 @@ pub fn publish() -> Html {
         }
         if auth_ctx.user_role >= UserRole::Poet {
         <ContextProvider<EditSetContext> context={edit_set_context}>
-            <PublishMenu/>
+            <EditPendingSet/>
             </ContextProvider<EditSetContext>>
         } else {<PublicPublishInfo/>}
         </div>

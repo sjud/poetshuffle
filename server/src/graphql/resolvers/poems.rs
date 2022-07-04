@@ -204,7 +204,6 @@ impl PoemMutation {
                     .user_uuid),
                 poem_uuid: Set(poem_uuid),
                 edit_title: build_history_value_option(title)?,
-                edit_idx: build_history_value_option(idx)?,
                 edit_is_deleted: build_history_value_option(delete)?,
                 edit_is_approved: build_history_value_option(approve)?,
                 edit_banter_uuid: build_history_value_option(banter_uuid)?,

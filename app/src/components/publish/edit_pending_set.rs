@@ -1,27 +1,50 @@
+use web_sys::Performance;
 use crate::services::network::GraphQlResp;
 use super::*;
-use crate::types::edit_set_context::{EditableSet, EditSetContext, EditSetDataActions};
+use crate::types::edit_set_context::{EditableSet, EditSetContext, EditSetActions};
 use poem_list::PoemList;
+use crate::types::edit_poem_list_context::{EditPoemListData,EditPoemListContext};
 
 #[function_component(EditPendingSet)]
 pub fn edit_pending_set() -> Html {
     let auth_ctx = use_context::<AuthContext>().unwrap();
-    let msg_context = use_context::<MsgContext>().unwrap();
-    let edit_set_context = use_context::<EditSetContext>().unwrap();
-
-    if let Some(editable_set) = (edit_set_context.editable_set).clone() {
-        let props = UpdateSetProps{editable_set};
-        // We use the title we got pass from props.
+    let msg_ctx = use_context::<MsgContext>().unwrap();
+    let edit_set_ctx = use_context::<EditSetContext>().unwrap();
+    if use_is_first_mount() || edit_set_ctx.new_edit_flag {
+        let auth = auth_ctx.clone();
+        let edit_set_ctx_clone = edit_set_ctx.clone();
+        let msg_ctx = msg_ctx.clone();
+        let user_uuid = auth.user_uuid.unwrap();
+        use_async::<_, (), String>(async move {
+            match auth.pending_set_by_user__uuid(user_uuid).await? {
+                GraphQlResp::Data(data) => {
+                    if let Some(set) = data.pending_set_by_user {
+                        edit_set_ctx_clone.dispatch(
+                            EditSetActions::EditableSet(
+                                Some(EditableSet {
+                                    set_uuid: Uuid::from_str(&set.set_uuid).unwrap(),
+                                    link: set.link.clone(),
+                                    title: set.title.clone(),
+                                })));
+                        } else {}},
+                GraphQlResp::Err(errors) =>
+                    msg_ctx.dispatch(errors.into_msg_action()),
+            }Ok(())}).run();
+        edit_set_ctx.dispatch(EditSetActions::NewEditFlag(false));
+    }
+    if let Some(_) = (edit_set_ctx.editable_set).clone() {
+        let edit_poem_list_ctx = use_reducer(||EditPoemListData::default());
         return html! {
             <div>
         <h2>{"Edit Pending Set"}</h2>
-            <UpdateSetTitle ..props.clone()/>
+            <UpdateSetTitle/>
             <br/>
-            <UpdateSetLink ..props.clone()/>
+            <UpdateSetLink/>
             <br/>
-            <AddPoem ..props.clone()/>
-            <br/>
+
+            <ContextProvider<EditPoemListContext> context={edit_poem_list_ctx}>
             <PoemList/>
+            </ContextProvider<EditPoemListContext>>
             </div>
         };
     } else {
@@ -31,19 +54,14 @@ pub fn edit_pending_set() -> Html {
     }
 }
 
-#[derive(Properties,PartialEq,Clone)]
-pub struct UpdateSetProps{
-    editable_set:EditableSet,
-}
-// TODO The following two components are basically the same, make them one.
+// TODO The following two components are basically the same, what would an abstracted UpdateSet component look like?
 #[function_component(UpdateSetLink)]
-pub fn update_set_link(props:&UpdateSetProps) -> Html {
+pub fn update_set_link() -> Html {
     let auth_ctx = use_context::<AuthContext>().unwrap();
     let msg_context = use_context::<MsgContext>().unwrap();
     let edit_set_context = use_context::<EditSetContext>().unwrap();
-    let editable_set = props.clone().editable_set;
+    let editable_set = edit_set_context.editable_set.clone().unwrap();
     let (set_uuid, title, link) = editable_set.deconstruct();
-    let title_ref = use_node_ref();
     let link_ref = use_node_ref();
     let update_link = {
         let auth = auth_ctx.clone();
@@ -59,7 +77,7 @@ pub fn update_set_link(props:&UpdateSetProps) -> Html {
                 None,
                 None,).await? {
                 GraphQlResp::Data(data) => {
-                    edit_set_context.dispatch(EditSetDataActions::UpdateLink(link));
+                    edit_set_context.dispatch(EditSetActions::UpdateLink(link));
                     msg_context.dispatch(
                         new_green_msg_with_std_duration("Updated".to_string()));
                 },
@@ -82,14 +100,14 @@ pub fn update_set_link(props:&UpdateSetProps) -> Html {
         };
 }
 #[function_component(UpdateSetTitle)]
-pub fn update_set_title(props:&UpdateSetProps) -> Html {
+pub fn update_set_title() -> Html {
+    gloo::console::error!("Update set title render");
     let auth_ctx = use_context::<AuthContext>().unwrap();
     let msg_context = use_context::<MsgContext>().unwrap();
     let edit_set_context = use_context::<EditSetContext>().unwrap();
-    let editable_set = props.clone().editable_set;
-    let (set_uuid, title, collection_link) = editable_set.deconstruct();
+    let editable_set = edit_set_context.editable_set.clone().unwrap();
+    let (set_uuid,title, collection_link) = editable_set.deconstruct();
     let title_ref = use_node_ref();
-    let link_ref = use_node_ref();
     let update_title = {
         let auth = auth_ctx.clone();
         let msg_context = msg_context.clone();
@@ -104,8 +122,8 @@ pub fn update_set_title(props:&UpdateSetProps) -> Html {
                 None,
                 None,).await? {
                 GraphQlResp::Data(data) => {
-                    edit_set_ctx.dispatch(EditSetDataActions::UpdateTitle(title));
-                    msg_context.dispatch(new_green_msg_with_std_duration("Updated".to_string()));
+                    edit_set_ctx.dispatch(EditSetActions::UpdateTitle(title));
+                    msg_context.dispatch(new_green_msg_with_std_duration(data.update_set));
                 }
                 GraphQlResp::Err(errors) =>
                     msg_context.dispatch(errors.into_msg_action())
@@ -125,52 +143,7 @@ pub fn update_set_title(props:&UpdateSetProps) -> Html {
             </div>
         };
 }
-#[function_component(AddPoem)]
-pub fn add_poem(props:&UpdateSetProps) -> Html {
-    let auth_ctx = use_context::<AuthContext>().unwrap();
-    let msg_context = use_context::<MsgContext>().unwrap();
-    let edit_set_context = use_context::<EditSetContext>().unwrap();
-    let title_ref = use_node_ref();
-    let add_poem = {
-        let auth = auth_ctx.clone();
-        let msg_context = msg_context.clone();
-        let edit_set_context = edit_set_context.clone();
-        let editable_set = props.editable_set.clone();
-        use_async::<_, (), String>(async move {
-            match auth.add_poem(
-                editable_set.set_uuid,
-                edit_set_context.poem_uuids.len() as i64)
-                .await? {
-                GraphQlResp::Data(data) => {
-                    edit_set_context.dispatch(
-                        EditSetDataActions::PushPoemUuid(
-                            Uuid::from_str(&data.add_poem).unwrap()));
-                    msg_context.dispatch(new_green_msg_with_std_duration("Poem Added".into()));
-                },
-                GraphQlResp::Err(errors) =>
-                    msg_context.dispatch(errors.into_msg_action())
-            }
-            Ok(())
-        })
-    };
-    let add_poem = Callback::from(move |_| {
-        add_poem.run();
-    });
-    return html! {
-        <div>
-        <h2>{"Add Poem to Set"}</h2>
-            <button onclick={add_poem.clone()}>{"Add Poem"}</button>
-        </div>
-        };
-    /*html!{
-        <div>
-         <h3>{"Title:"}</h3>
-        <input ref={title_ref.clone()}/>
-        <button>{"Choose File"}</button>
-        <button>{"Add Poem"}</button>
-        </div>
-    }*/
-}
+
 
 #[function_component(CreateSet)]
 pub fn create_set() -> Html {
@@ -189,7 +162,7 @@ pub fn create_set() -> Html {
             .await
             .map_err(|err| format!("{:?}", err))?;
             if let Some(ref data) = resp.data {
-                edit_set_context.dispatch(EditSetDataActions::NewEditFlag(true));
+                edit_set_context.dispatch(EditSetActions::NewEditFlag(true));
                 msg_context.dispatch(new_green_msg_with_std_duration("Set Created".to_string()))
             } else if resp.errors.is_some() {
                 msg_context.dispatch(new_red_msg_with_std_duration(map_graphql_errors_to_string(

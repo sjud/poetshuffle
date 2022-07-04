@@ -1,5 +1,81 @@
-
+use crate::services::network::GraphQlResp;
+use crate::types::edit_poem_list_context::{EditPoemListAction, EditPoemListContext};
 use super::*;
+#[function_component(PoemList)]
+pub fn poem_list() -> Html {
+    let poem_list_ctx = use_context::<EditPoemListContext>().unwrap();
+    let auth_ctx = use_context::<AuthContext>().unwrap();
+    let msg_ctx = use_context::<MsgContext>().unwrap();
+    let edit_set_ctx = use_context::<EditSetContext>().unwrap();
+    if use_is_first_mount() {
+        let auth = auth_ctx.clone();
+        let poem_list_ctx = poem_list_ctx.clone();
+        let msg_ctx = msg_ctx.clone();
+        let user_uuid = auth.user_uuid.unwrap();
+        let set_uuid = edit_set_ctx.editable_set.clone().unwrap().set_uuid;
+        use_async::<_, (), String>(async move {
+            match auth.poem_uuids_by_set_uuid(
+                Uuid::from_str(&set_uuid.to_string()).unwrap()).await? {
+                GraphQlResp::Data(data) => {
+                    poem_list_ctx.dispatch(EditPoemListAction::PoemUuids(
+                        data.poem_uuids_by_set_uuid
+                            .iter()
+                            .map(|uuid| Uuid::from_str(&uuid).unwrap())
+                            .collect::<Vec<Uuid>>()));
+                },
+                GraphQlResp::Err(errors) => {
+                    msg_ctx.dispatch(errors.into_msg_action());
+                }}
+            Ok(())
+        }).run();
+    }
+    return html!{
+        <div>
+        <AddPoem/>
+        <br/>
+        </div>
+    };
+}
+#[function_component(AddPoem)]
+pub fn add_poem() -> Html {
+    let auth_ctx = use_context::<AuthContext>().unwrap();
+    let msg_context = use_context::<MsgContext>().unwrap();
+    let edit_set_context = use_context::<EditSetContext>().unwrap();
+    let poem_list_ctx = use_context::<EditPoemListContext>().unwrap();
+    let title_ref = use_node_ref();
+    let add_poem = {
+        let auth = auth_ctx.clone();
+        let msg_context = msg_context.clone();
+        let poem_list_ctx = poem_list_ctx.clone();
+        let editable_set = edit_set_context.editable_set.clone().unwrap();
+        use_async::<_, (), String>(async move {
+            match auth.add_poem(
+                editable_set.set_uuid,
+                poem_list_ctx.unsorted_poem_uuids.len() as i64)
+                .await? {
+                GraphQlResp::Data(data) => {
+                    poem_list_ctx.dispatch(
+                        EditPoemListAction::PushPoemUuid(
+                            Uuid::from_str(&data.add_poem).unwrap()));
+                    msg_context.dispatch(new_green_msg_with_std_duration("Poem Added".into()));
+                },
+                GraphQlResp::Err(errors) =>
+                    msg_context.dispatch(errors.into_msg_action())
+            }
+            Ok(())
+        })
+    };
+    let add_poem = Callback::from(move |_| {
+        add_poem.run();
+    });
+    return html! {
+        <div>
+        <h2>{"Add Poem to Set"}</h2>
+            <button onclick={add_poem.clone()}>{"Add Poem"}</button>
+        </div>
+        };
+}
+/*
 use crate::queries::{poem_query, PoemQuery};
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
@@ -63,7 +139,7 @@ pub fn poem_card_fetch(props: &PoemProps) -> Html {
     let auth_ctx = use_context::<AuthContext>().unwrap();
     let msg_context = use_context::<MsgContext>().unwrap();
     let edit_set_ctx = use_context::<EditSetContext>().unwrap();
-    if use_is_first_mount() {
+    if use_is_first_mount() || edit_set_ctx.swap_edit_flag == true {
         {
             let auth = auth_ctx.clone();
             let msg_context = msg_context.clone();
@@ -73,7 +149,7 @@ pub fn poem_card_fetch(props: &PoemProps) -> Html {
                 match auth.poem_query(uuid).await? {
                     GraphQlResp::Data(data) => {
                         let poem = &data.poem.unwrap();
-                        edit_set_ctx.dispatch(EditSetDataActions::InsertPoemData(PoemData{
+                        edit_set_ctx.dispatch(EditSetActions::InsertPoemData(PoemData{
                             uuid,
                             title: poem.title.clone(),
                             idx: poem.idx as i32,
@@ -86,6 +162,7 @@ pub fn poem_card_fetch(props: &PoemProps) -> Html {
                 Ok(())
             })
         }.run();
+        edit_set_ctx.dispatch(EditSetActions::SwapEditFlag(false));
     };
     html! {}
 }
@@ -124,6 +201,7 @@ pub fn update_poem_idx(props:&UpdatePoemIdxProps) -> Html {
                     .map_err(|err|format!("{:?}",err))?).await? {
                 GraphQlResp::Data(data) => {
                     msg_context.dispatch(new_green_msg_with_std_duration(data.update_poem_idx));
+                    edit_set_ctx.dispatch(EditSetActions::SwapEditFlag(true));
                 }
                 GraphQlResp::Err(errors) =>
                     msg_context.dispatch(errors.into_msg_action())
@@ -150,13 +228,11 @@ pub fn update_set_title(props:&PoemProps) -> Html {
     let auth_ctx = use_context::<AuthContext>().unwrap();
     let msg_context = use_context::<MsgContext>().unwrap();
     let title_ref = use_node_ref();
-    let title = use_state(||String::new());
     let update_title = {
         let auth = auth_ctx.clone();
         let msg_context = msg_context.clone();
         let title_ref = title_ref.clone();
         let uuid = props.uuid;
-        let title_state = title.clone();
         use_async::<_, (), String>(async move {
             let title = title_ref.cast::<HtmlInputElement>().unwrap().value();
             match auth.update_poem(
@@ -166,7 +242,6 @@ pub fn update_set_title(props:&PoemProps) -> Html {
                 None,
                 None,).await? {
                 GraphQlResp::Data(_) => {
-                    title_state.set(title);
                     msg_context.dispatch(new_green_msg_with_std_duration("Updated".to_string()));
                 }
                 GraphQlResp::Err(errors) =>
@@ -180,9 +255,9 @@ pub fn update_set_title(props:&PoemProps) -> Html {
     });
     return html! {
             <div>
-            <h4>{(*title).clone()}</h4>
             <input ref={title_ref.clone()}/>
             <button onclick={update_title.clone()}>{"Update Title"}</button>
             </div>
         };
 }
+*/

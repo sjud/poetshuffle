@@ -47,7 +47,6 @@ use crate::queries::*;
 #[cfg(test)]
 use wasm_bindgen_test::*;
 use crate::BASE_URL;
-use crate::components::publish::poem_list::UpdatePoemIdxProps;
 use crate::services::utility::map_graphql_errors_to_string;
 use crate::types::auth_context::{AuthContext, AuthToken, UserRole};
 use crate::types::msg_context::{MsgActions, new_red_msg_with_std_duration};
