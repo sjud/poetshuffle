@@ -8,8 +8,37 @@ use hmac::Hmac;
 use jwt::VerifyWithKey;
 use sha2::Sha256;
 use std::collections::BTreeMap;
+use axum::body::Bytes;
+use axum::extract::Path;
+use axum::response::{Html, Redirect};
+use crate::storage::StorageApi;
+use tracing::instrument;
+#[instrument]
+pub async fn index_html(Extension(storage_api):Extension<StorageApi>) -> Result<Html<Bytes>,StatusCode> {
+    let data = storage_api.get_index_file()
+        .await
+        .map_err(|err| {
+        tracing::error!("{:?}", err);
+        StatusCode::INTERNAL_SERVER_ERROR
+    })?;
+    Ok(Html(data.into()))
+}
+
+#[instrument]
+pub async fn presign_url(
+    Path(path): Path<String>,
+    Extension(storage_api):Extension<StorageApi>) -> Result<Redirect,StatusCode> {
+        Ok(Redirect::temporary(
+        &storage_api.presigned_url(&path).await
+            .map_err(|err| {
+                tracing::error!("{:?}", err);
+                StatusCode::INTERNAL_SERVER_ERROR
+            })?
+        ))
+}
 
 /// Executes GraphQL requests against out schema stored in extensions.
+#[instrument(skip_all)]
 pub async fn graphql_handler(
     schema: Extension<PoetShuffleSchema>,
     Extension(key): Extension<Hmac<Sha256>>,
@@ -57,6 +86,7 @@ mod test {
     use tracing_subscriber::layer::SubscriberExt;
     use tracing_subscriber::util::SubscriberInitExt;
     use tracing_test::traced_test;
+    use crate::http::app;
 
     #[tokio::test]
     #[traced_test]

@@ -27,7 +27,7 @@ lazy_static::lazy_static!{
     };
         /// i.e https://127.0.0.1:8000/
     pub static ref URL_BASE: String = {
-        use crate::http_server::{SERVER_IP,SERVER_PORT};
+        use crate::http::{SERVER_IP,SERVER_PORT};
         if let Ok(origin) = std::env::var("URL_BASE") {
             origin
         } else {

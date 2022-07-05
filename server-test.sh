@@ -3,7 +3,7 @@
 # -d will run it 'detached' so that its output does not block stdin
 # -p 5433:5432 will map our docker host port 5433 (the port we give to our servers database_url)
 # to the containers port of 5432 which is uses to listen for connection to postgres
-docker run --name test_db --rm -d -p 5433:5432 test_db
+docker compose -f server-dev-compose.yml up --build -d
 # we construct the DB url info (this should be from an env file or something) and then see if the server is running.
 # see this stackoverflow for a further explanation
 # https://stackoverflow.com/questions/14549270/check-if-database-exists-in-postgresql-using-shell
@@ -18,4 +18,4 @@ sea migrate up
 # we test our server knowing that we can populate the fresh db with whatever
 cargo test --package server --features dev
 # we stop our container which deletes it because we passed in --rm earlier.
-docker stop test_db
+docker compose -f server-dev-compose.yml drop

@@ -65,6 +65,9 @@ pub fn parse_graph_ql_resp<Data:Clone>(resp:Result<Arc<graphql_client::Response<
 }
 
 impl AuthToken {
+    pub async fn fetch_text_file(&self,path:String) -> String {
+
+    }
     #[cfg(test)]
     pub async fn new_from_login_super_admin() -> Self {
         match parse_graph_ql_resp(post_graphql::<SuperAdminLoginMutation>(

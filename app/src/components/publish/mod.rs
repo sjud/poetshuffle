@@ -14,7 +14,7 @@ use crate::queries::{
 use crate::routes::Route;
 use crate::services::network::post_graphql;
 use crate::services::utility::map_graphql_errors_to_string;
-use crate::styles::{form_css, form_elem};
+use crate::styles::{form_css, form_elem, main_menu_style};
 use crate::types::auth_context::{AuthContext, UserRole};
 use crate::types::edit_set_context::{EditSetContext, EditSetData, EditSetActions};
 use crate::types::msg_context::{
@@ -48,7 +48,15 @@ pub fn publish() -> Html {
 
 #[function_component(PublicPublishInfo)]
 pub fn public_publish_info() -> Html {
+    let info = use_state(||"Loading info...");
+    let css = main_menu_style();
+    if use_is_first_mount() {
+        let info = info.clone();
+        use_async::<_,(),String>(async move {
+
+        }).run();
+    };
     html! {
-        <p>{"Public publish info"}</p>
+        <p class={css}>{(*info).clone()}</p>
     }
 }

@@ -1,0 +1,21 @@
+version: "3.9"
+services:
+  test_db:
+    build:
+      context: .
+      dockerfile: dockers/Dockerfile.test_db
+    ports:
+      - "127.0.0.1:5433:5432"
+    healthcheck:
+      test: [ "CMD-SHELL", "PGPASSWORD=PASSWORD psql --port=5432 --user=postgres --host=0.0.0.0 \
+-XtAc \"SELECT 1 FROM pg_database WHERE datname='postgres'\"" ]
+      interval: 1s
+      timeout: 10s
+      retries: 10
+  s3:
+    image: lphoward/fake-s3
+    ports:
+        - "8001:4569"  # external service port range
+    volumes:
+      - /static
+

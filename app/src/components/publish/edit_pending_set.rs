@@ -150,10 +150,12 @@ pub fn create_set() -> Html {
     let auth_ctx = use_context::<AuthContext>().unwrap();
     let msg_context = use_context::<MsgContext>().unwrap();
     let edit_set_context = use_context::<EditSetContext>().unwrap();
+    let history = use_history().unwrap();
     let create_set = {
         let token = auth_ctx.token.clone();
         let msg_context = msg_context.clone();
         let edit_set_context = edit_set_context.clone();
+        let history = history.clone();
         use_async::<_, (), String>(async move {
             let resp = post_graphql::<CreatePendingSetMutation>(
                 create_pending_set_mutation::Variables {},
@@ -163,7 +165,8 @@ pub fn create_set() -> Html {
             .map_err(|err| format!("{:?}", err))?;
             if let Some(ref data) = resp.data {
                 edit_set_context.dispatch(EditSetActions::NewEditFlag(true));
-                msg_context.dispatch(new_green_msg_with_std_duration("Set Created".to_string()))
+                msg_context.dispatch(new_green_msg_with_std_duration("Set Created".to_string()));
+                history.push(Route::Publish);
             } else if resp.errors.is_some() {
                 msg_context.dispatch(new_red_msg_with_std_duration(map_graphql_errors_to_string(
                     &resp.errors,

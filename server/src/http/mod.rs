@@ -1,10 +1,11 @@
 use crate::email::Postmark;
 use crate::graphql::schema::PoetShuffleSchema;
 use crate::{
-    graphql::schema::new_schema, handlers::graphql_handler, storage,
+    graphql::schema::new_schema, storage,
 };
 use axum::routing::{get, MethodRouter};
-use axum::{extract::Path, response::Html, routing::post, Extension, Router};
+use axum::{Extension, extract::Path, response::Html, Router, routing::post};
+use axum::body::Bytes;
 use axum::http::header::{ACCEPT, AUTHORIZATION};
 use axum::http::Method;
 use hmac::digest::KeyInit;
@@ -14,9 +15,14 @@ use sea_orm::DatabaseConnection;
 use sha2::Sha256;
 use tower_http::trace::TraceLayer;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
-use crate::handlers::health_check;
+use handlers::health_check;
 use tower_http::cors::{Any, CorsLayer};
-use crate::email::{POSTMARK_API_TRANSACTION};
+use handlers::graphql_handler;
+use crate::email::POSTMARK_API_TRANSACTION;
+use crate::http::handlers::{index_html, presign_url};
+use crate::storage::StorageApi;
+
+mod handlers;
 
 lazy_static::lazy_static!{
         pub static ref SERVER_PORT: String = {
@@ -25,7 +31,6 @@ lazy_static::lazy_static!{
         } else {
             #[cfg(feature = "dev")]
             return dotenv_codegen::dotenv!("SERVER_PORT").to_string();
-            #[allow(dead_code)]
             panic!("Requires server port, not set in .env or environment");
         }
     };
@@ -35,7 +40,6 @@ lazy_static::lazy_static!{
         } else {
             #[cfg(feature = "dev")]
             return dotenv_codegen::dotenv!("SERVER_IP").to_string();
-            #[allow(dead_code)]
             panic!("Requires SERVER_IP, not set in .env or environment");
         }
     };
@@ -45,7 +49,6 @@ lazy_static::lazy_static!{
         } else {
             #[cfg(feature = "dev")]
             return dotenv_codegen::dotenv!("JWT_SECRET").to_string();
-            #[allow(dead_code)]
             panic!("Requires JWT_SECRET, not set in .env or environment");
         }
     };
@@ -86,43 +89,41 @@ pub(crate) async fn http_server(conn: DatabaseConnection) {
 pub fn app(key: Hmac<Sha256>, schema: PoetShuffleSchema) -> Router {
     // TODO Figure out what CORS should be in production
     let cors_layer = CorsLayer::new();
-        #[cfg(feature="dev")]
+    #[cfg(feature="dev")]
         let cors_layer = CorsLayer::new()
-            .allow_headers(Any)
-            .allow_methods(Any)
-            .allow_origin(Any);
+        .allow_headers(Any)
+        .allow_methods(Any)
+        .allow_origin(Any);
 
     let api_routes = Router::new()
         .route("/graphql", post(graphql_handler))
         .route("/health_check",get(health_check));
     // For use during development.
     #[cfg(feature = "graphiql")]
-    let api_routes = api_routes.route(
+        let api_routes = api_routes.route(
         "/graphiql",
         axum::routing::any(async move || {
             Html(async_graphql::http::graphiql_source("/api/graphql", None))
         }),
     );
 
-    storage()
-        .route("/", get_index_html())
+    Router::new()
+        .route("/", get(index_html))
+        .route("/static/*path", get(presign_url))
         .nest("/api", api_routes)
         // For our SPA to properly function we need to respond to non-supported
         // urls with the SPA itself.
-        .fallback(get_index_html())
+        .fallback(get(index_html))
         .layer(Extension(key))
         // Add tracing to our service.
         .layer(TraceLayer::new_for_http())
         // Add our Graphql schema for our handler.
         .layer(Extension(schema))
+        .layer(Extension(StorageApi::new()))
         .layer(cors_layer)
 }
 
-pub fn get_index_html() -> MethodRouter {
-    axum::routing::get(async move || {
-        storage::get_file_from_test_cdn(Path("dist/index.html".to_string())).await
-    })
-}
+
 
 #[cfg(feature = "dev")]
 pub async fn example_data(conn: &DatabaseConnection) {

@@ -1,6 +1,7 @@
 use crate::services::network::GraphQlResp;
 use crate::types::edit_poem_list_context::{EditPoemListAction, EditPoemListContext};
 use super::*;
+
 #[function_component(PoemList)]
 pub fn poem_list() -> Html {
     let poem_list_ctx = use_context::<EditPoemListContext>().unwrap();
@@ -36,6 +37,7 @@ pub fn poem_list() -> Html {
         </div>
     };
 }
+
 #[function_component(AddPoem)]
 pub fn add_poem() -> Html {
     let auth_ctx = use_context::<AuthContext>().unwrap();

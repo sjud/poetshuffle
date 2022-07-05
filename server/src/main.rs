@@ -1,22 +1,20 @@
 #![feature(async_closure)]
 
 use lazy_static::lazy_static;
-use sea_orm::{prelude::Uuid, ActiveModelTrait, Set};
+use sea_orm::{ActiveModelTrait, prelude::Uuid, Set};
 
 use tokio::try_join;
 
 //use crate::graphql::dev::populate_db_with_test_data;
-use crate::storage::storage;
 use migration::{Migrator, MigratorTrait};
 
 mod auth;
 mod email;
 mod graphql;
-mod handlers;
-mod http_server;
-mod local_cdn;
 mod storage;
 mod types;
+mod http;
+mod local_cdn;
 
 lazy_static! {
     /// i.e postgresql://postgres:PASSWORD@0.0.0.0:5432/postgres
@@ -59,7 +57,9 @@ async fn main() {
         local_cdn::local_cdn().await
     });
     // Spawn our normal HTTP server to handle API calls.
-    let server = tokio::task::spawn(async move { http_server::http_server(conn).await });
+    let server = tokio::task::spawn(async move {
+        http::http_server(conn).await
+    });
     // We run all processes until the first error.
     try_join!(test_cdn, server).unwrap();
 }
