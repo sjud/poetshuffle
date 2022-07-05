@@ -55,7 +55,7 @@ pub async fn find_set_by_uuid(
         .await
         .map_err(|err| Error::new(format!("{:?}", err)))
 }
-pub async fn create_pending_set(db: &DatabaseConnection, user_uuid: Uuid) -> Result<Uuid> {
+pub async fn create_pending_set(db: &DatabaseConnection, user_uuid: Uuid) -> Result<sets::Model> {
     let set_uuid = Uuid::new_v4();
     entity::sets::ActiveModel {
         set_uuid: Set(set_uuid),
@@ -69,7 +69,13 @@ pub async fn create_pending_set(db: &DatabaseConnection, user_uuid: Uuid) -> Res
     }
     .insert(db)
     .await?;
-    Ok(set_uuid)
+    if let Some(set) = Sets::find_by_id(set_uuid)
+        .one(db)
+        .await? {
+        Ok(set)
+    } else {
+        Err(Error::new("Can't find set that was just created"))
+    }
 }
 
 #[derive(Default)]
@@ -120,7 +126,7 @@ impl SetMutation {
         }
     }
 
-    async fn create_pending_set(&self, ctx: &Context<'_>) -> Result<Uuid> {
+    async fn create_pending_set(&self, ctx: &Context<'_>) -> Result<sets::Model> {
         let db = ctx.data::<DatabaseConnection>().unwrap();
         let auth = ctx.data::<Auth>()?;
         if let Some(permission) = auth.0.clone() {
@@ -128,7 +134,8 @@ impl SetMutation {
                 .await?
                 .is_none()
             {
-                create_pending_set(db, permission.user_uuid).await
+                let set = create_pending_set(db, permission.user_uuid).await?;
+                Ok(set)
             } else {
                 Err(Error::new("You have an ongoing pending set."))
             }

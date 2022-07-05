@@ -12,13 +12,14 @@ use axum::routing::get;
 use axum::Router;
 use axum::response::{Html};
 use axum::body::Bytes;
+
 lazy_static::lazy_static!{
     pub static ref SPACES_KEY: String = {
         if let Ok(spaces_key) = std::env::var("SPACES_KEY") {
             spaces_key
         } else {
             #[cfg(feature = "dev")]
-            "".to_string();
+            return "".to_string();
             panic!("Spaces key must be set in release");
         }
     };
@@ -27,7 +28,7 @@ lazy_static::lazy_static!{
             spaces_secret
         } else {
             #[cfg(feature = "dev")]
-            "".to_string();
+            return "".to_string();
             panic!("Spaces key must be set in release");
 
         }
@@ -42,7 +43,6 @@ pub struct Storage {
     bucket: String,
     // location_supported: bool,
 }
-
 
 impl std::fmt::Debug for Storage {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -60,6 +60,7 @@ pub struct StorageApi{
     storage:Storage,
     bucket:Bucket,
 }
+
 impl Debug for StorageApi {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("StorageApi")
@@ -68,6 +69,7 @@ impl Debug for StorageApi {
             .finish()
     }
 }
+
 impl StorageApi{
     pub fn new() -> Self {
         let storage = Storage::new();
@@ -119,8 +121,8 @@ impl Storage {
             name: "do".into(),
             region: Region::DoNyc3,
             credentials: Credentials {
-                access_key: Some(*SPACES_KEY),
-                secret_key: Some(*SPACES_SECRET),
+                access_key: Some(SPACES_KEY.clone()),
+                secret_key: Some(SPACES_SECRET.clone()),
                 security_token: None,
                 session_token: None,
             },

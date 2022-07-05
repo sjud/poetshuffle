@@ -21,7 +21,8 @@ impl MigrationTrait for Migration {
     idx INTEGER NOT NULL,
     part_of_poetshuffle BOOL NOT NULL,
     editor_uuid UUID REFERENCES users(user_uuid),
-    approved BOOL
+    approved BOOL,
+    UNIQUE (idx,set_uuid)
 );"#;
         let stmt = Statement::from_string(manager.get_database_backend(), sql.to_owned());
         manager.get_connection().execute(stmt).await.map(|_| ())

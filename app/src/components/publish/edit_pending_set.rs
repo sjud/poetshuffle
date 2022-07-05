@@ -2,55 +2,61 @@ use web_sys::Performance;
 use crate::services::network::GraphQlResp;
 use super::*;
 use crate::types::edit_set_context::{EditableSet, EditSetContext, EditSetActions};
-use poem_list::PoemList;
 use crate::types::edit_poem_list_context::{EditPoemListData,EditPoemListContext};
+use poem_list::EditPoemList;
 
 #[function_component(EditPendingSet)]
 pub fn edit_pending_set() -> Html {
     let auth_ctx = use_context::<AuthContext>().unwrap();
     let msg_ctx = use_context::<MsgContext>().unwrap();
     let edit_set_ctx = use_context::<EditSetContext>().unwrap();
-    if use_is_first_mount() || edit_set_ctx.new_edit_flag {
+    if use_is_first_mount() {
         let auth = auth_ctx.clone();
-        let edit_set_ctx_clone = edit_set_ctx.clone();
+        let edit_set_ctx = edit_set_ctx.clone();
         let msg_ctx = msg_ctx.clone();
         let user_uuid = auth.user_uuid.unwrap();
         use_async::<_, (), String>(async move {
             match auth.pending_set_by_user__uuid(user_uuid).await? {
                 GraphQlResp::Data(data) => {
                     if let Some(set) = data.pending_set_by_user {
-                        edit_set_ctx_clone.dispatch(
+                        edit_set_ctx.dispatch(
                             EditSetActions::EditableSet(
                                 Some(EditableSet {
                                     set_uuid: Uuid::from_str(&set.set_uuid).unwrap(),
                                     link: set.link.clone(),
                                     title: set.title.clone(),
                                 })));
-                        } else {}},
+                        } else {}
+                },
                 GraphQlResp::Err(errors) =>
                     msg_ctx.dispatch(errors.into_msg_action()),
-            }Ok(())}).run();
-        edit_set_ctx.dispatch(EditSetActions::NewEditFlag(false));
+            }
+            Ok(())}
+        ).run();
     }
-    if let Some(_) = (edit_set_ctx.editable_set).clone() {
-        let edit_poem_list_ctx = use_reducer(||EditPoemListData::default());
+    return html!{<EditPendingSetDecider/>};
+}
+#[function_component(EditPendingSetDecider)]
+pub fn edit_pending_set_decider() -> Html {
+    let edit_set_ctx = use_context::<EditSetContext>().unwrap();
+    let msg_context = use_context::<MsgContext>().unwrap();
+    let auth_ctx = use_context::<AuthContext>().unwrap();
+    if edit_set_ctx.editable_set.is_some() {
+        let edit_poem_list_ctx = use_reducer(||EditPoemListData::new(
+            (*auth_ctx).clone(),msg_context.clone()));
         return html! {
+        <ContextProvider<EditPoemListContext> context={edit_poem_list_ctx}>
             <div>
-        <h2>{"Edit Pending Set"}</h2>
+            <h2>{"Edit Pending Set"}</h2>
             <UpdateSetTitle/>
             <br/>
             <UpdateSetLink/>
             <br/>
-
-            <ContextProvider<EditPoemListContext> context={edit_poem_list_ctx}>
-            <PoemList/>
-            </ContextProvider<EditPoemListContext>>
+            <EditPoemList/>
             </div>
-        };
-    } else {
-        return html! {
-        <CreateSet/>
-        };
+        </ContextProvider<EditPoemListContext>>
+    }; } else {
+        return html! { <CreateSet/>};
     }
 }
 
@@ -101,7 +107,6 @@ pub fn update_set_link() -> Html {
 }
 #[function_component(UpdateSetTitle)]
 pub fn update_set_title() -> Html {
-    gloo::console::error!("Update set title render");
     let auth_ctx = use_context::<AuthContext>().unwrap();
     let msg_context = use_context::<MsgContext>().unwrap();
     let edit_set_context = use_context::<EditSetContext>().unwrap();
@@ -150,12 +155,11 @@ pub fn create_set() -> Html {
     let auth_ctx = use_context::<AuthContext>().unwrap();
     let msg_context = use_context::<MsgContext>().unwrap();
     let edit_set_context = use_context::<EditSetContext>().unwrap();
-    let history = use_history().unwrap();
     let create_set = {
         let token = auth_ctx.token.clone();
         let msg_context = msg_context.clone();
         let edit_set_context = edit_set_context.clone();
-        let history = history.clone();
+        let history = use_history.unwrap();
         use_async::<_, (), String>(async move {
             let resp = post_graphql::<CreatePendingSetMutation>(
                 create_pending_set_mutation::Variables {},
@@ -164,7 +168,12 @@ pub fn create_set() -> Html {
             .await
             .map_err(|err| format!("{:?}", err))?;
             if let Some(ref data) = resp.data {
-                edit_set_context.dispatch(EditSetActions::NewEditFlag(true));
+                edit_set_context.dispatch(EditSetActions::EditableSet(
+                    Some(EditableSet {
+                        set_uuid: Uuid::from_str(&data.create_pending_set.set_uuid).unwrap(),
+                        link: data.create_pending_set.link.clone(),
+                        title: data.create_pending_set.title.clone(),
+                    })));
                 msg_context.dispatch(new_green_msg_with_std_duration("Set Created".to_string()));
                 history.push(Route::Publish);
             } else if resp.errors.is_some() {
@@ -181,7 +190,6 @@ pub fn create_set() -> Html {
         create_set.run();
     });
     html! {
-                <button onclick={create_set.clone()}>{"Create New Set"}</button>
-
+        <button onclick={create_set.clone()}>{"Create New Set"}</button>
     }
 }

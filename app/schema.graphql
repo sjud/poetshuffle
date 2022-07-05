@@ -6,9 +6,9 @@ type Mutation {
     modifyUserRole(email:String!,newUserRole: UserRole!): String!
     inviteUser(email:String!,userRole:UserRole!): String!
     acceptInvitation(password:String,inviteUuid:ID!): String!
-    createPendingSet: ID!
+    createPendingSet: Set!
     updateSet(setUuid: ID!, title:String,link:String,delete:Boolean,approve:Boolean): String!
-    addPoem(setUuid:ID!, idx:Int!) : ID!
+    addPoem(setUuid:ID!, idx:Int!) : Poem!
     updatePoem(poemUuid:ID!, banterUuid:ID, title:String,delete:Boolean,approve:Boolean): String!
     updatePoemIdx(setUuid:ID!, poemAIdx:Int!, poemBIdx:Int!): String!
 }

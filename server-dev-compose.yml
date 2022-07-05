@@ -12,10 +12,4 @@ services:
       interval: 1s
       timeout: 10s
       retries: 10
-  s3:
-    image: lphoward/fake-s3
-    ports:
-        - "8001:4569"  # external service port range
-    volumes:
-      - /static
 

@@ -48,12 +48,17 @@ pub fn publish() -> Html {
 
 #[function_component(PublicPublishInfo)]
 pub fn public_publish_info() -> Html {
-    let info = use_state(||"Loading info...");
+    let info = use_state(||String::from("Loading info..."));
+    let auth_ctx = use_context::<AuthContext>().unwrap();
     let css = main_menu_style();
     if use_is_first_mount() {
         let info = info.clone();
+        let auth_ctx = auth_ctx.clone();
         use_async::<_,(),String>(async move {
-
+            let text = auth_ctx.fetch_text_file(
+                "pubic_publish_info".into()).await;
+            info.set(text);
+            Ok(())
         }).run();
     };
     html! {

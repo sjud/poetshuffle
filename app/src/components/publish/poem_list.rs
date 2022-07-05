@@ -1,9 +1,9 @@
 use crate::services::network::GraphQlResp;
-use crate::types::edit_poem_list_context::{EditPoemListAction, EditPoemListContext};
+use crate::types::edit_poem_list_context::{EditPoemListAction, EditPoemListContext, PoemData};
 use super::*;
 
-#[function_component(PoemList)]
-pub fn poem_list() -> Html {
+#[function_component(EditPoemList)]
+pub fn edit_poem_list() -> Html {
     let poem_list_ctx = use_context::<EditPoemListContext>().unwrap();
     let auth_ctx = use_context::<AuthContext>().unwrap();
     let msg_ctx = use_context::<MsgContext>().unwrap();
@@ -18,11 +18,32 @@ pub fn poem_list() -> Html {
             match auth.poem_uuids_by_set_uuid(
                 Uuid::from_str(&set_uuid.to_string()).unwrap()).await? {
                 GraphQlResp::Data(data) => {
-                    poem_list_ctx.dispatch(EditPoemListAction::PoemUuids(
-                        data.poem_uuids_by_set_uuid
-                            .iter()
-                            .map(|uuid| Uuid::from_str(&uuid).unwrap())
-                            .collect::<Vec<Uuid>>()));
+                    for uuid in data.poem_uuids_by_set_uuid
+                        .iter()
+                        .map(|uuid| Uuid::from_str(&uuid).unwrap())
+                        .collect::<Vec<Uuid>>() {
+                        match auth.poem_query(uuid).await? {
+                            GraphQlResp::Data(data) => {
+                                if let Some(poem) = data.poem {
+                                    poem_list_ctx.dispatch(EditPoemListAction::PushPoemData(
+                                        PoemData {
+                                            uuid,
+                                            title: poem.title,
+                                            idx: poem.idx
+                                        }));
+                                } else {
+                                    msg_ctx.dispatch(
+                                        new_red_msg_with_std_duration(
+                                            "Can't find poem.".into()
+                                        )
+                                    );
+                                }
+                            },
+                            GraphQlResp::Err(errors) => {
+                                msg_ctx.dispatch(errors.into_msg_action());
+                            }
+                        }
+                    };
                 },
                 GraphQlResp::Err(errors) => {
                     msg_ctx.dispatch(errors.into_msg_action());
@@ -34,6 +55,7 @@ pub fn poem_list() -> Html {
         <div>
         <AddPoem/>
         <br/>
+        <PoemList/>
         </div>
     };
 }
@@ -51,14 +73,17 @@ pub fn add_poem() -> Html {
         let poem_list_ctx = poem_list_ctx.clone();
         let editable_set = edit_set_context.editable_set.clone().unwrap();
         use_async::<_, (), String>(async move {
-            match auth.add_poem(
-                editable_set.set_uuid,
-                poem_list_ctx.unsorted_poem_uuids.len() as i64)
+            match auth.add_poem(editable_set.set_uuid)
                 .await? {
                 GraphQlResp::Data(data) => {
                     poem_list_ctx.dispatch(
-                        EditPoemListAction::PushPoemUuid(
-                            Uuid::from_str(&data.add_poem).unwrap()));
+                        EditPoemListAction::PushPoemData(
+                            PoemData{
+                                uuid: Uuid::from_str(&data.add_poem.poem_uuid).unwrap(),
+                                title: data.add_poem.title,
+                                idx: data.add_poem.idx as i32,
+                            }
+                        ));
                     msg_context.dispatch(new_green_msg_with_std_duration("Poem Added".into()));
                 },
                 GraphQlResp::Err(errors) =>
@@ -75,7 +100,12 @@ pub fn add_poem() -> Html {
         <h2>{"Add Poem to Set"}</h2>
             <button onclick={add_poem.clone()}>{"Add Poem"}</button>
         </div>
-        };
+    };
+}
+
+#[function_component(PoemList)]
+pub fn poem_list() -> Html {
+    html!{}
 }
 /*
 use crate::queries::{poem_query, PoemQuery};

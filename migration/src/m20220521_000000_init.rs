@@ -58,8 +58,9 @@ impl Iden for UserRole {
 #[async_trait::async_trait]
 impl MigrationTrait for Migration {
     async fn up(&self, manager: &SchemaManager) -> Result<(), DbErr> {
-        // TODO don't Ignore errors because I don't
-        // TODO know how to create type if not exists???
+        //TODO don't Ignore errors because I don't
+        // know how to create type if not exists???
+        // ^ What does this mean?
         let _ = manager
             .create_type(
                 Type::create()

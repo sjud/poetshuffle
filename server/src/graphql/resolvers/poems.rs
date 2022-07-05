@@ -4,6 +4,9 @@ use entity::edit_poem_history::ActiveModel as ActivePoemHistory;
 use entity::poems::{self, ActiveModel as ActivePoem};
 use entity::sea_orm_active_enums::SetStatus;
 use sea_orm::{ActiveValue, DbBackend, QueryTrait, TransactionTrait, Update};
+use sea_orm::sea_query::Query;
+use entity::prelude::Poems;
+use migration::Alias;
 
 #[derive(Debug, sea_orm::FromQueryResult)]
 struct PoemUuidResult {
@@ -32,21 +35,33 @@ pub async fn add_poem(
     db: &DatabaseConnection,
     user_uuid: Uuid,
     set_uuid: Uuid,
-    idx: i32,
-) -> Result<Uuid> {
+) -> Result<poems::Model> {
+    //TODO We need idx to be unique over originator_uuid+set_uuid
+    // and to return an error if it isn't.
     let poem_uuid = Uuid::new_v4();
+    let idx = Poems::find()
+        .filter(poems::Column::SetUuid.eq(set_uuid))
+        .all(db)
+        .await?
+        .len();
     ActivePoem {
         poem_uuid: Set(poem_uuid),
         originator_uuid: Set(user_uuid),
         set_uuid: Set(set_uuid),
-        idx: Set(idx),
+        idx: Set(idx as i32),
         title: Set("".to_string()),
         part_of_poetshuffle: Set(true),
         ..Default::default()
     }
     .insert(db)
     .await?;
-    Ok(poem_uuid)
+    if let Some(poem) = Poems::find_by_id(poem_uuid).one(db).await?{
+        Ok(poem)
+    } else {
+        Err(Error::new("This is a weird error:\
+         couldn't find poem after inserting into db... After? After inserting?\
+         Yes."))
+    }
 }
 
 pub async fn find_poem(db: &DatabaseConnection, poem_uuid: Uuid) -> Result<Option<poems::Model>> {
@@ -122,7 +137,7 @@ pub struct PoemMutation;
 pub struct PoemQuery;
 #[Object]
 impl PoemMutation {
-    async fn add_poem(&self, ctx: &Context<'_>, set_uuid: Uuid, idx: i32) -> Result<uuid::Uuid> {
+    async fn add_poem(&self, ctx: &Context<'_>, set_uuid: Uuid) -> Result<poems::Model> {
         let db = ctx.data::<DatabaseConnection>().unwrap();
         let auth = ctx.data::<Auth>()?;
         if auth.can_edit_set(
@@ -133,10 +148,11 @@ impl PoemMutation {
             let user_uuid = auth
                 .0
                 .as_ref()
-                .ok_or(Error::new("Impossible authorization error."))?
-                .user_uuid;
-            let poem_uuid = add_poem(db, user_uuid, set_uuid, idx).await?;
-            Ok(uuid::Uuid::from_u128(poem_uuid.as_u128()))
+                .ok_or(
+                    Error::new("Impossible authorization error???")
+                )?.user_uuid;
+            let poem = add_poem(db, user_uuid, set_uuid).await?;
+            Ok(poem)
         } else {
             Err(Error::new("Unauthorized."))
         }

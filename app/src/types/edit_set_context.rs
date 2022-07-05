@@ -15,7 +15,6 @@ pub type EditSetContext = UseReducerHandle<EditSetData>;
 
 #[derive(PartialEq, Clone,Default)]
 pub struct EditSetData {
-    pub(crate) new_edit_flag: bool,
     pub(crate) editable_set: Option<EditableSet>,
 }
 
@@ -25,7 +24,6 @@ impl EditableSet {
     }
 }
 pub enum EditSetActions {
-    NewEditFlag(bool),
     EditableSet(Option<EditableSet>),
     UpdateTitle(String),
     UpdateLink(String),
@@ -37,7 +35,6 @@ impl Reducible for EditSetData {
         match action {
             // TODO less clone
             EditSetActions::UpdateTitle(title) => Rc::new( Self{
-                new_edit_flag:self.new_edit_flag,
                 editable_set: Some(EditableSet{
                     set_uuid: self.editable_set.clone().unwrap().set_uuid,
                     title,
@@ -45,20 +42,13 @@ impl Reducible for EditSetData {
                 }),
             }),
             EditSetActions::UpdateLink(link) => Rc::new(Self {
-                new_edit_flag:self.new_edit_flag,
                 editable_set: Some(EditableSet{
                     set_uuid: self.editable_set.clone().unwrap().set_uuid,
                     title: self.editable_set.clone().unwrap().title,
                     link,
                 }),
             }),
-            EditSetActions::NewEditFlag(new_edit_flag) => Rc::new(Self {
-                new_edit_flag,
-                editable_set: self.editable_set.clone(),
-
-            }),
             EditSetActions::EditableSet(editable_set) => Rc::new(Self {
-                new_edit_flag: self.new_edit_flag,
                 editable_set,
             }),
         }
