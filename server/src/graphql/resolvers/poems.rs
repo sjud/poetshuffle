@@ -168,15 +168,26 @@ impl PoemMutation {
         if let Ok(Some(poem_a)) = find_poem_given_idx_set_uuid(db,set_uuid,poem_a_idx).await {
             if let Ok(Some(poem_b)) = find_poem_given_idx_set_uuid(db, set_uuid, poem_b_idx).await {
                 let txn = db.begin().await?;
+                //Set "unique" placholder idx's as to not violate unique(idx,set_uuid) while swapping
+                ActivePoem{
+                    poem_uuid:build_edit_poem_value(&auth,Some(poem_a.poem_uuid),&poem_a)?,
+                    idx:build_edit_poem_value(&auth, Some(i32::MAX),&poem_a)?,
+                    ..poem_a.clone().into()
+                }.save(&txn).await?;
+                ActivePoem{
+                    poem_uuid:build_edit_poem_value(&auth,Some(poem_b.poem_uuid),&poem_b)?,
+                    idx:build_edit_poem_value(&auth, Some(i32::MAX-1),&poem_b)?,
+                    ..poem_b.clone().into()
+                }.save(&txn).await?;
                 ActivePoem{
                     poem_uuid:build_edit_poem_value(&auth,Some(poem_a.poem_uuid),&poem_a)?,
                     idx:build_edit_poem_value(&auth, Some(poem_b_idx),&poem_a)?,
-                    ..Default::default()
+                    ..poem_a.into()
                 }.save(&txn).await?;
                 ActivePoem{
                     poem_uuid:build_edit_poem_value(&auth,Some(poem_b.poem_uuid),&poem_b)?,
                     idx:build_edit_poem_value(&auth, Some(poem_a_idx),&poem_b)?,
-                    ..Default::default()
+                    ..poem_b.into()
                 }.save(&txn).await?;
                 txn.commit().await?;
                 Ok("Idx Swap".into())
@@ -227,7 +238,7 @@ impl PoemMutation {
             }
             .insert(db)
             .await?;
-            Ok("".into())
+            Ok("Poem Updated".into())
         } else {
             Err(Error::new("Can't update poem. Poem not found."))
         }

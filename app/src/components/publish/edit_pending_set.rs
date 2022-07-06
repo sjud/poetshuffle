@@ -120,7 +120,6 @@ pub fn delete_set() -> Html {
         let edit_set_ctx = edit_set_context.clone();
         let check_ref = check_ref.clone();
         use_async::<_, (), String>(async move {
-            if check_ref.cast::<HtmlInputElement>().unwrap().value() == "true" {
                 match auth.update_set(
                     set_uuid,
                     None,
@@ -134,7 +133,6 @@ pub fn delete_set() -> Html {
                     GraphQlResp::Err(errors) =>
                         msg_context.dispatch(errors.into_msg_action())
                 }
-            }
             Ok(())
         })
     };
@@ -143,8 +141,6 @@ pub fn delete_set() -> Html {
     });
     html! {
             <div>
-            <label for="r_u_sure" >{"Check box to delete."}</label><br/>
-            <input type="checkbox" id="r_u_sure" ref={check_ref.clone()} value={"true"} />
             <button onclick={delete}>{"Delete Set"}</button>
             </div>
     }
