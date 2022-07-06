@@ -1,9 +1,10 @@
+
+
+/*
 use crate::services::network::GraphQlResp;
 use crate::types::edit_poem_context::{EditPoemAction, EditPoemContext, EditPoemData};
 use crate::types::edit_poem_list_context::EditPoemListContext;
 use super::*;
-
-
 #[derive(Properties,PartialEq,Debug,Clone)]
 pub struct EditPoemProps{
     uuid:Uuid,
@@ -96,7 +97,7 @@ pub fn update_poem_title() -> Html {
             </div>
     };
 }
-/*
+
 #[function_component(UpdatePoemIdx)]
 pub fn update_poem_idx() -> Html {
     let auth_ctx = use_context::<AuthContext>().unwrap();

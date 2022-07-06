@@ -18,12 +18,15 @@ pub type EditPoemListContext = UseReducerHandle<EditPoemListData>;
 pub struct EditPoemListData {
     pub poems: Vec<PoemData>,
 }
-#[derive(PartialEq, Clone)]
+#[derive(PartialEq, Clone,Debug)]
 pub struct PoemData{
     pub(crate) uuid:Uuid,
     pub(crate) title:String,
+    pub(crate) set_uuid:Uuid,
+    pub(crate) banter_uuid:Option<Uuid>,
     pub(crate) idx:i64,
 }
+
 impl EditPoemListData{
     pub fn sorted_poem_data(&self) -> Vec<PoemData> {
         let mut poem_data = self.poems.clone();

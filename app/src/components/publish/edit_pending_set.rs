@@ -217,9 +217,11 @@ pub fn create_set() -> Html {
                         link: data.create_pending_set.link.clone(),
                         title: data.create_pending_set.title.clone(),
                     })));
-                msg_context.dispatch(new_green_msg_with_std_duration("Set Created".to_string()));
+                msg_context.dispatch(
+                    new_green_msg_with_std_duration("Set Created".to_string()));
             } else if resp.errors.is_some() {
-                msg_context.dispatch(new_red_msg_with_std_duration(map_graphql_errors_to_string(
+                msg_context.dispatch(new_red_msg_with_std_duration(
+                    map_graphql_errors_to_string(
                     &resp.errors,
                 )));
                 tracing::error!("{:?}", resp.errors);

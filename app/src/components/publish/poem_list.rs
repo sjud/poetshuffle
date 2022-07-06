@@ -1,4 +1,5 @@
 use crate::services::network::GraphQlResp;
+use crate::types::edit_poem_context::{EditPoemContext, EditPoemData};
 use crate::types::edit_poem_list_context::{EditPoemListAction, EditPoemListContext, PoemData};
 use super::*;
 
@@ -29,6 +30,9 @@ pub fn edit_poem_list() -> Html {
                                         PoemData {
                                             uuid,
                                             title: poem.title,
+                                            set_uuid:Uuid::from_str(&poem.set_uuid).unwrap(),
+                                            banter_uuid: poem.banter_uuid
+                                                .map(|uuid|Uuid::from_str(&uuid).unwrap()),
                                             idx: poem.idx
                                         }));
                                 } else {
@@ -73,15 +77,18 @@ pub fn add_poem() -> Html {
         let poem_list_ctx = poem_list_ctx.clone();
         let editable_set = edit_set_context.editable_set.clone().unwrap();
         use_async::<_, (), String>(async move {
-            match auth.add_poem(editable_set.set_uuid)
+            let set_uuid = editable_set.set_uuid;
+            match auth.add_poem(set_uuid)
                 .await? {
                 GraphQlResp::Data(data) => {
                     poem_list_ctx.dispatch(
                         EditPoemListAction::PushPoemData(
                             PoemData{
                                 uuid: Uuid::from_str(&data.add_poem.poem_uuid).unwrap(),
-                                title: data.add_poem.title,
+                                title: String::new(),
                                 idx: data.add_poem.idx,
+                                banter_uuid: None,
+                                set_uuid,
                             }
                         ));
                     msg_context.dispatch(new_green_msg_with_std_duration("Poem Added".into()));
@@ -105,8 +112,142 @@ pub fn add_poem() -> Html {
 
 #[function_component(PoemList)]
 pub fn poem_list() -> Html {
+    let poem_list_ctx = use_context::<EditPoemListContext>().unwrap();
+    let sorted_poem_html: Html = poem_list_ctx
+        .sorted_poem_data()
+        .into_iter()
+        .map(|data|
+            html!{<Poem key={data.uuid.as_u128()} ..data.clone().into()/>})
+        .collect();
+    html!{
+        <div>
+        {sorted_poem_html}
+        </div>
+    }
+}
+
+#[derive(PartialEq, Properties, Clone,Debug)]
+pub struct PoemProps{
+    pub(crate) uuid:Uuid,
+    pub(crate) title:String,
+    pub(crate) set_uuid:Uuid,
+    pub(crate) banter_uuid:Option<Uuid>,
+    pub(crate) approve_poem:Option<bool>,
+    pub(crate) delete_poem:Option<bool>
+}
+impl From<PoemData> for PoemProps {
+    fn from(PoemData{uuid,title,set_uuid,banter_uuid,..}: PoemData)
+            -> Self {
+        Self{ uuid, title, set_uuid, banter_uuid,
+            approve_poem: None, delete_poem: None }
+    }
+}
+
+#[function_component(Poem)]
+pub fn poem(props:&PoemProps) -> Html {
+    let poem_ctx = use_reducer(||EditPoemData{
+        props:props.clone()
+    });
+    let auth_ctx = use_context::<AuthContext>().unwrap();
+
+    html!{
+        <ContextProvider<EditPoemContext> context={poem_ctx}>
+        <div>
+        <h3>{props.title.clone()}</h3>
+        <UpdatePoemTitle/>
+        <UpdatePoemIdx/>
+        <UploadPoemAudio/>
+        <UploadPoemTranscript/>
+        <DeletePoem/>
+        {
+            if auth_ctx.user_role >= moderator {
+            html!{<ApprovePoem/>}
+        } else {
+            html!{}
+            }
+        }
+        <Banter/>
+        </div>
+        </ContextProvider<EditPoemContext>>
+    }
+}
+#[function_component(UpdatePoemButton)]
+pub fn update_poem_button() -> Html {
+    let poem_ctx = use_context::<EditPoemContext>().unwrap();
+    let auth_ctx = use_context::<AuthContext>().unwrap();
+    let message_ctx = use_context::<MsgContext>().unwrap();
+    let update_poem = {
+        let props = poem_ctx.props.clone();
+        let auth = auth_ctx.clone();
+        let msg_context = message_ctx.clone();
+        use_async::<_,(),String>(async move {
+            match auth.update_poem(
+                props.uuid,
+                props.banter_uuid,
+                Some(props.title),
+                props.delete_poem,
+                props.approve_poem
+            ).await? {
+                GraphQlResp::Data(data) => {
+                    msg_context.dispatch(data.update_poem);
+                },
+                GraphQlResp::Err(errors) => {
+                    msg_context.dispatch(errors.into_msg_action());
+                }
+            }
+            Ok(())
+        });
+    };
+    let onclick = Callback::from(move|_|update_poem.run());
+    html!{
+        <button {onclick}>{"Update Poem"}</button>
+    }
+}
+#[function_component(DeletePoem)]
+pub fn delete_poem() -> Html {
     html!{}
 }
+#[function_component(ApprovePoem)]
+pub fn approve_poem() -> Html {
+    html!{}
+}
+#[function_component(UpdatePoemTitle)]
+pub fn update_poem_title() -> Html {
+    html!{}
+}
+#[function_component(UpdatePoemIdx)]
+pub fn update_idx() -> Html {
+    html!{}
+}
+#[function_component(UploadPoemAudio)]
+pub fn upload_poem_audio() -> Html {
+    html!{}
+}
+#[function_component(UploadPoemTranscript)]
+pub fn upload_poem_transcript() -> Html {
+    html!{}
+}
+#[function_component(Banter)]
+pub fn banter() -> Html {
+    html!{}
+}
+#[function_component(AddBanter)]
+pub fn add_banter() -> Html {
+    html!{}
+}
+#[function_component(DeleteBanter)]
+pub fn delete_banter() -> Html {
+    html!{}
+}
+#[function_component(UploadBanterAudio)]
+pub fn upload_banter_audio() -> Html {
+    html!{}
+}
+#[function_component(UploadBanterTranscript)]
+pub fn upload_banter_transcript() -> Html {
+    html!{}
+}
+
 /*
 use crate::queries::{poem_query, PoemQuery};
 use std::collections::HashMap;

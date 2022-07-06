@@ -1,7 +1,6 @@
 mutation AddPoemMutation($set_uuid: String!) {
   addPoem(setUuid: $set_uuid) {
     idx
-    poem_uuid
-    title
+    poemUuid
   }
 }

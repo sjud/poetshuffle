@@ -30,15 +30,15 @@ enum SetStatus {
     PUBLISHED
 }
 type Poem {
-    poem_uuid: ID!
-    originator_uuid: ID!
-    creation_ts: Int!
-    set_uuid: ID!
-    banter_uuid: ID
+    poemUuid: ID!
+    originatorUuid: ID!
+    creationTs: Int!
+    setUuid: ID!
+    banterUuid: ID
     title: String!
     idx: Int!
-    part_of_poetshuffle: Boolean!
-    editor_uuid: ID
+    partOfPoetshuffle: Boolean!
+    editorUuid: ID
     approved: Boolean
 }
 type Set {
