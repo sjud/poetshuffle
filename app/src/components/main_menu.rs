@@ -83,9 +83,7 @@ fn type_instruction(props: &TypeInstructionProps) -> Html {
             for c in stmt.chars() {
                 if c != ' ' {
                     gloo::timers::future::TimeoutFuture::new(INSTRUCTION_DURATION).await;
-                } else{
-                    tracing::error!("Space.");
-                }
+                } else{}
                 text_buf.push(c);
                 text_clone.set(text_buf.clone());
             }

@@ -5,6 +5,7 @@ use uuid::Uuid;
 use gloo::console::error;
 use reqwest::header::HeaderValue;
 use reqwest::Url;
+use wasm_bindgen::JsValue;
 
 pub async fn post_graphql<Q: GraphQLQuery>(
     vars: <Q as GraphQLQuery>::Variables,
@@ -65,6 +66,16 @@ pub fn parse_graph_ql_resp<Data:Clone>(resp:Result<Arc<graphql_client::Response<
 }
 
 impl AuthToken {
+    pub async fn upload_file(&self,url:&str,file:impl Into<JsValue>) -> Result<()> {
+        gloo::net::http::Request::post(url)
+            .header(
+                "x-authorization", &self.token.unwrap()
+            )
+            .body(file)
+            .send()
+            .await
+            .unwrap();
+    }
     pub async fn fetch_text_file(&self,path:String) -> String {
         "".into()
     }

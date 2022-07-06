@@ -339,9 +339,56 @@ pub fn update_idx(props:&PoemProps) -> Html {
 pub fn upload_poem_audio(props:&PoemProps) -> Html {
     html!{}
 }
+#[derive(Properties,PartialEq,Clone)]
+pub struct UploadProps{
+    upload_type:UploadType,
+    upload_msg:String,
+    uuid:Uuid,
+}
+// Every Uuid can have one audio, one text associated with it.
+#[derive(PartialEq,Clone)]
+pub enum UploadType{
+    Audio,
+    Text
+}
+#[function_component(Upload)]
+pub fn upload(props:&UploadProps) -> Html {
+    let auth_ctx = use_context::<AuthContext>().unwrap();
+    let msg_context = use_context::<MsgContext>().unwrap();
+    let input_ref = use_node_ref();
+    let upload = {
+        let input_ref = input_ref.clone();
+        let props = props.clone();
+        use_async::<_,(),String>(async move {
+            let input = input_ref.cast::<HtmlInputElement>().unwrap();
+            let url = match props.upload_type{
+                UploadType::Audio => format!("api/upload_audio/{}",props.uuid),
+                UploadType::Text => format!("api/upload_text/{}",props.uuid),
+            };
+            if let Some(files) = input.files() {
+                if let Some(file) = files.get(0){
+                    auth_ctx.upload_file(&url,file).await.unwrap()
+                }
+            }
+            Ok(())
+        })
+    };
+    let onchange = Callback::from(move|_|upload.run());
+    html!{
+        <div>
+        <label for={props.uuid.to_string()}>{props.upload_msg.clone()}</label><br/>
+        <input type="file" id={props.uuid.to_string()} {onchange} ref={input_ref}/>
+        </div>
+    }
+}
 #[function_component(UploadPoemTranscript)]
 pub fn upload_poem_transcript(props:&PoemProps) -> Html {
-    html!{}
+    let upload_props = UploadProps{
+        upload_type: UploadType::Text,
+        upload_msg: "Upload Poem Text".to_string(),
+        uuid: props.uuid
+    };
+    html!{<Upload ..upload_props/>}
 }
 #[function_component(Banter)]
 pub fn banter(props:&PoemProps) -> Html {

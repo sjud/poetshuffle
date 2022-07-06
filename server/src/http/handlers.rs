@@ -13,6 +13,8 @@ use axum::extract::Path;
 use axum::response::{Html, Redirect};
 use crate::storage::StorageApi;
 use tracing::instrument;
+use uuid::Uuid;
+
 #[instrument]
 pub async fn index_html(Extension(storage_api):Extension<StorageApi>) -> Result<Html<Bytes>,StatusCode> {
     let data = storage_api.get_index_file()
@@ -22,6 +24,13 @@ pub async fn index_html(Extension(storage_api):Extension<StorageApi>) -> Result<
         StatusCode::INTERNAL_SERVER_ERROR
     })?;
     Ok(Html(data.into()))
+}
+#[instrument]
+pub async fn upload_file(
+    Path(uuid): Path<Uuid>,
+    Extension(storage_api):Extension<StorageApi>) -> Result<String,StatusCode> {
+
+    Ok("Upload text".into())
 }
 
 #[instrument]

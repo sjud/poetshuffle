@@ -12,7 +12,6 @@ use migration::Alias;
 struct PoemUuidResult {
     uuid: Uuid,
 }
-
 pub async fn find_poem_uuids_by_set_uuid(
     db: &DatabaseConnection,
     set_uuid: Uuid,
@@ -22,6 +21,7 @@ pub async fn find_poem_uuids_by_set_uuid(
         .column(poems::Column::PoemUuid)
         .column_as(poems::Column::PoemUuid, "uuid")
         .filter(poems::Column::SetUuid.eq(set_uuid))
+        .filter(poems::Column::IsDeleted.eq(false))
         .into_model::<PoemUuidResult>()
         .all(db)
         .await
@@ -41,6 +41,7 @@ pub async fn add_poem(
     let poem_uuid = Uuid::new_v4();
     let idx = Poems::find()
         .filter(poems::Column::SetUuid.eq(set_uuid))
+        .filter(poems::Column::IsDeleted.eq(false))
         .all(db)
         .await?
         .len();
@@ -64,6 +65,7 @@ pub async fn add_poem(
     }
 }
 
+
 pub async fn find_poem(db: &DatabaseConnection, poem_uuid: Uuid) -> Result<Option<poems::Model>> {
     entity::poems::Entity::find_by_id(poem_uuid)
         .one(db)
@@ -74,6 +76,7 @@ pub async fn find_poem_given_idx_set_uuid(db: &DatabaseConnection, set_uuid: Uui
         poems::Entity::find()
             .filter(poems::Column::SetUuid.eq(set_uuid))
             .filter(poems::Column::Idx.eq(idx))
+            .filter(poems::Column::IsDeleted.eq(false))
             .one(db)
             .await
             .map_err(|err| Error::new(format!("Sea-orm: {:?}", err)))
@@ -91,6 +94,18 @@ pub fn build_edit_poem_value<V: Into<sea_orm::Value> + migration::Nullable>(
         }
     }
     Ok(ActiveValue::not_set())
+}
+
+pub async fn find_poems_of_greater_idx(
+    db:&DatabaseConnection,
+    set_uuid:Uuid,
+    idx:i32) -> Result<Vec<poems::Model>> {
+    Poems::find()
+        .filter(poems::Column::SetUuid.eq(set_uuid))
+        .filter(poems::Column::Idx.gt(idx))
+        .all(db)
+        .await
+        .map_err(|err| Error::new(format!("Sea-orm: {:?}", err)))
 }
 
 pub fn build_edit_poem_value_option<V: Into<sea_orm::Value> + migration::Nullable>(
@@ -168,17 +183,6 @@ impl PoemMutation {
         if let Ok(Some(poem_a)) = find_poem_given_idx_set_uuid(db,set_uuid,poem_a_idx).await {
             if let Ok(Some(poem_b)) = find_poem_given_idx_set_uuid(db, set_uuid, poem_b_idx).await {
                 let txn = db.begin().await?;
-                //Set "unique" placholder idx's as to not violate unique(idx,set_uuid) while swapping
-                ActivePoem{
-                    poem_uuid:build_edit_poem_value(&auth,Some(poem_a.poem_uuid),&poem_a)?,
-                    idx:build_edit_poem_value(&auth, Some(i32::MAX),&poem_a)?,
-                    ..poem_a.clone().into()
-                }.save(&txn).await?;
-                ActivePoem{
-                    poem_uuid:build_edit_poem_value(&auth,Some(poem_b.poem_uuid),&poem_b)?,
-                    idx:build_edit_poem_value(&auth, Some(i32::MAX-1),&poem_b)?,
-                    ..poem_b.clone().into()
-                }.save(&txn).await?;
                 ActivePoem{
                     poem_uuid:build_edit_poem_value(&auth,Some(poem_a.poem_uuid),&poem_a)?,
                     idx:build_edit_poem_value(&auth, Some(poem_b_idx),&poem_a)?,
@@ -211,6 +215,7 @@ impl PoemMutation {
         let db = ctx.data::<DatabaseConnection>()?;
         let auth = ctx.data::<Auth>()?;
         if let Some(poem) = find_poem(db, poem_uuid).await? {
+            let txn = db.begin().await?;
             ActivePoem {
                 poem_uuid: build_edit_poem_value(auth, Some(poem_uuid), &poem)?,
                 banter_uuid: build_edit_poem_value_option(auth, banter_uuid, &poem)?,
@@ -219,8 +224,21 @@ impl PoemMutation {
                 is_approved: build_approve_value(auth, approve)?,
                 ..Default::default()
             }
-            .update(db)
+            .update(&txn)
             .await?;
+            if Some(true) == delete {
+                let poems =
+                    find_poems_of_greater_idx(db,poem.set_uuid,poem.idx).await?;
+                for poem in poems.iter() {
+                    ActivePoem {
+                        poem_uuid: build_edit_poem_value(auth, Some(poem.poem_uuid), &poem)?,
+                        idx:build_edit_poem_value(auth,Some(poem.idx-1),&poem)?,
+                        ..Default::default()
+                    }
+                        .update(&txn)
+                        .await?;
+                }
+            }
             ActivePoemHistory {
                 history_uuid: Set(Uuid::new_v4()),
                 user_uuid: Set(auth
@@ -236,8 +254,9 @@ impl PoemMutation {
                 edit_banter_uuid: build_history_value_option(banter_uuid)?,
                 ..Default::default()
             }
-            .insert(db)
+            .insert(&txn)
             .await?;
+            txn.commit().await?;
             Ok("Poem Updated".into())
         } else {
             Err(Error::new("Can't update poem. Poem not found."))
