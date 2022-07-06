@@ -41,6 +41,7 @@ pub async fn find_pending_set_by_user(
 ) -> Result<Option<sets::Model>> {
     Sets::find()
         .filter(sets::Column::OriginatorUuid.eq(user_uuid))
+        .filter(sets::Column::IsDeleted.eq(false))
         .filter(sets::Column::SetStatus.eq(SetStatus::Pending))
         .one(db)
         .await
@@ -120,7 +121,7 @@ impl SetMutation {
             }
             .insert(db)
             .await?;
-            Ok("".into())
+            Ok("Set Updated".into())
         } else {
             Err(Error::new("Can't update set. Set not found."))
         }

@@ -22,7 +22,7 @@ pub struct EditPoemListData {
 pub struct PoemData{
     pub(crate) uuid:Uuid,
     pub(crate) title:String,
-    pub(crate) idx:i32,
+    pub(crate) idx:i64,
 }
 impl EditPoemListData{
     pub fn sorted_poem_data(&self) -> Vec<PoemData> {

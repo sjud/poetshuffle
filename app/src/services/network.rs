@@ -160,12 +160,11 @@ impl AuthToken {
         )
             .await)
     }
-    pub async fn add_poem(&self,set_uuid:Uuid,idx:i64)
+    pub async fn add_poem(&self,set_uuid:Uuid)
         -> GraphQlResult<add_poem_mutation::ResponseData> {
         parse_graph_ql_resp(post_graphql::<AddPoemMutation>(
             add_poem_mutation::Variables {
                 set_uuid: set_uuid.to_string(),
-                idx,
             },
             self.token.clone(),
         ).await)

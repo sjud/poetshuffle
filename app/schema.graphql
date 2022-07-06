@@ -8,7 +8,7 @@ type Mutation {
     acceptInvitation(password:String,inviteUuid:ID!): String!
     createPendingSet: Set!
     updateSet(setUuid: ID!, title:String,link:String,delete:Boolean,approve:Boolean): String!
-    addPoem(setUuid:ID!, idx:Int!) : Poem!
+    addPoem(setUuid:ID!) : Poem!
     updatePoem(poemUuid:ID!, banterUuid:ID, title:String,delete:Boolean,approve:Boolean): String!
     updatePoemIdx(setUuid:ID!, poemAIdx:Int!, poemBIdx:Int!): String!
 }

@@ -1,3 +1,7 @@
-mutation AddPoemMutation($set_uuid: String!, $idx: Int!) {
-  addPoem(setUuid: $set_uuid, idx: $idx)
+mutation AddPoemMutation($set_uuid: String!) {
+  addPoem(setUuid: $set_uuid) {
+    idx
+    poem_uuid
+    title
+  }
 }

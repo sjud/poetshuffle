@@ -81,7 +81,7 @@ pub fn add_poem() -> Html {
                             PoemData{
                                 uuid: Uuid::from_str(&data.add_poem.poem_uuid).unwrap(),
                                 title: data.add_poem.title,
-                                idx: data.add_poem.idx as i32,
+                                idx: data.add_poem.idx,
                             }
                         ));
                     msg_context.dispatch(new_green_msg_with_std_duration("Poem Added".into()));

@@ -42,8 +42,7 @@ pub fn edit_pending_set_decider() -> Html {
     let msg_context = use_context::<MsgContext>().unwrap();
     let auth_ctx = use_context::<AuthContext>().unwrap();
     if edit_set_ctx.editable_set.is_some() {
-        let edit_poem_list_ctx = use_reducer(||EditPoemListData::new(
-            (*auth_ctx).clone(),msg_context.clone()));
+        let edit_poem_list_ctx = use_reducer(||EditPoemListData::default());
         return html! {
         <ContextProvider<EditPoemListContext> context={edit_poem_list_ctx}>
             <div>
@@ -51,6 +50,8 @@ pub fn edit_pending_set_decider() -> Html {
             <UpdateSetTitle/>
             <br/>
             <UpdateSetLink/>
+            <br/>
+            <DeleteSet/>
             <br/>
             <EditPoemList/>
             </div>
@@ -104,6 +105,49 @@ pub fn update_set_link() -> Html {
             <button onclick={update_link.clone()}>{"Update Link"}</button>
             </div>
         };
+}
+#[function_component(DeleteSet)]
+pub fn delete_set() -> Html {
+    let auth_ctx = use_context::<AuthContext>().unwrap();
+    let msg_context = use_context::<MsgContext>().unwrap();
+    let edit_set_context = use_context::<EditSetContext>().unwrap();
+    let editable_set = edit_set_context.editable_set.clone().unwrap();
+    let (set_uuid,title, collection_link) = editable_set.deconstruct();
+    let check_ref = use_node_ref();
+    let delete = {
+        let auth = auth_ctx.clone();
+        let msg_context = msg_context.clone();
+        let edit_set_ctx = edit_set_context.clone();
+        let check_ref = check_ref.clone();
+        use_async::<_, (), String>(async move {
+            if check_ref.cast::<HtmlInputElement>().unwrap().value() == "true" {
+                match auth.update_set(
+                    set_uuid,
+                    None,
+                    None,
+                    Some(true),
+                    None, ).await? {
+                    GraphQlResp::Data(data) => {
+                        edit_set_ctx.dispatch(EditSetActions::EditableSet(None));
+                        msg_context.dispatch(new_green_msg_with_std_duration(data.update_set));
+                    }
+                    GraphQlResp::Err(errors) =>
+                        msg_context.dispatch(errors.into_msg_action())
+                }
+            }
+            Ok(())
+        })
+    };
+    let delete = Callback::from(move |_| {
+        delete.run();
+    });
+    html! {
+            <div>
+            <label for="r_u_sure" >{"Check box to delete."}</label><br/>
+            <input type="checkbox" id="r_u_sure" ref={check_ref.clone()} value={"true"} />
+            <button onclick={delete}>{"Delete Set"}</button>
+            </div>
+    }
 }
 #[function_component(UpdateSetTitle)]
 pub fn update_set_title() -> Html {
@@ -159,7 +203,6 @@ pub fn create_set() -> Html {
         let token = auth_ctx.token.clone();
         let msg_context = msg_context.clone();
         let edit_set_context = edit_set_context.clone();
-        let history = use_history.unwrap();
         use_async::<_, (), String>(async move {
             let resp = post_graphql::<CreatePendingSetMutation>(
                 create_pending_set_mutation::Variables {},
@@ -175,7 +218,6 @@ pub fn create_set() -> Html {
                         title: data.create_pending_set.title.clone(),
                     })));
                 msg_context.dispatch(new_green_msg_with_std_duration("Set Created".to_string()));
-                history.push(Route::Publish);
             } else if resp.errors.is_some() {
                 msg_context.dispatch(new_red_msg_with_std_duration(map_graphql_errors_to_string(
                     &resp.errors,
