@@ -108,7 +108,7 @@ impl StorageApi{
 
     pub(crate) async fn store_file(&self, path: String,data: Vec<u8>) -> Result<()> {
         #[cfg(feature="local_cdn")]
-        {std::fs::write(format!("static/files/{}",path),data)?;return Ok(());}
+        {std::fs::write(path,data)?;return Ok(());}
 
         let _ = self.bucket.put_object(path,&*data).await?;
         Ok(())

@@ -3,9 +3,46 @@ use entity::permissions::Model as Permission;
 use entity::sea_orm_active_enums::UserRole;
 use sea_orm::prelude::Uuid;
 use std::cmp::Ordering;
+use std::collections::BTreeMap;
+use axum::extract::{FromRequest, RequestParts};
+use axum::http::StatusCode;
+use hmac::Hmac;
+use jwt::VerifyWithKey;
+use sha2::Sha256;
 
 pub struct Auth(pub Option<Permission>);
+#[async_trait::async_trait]
+impl FromRequest<axum::body::Body> for Auth {
+    type Rejection = StatusCode;
 
+    async fn from_request(req: &mut RequestParts<axum::body::Body>)
+        -> std::result::Result<Self, Self::Rejection> {
+        let headers = req.headers();
+        let key = req.extensions().get::<Hmac<Sha256>>()
+            .ok_or(StatusCode::INTERNAL_SERVER_ERROR)?;
+        let auth = match headers.get("x-authorization") {
+            Some(header) => match header.to_str() {
+                Ok(token_str) => {
+                    let claims: BTreeMap<String, Permission> =
+                        token_str.verify_with_key(key).map_err(|err| {
+                            tracing::error!("verify {:?}", err);
+                            StatusCode::INTERNAL_SERVER_ERROR
+                        })?;
+                    let perm: Permission =
+                        claims.get("sub").ok_or(StatusCode::BAD_REQUEST)?.to_owned();
+                    Auth(Some(perm))
+                }
+                Err(err) => {
+                    tracing::error!(" to {:?}", err);
+                    Err(StatusCode::INTERNAL_SERVER_ERROR)?;
+                    Auth(None)
+                }
+            },
+            None => Auth(None),
+        };
+        Ok(auth)
+    }
+}
 impl Auth {
     pub fn can_edit_set(&self, set: &entity::sets::Model) -> bool {
         // Can only edit sets that haven't been approved.

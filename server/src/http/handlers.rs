@@ -25,13 +25,7 @@ pub async fn index_html(Extension(storage_api):Extension<StorageApi>) -> Result<
     })?;
     Ok(Html(data.into()))
 }
-#[instrument]
-pub async fn upload_file(
-    Path(uuid): Path<Uuid>,
-    Extension(storage_api):Extension<StorageApi>) -> Result<String,StatusCode> {
 
-    Ok("Upload text".into())
-}
 
 #[instrument]
 pub async fn presign_url(
@@ -50,30 +44,9 @@ pub async fn presign_url(
 #[instrument(skip_all)]
 pub async fn graphql_handler(
     schema: Extension<PoetShuffleSchema>,
-    Extension(key): Extension<Hmac<Sha256>>,
-    headers: HeaderMap,
+    auth: Auth,
     req: GraphQLRequest,
 ) -> Result<GraphQLResponse, StatusCode> {
-    let auth = match headers.get("x-authorization") {
-        Some(header) => match header.to_str() {
-            Ok(token_str) => {
-                let claims: BTreeMap<String, Permissions> =
-                    token_str.verify_with_key(&key).map_err(|err| {
-                        tracing::error!("verify {:?}", err);
-                        StatusCode::INTERNAL_SERVER_ERROR
-                    })?;
-                let perm: Permissions =
-                    claims.get("sub").ok_or(StatusCode::BAD_REQUEST)?.to_owned();
-                Auth(Some(perm))
-            }
-            Err(err) => {
-                tracing::error!(" to {:?}", err);
-                Err(StatusCode::INTERNAL_SERVER_ERROR)?;
-                Auth(None)
-            }
-        },
-        None => Auth(None),
-    };
     Ok(schema.execute(req.into_inner().data(auth)).await.into())
 }
 pub async fn health_check() -> StatusCode {

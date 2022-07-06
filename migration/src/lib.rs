@@ -21,7 +21,6 @@ mod m20220619_000001_alter_poems;
 mod m20220619_000002_edit_poem_history;
 mod m20220619_000003_edit_set_history;
 mod m20220619_000004_alter_sets;
-mod m20220706_000001_create_text_files;
 
 pub struct Migrator;
 

@@ -20,9 +20,11 @@ use tower_http::cors::{Any, CorsLayer};
 use handlers::graphql_handler;
 use crate::email::POSTMARK_API_TRANSACTION;
 use crate::http::handlers::{index_html, presign_url};
+use crate::http::upload::upload_router;
 use crate::storage::StorageApi;
 
 mod handlers;
+mod upload;
 
 lazy_static::lazy_static!{
         pub static ref SERVER_PORT: String = {
@@ -76,17 +78,17 @@ pub(crate) async fn http_server(conn: DatabaseConnection) {
     #[cfg(feature = "dev")]
     example_data(&conn).await;
 
-    let schema = new_schema(conn, key.clone(), email);
+    let schema = new_schema(conn.clone(), key.clone(), email);
 
     // Using storage() as a base which handles arbitrary file lookups.
     // See Axum docs for standard server boilerplate.
     axum::Server::bind(&format!("{}:{}",&*SERVER_IP,&*SERVER_PORT).parse().unwrap())
-        .serve(app(key, schema).into_make_service())
+        .serve(app(key, schema,conn).into_make_service())
         .await
         .unwrap();
 }
 
-pub fn app(key: Hmac<Sha256>, schema: PoetShuffleSchema) -> Router {
+pub fn app(key: Hmac<Sha256>, schema: PoetShuffleSchema,conn: DatabaseConnection) -> Router {
     // TODO Figure out what CORS should be in production
     let cors_layer = CorsLayer::new();
     #[cfg(feature="dev")]
@@ -97,7 +99,9 @@ pub fn app(key: Hmac<Sha256>, schema: PoetShuffleSchema) -> Router {
 
     let api_routes = Router::new()
         .route("/graphql", post(graphql_handler))
-        .route("/health_check",get(health_check));
+        .route("/health_check",get(health_check))
+        .nest("/upload",upload_router());
+
     // For use during development.
     #[cfg(feature = "graphiql")]
         let api_routes = api_routes.route(
@@ -115,6 +119,7 @@ pub fn app(key: Hmac<Sha256>, schema: PoetShuffleSchema) -> Router {
         // urls with the SPA itself.
         .fallback(get(index_html))
         .layer(Extension(key))
+        .layer(Extension(conn))
         // Add tracing to our service.
         .layer(TraceLayer::new_for_http())
         // Add our Graphql schema for our handler.
