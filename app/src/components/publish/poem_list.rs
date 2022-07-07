@@ -1,6 +1,6 @@
 use std::mem::swap;
 use web_sys::HtmlSelectElement;
-use crate::services::network::GraphQlResp;
+use crate::services::network::{GraphQlResp, XCategory, XFileType};
 use crate::types::edit_poem_list_context::{EditPoemListAction, EditPoemListContext, PoemData};
 use super::*;
 
@@ -335,13 +335,11 @@ pub fn update_idx(props:&PoemProps) -> Html {
         </div>
     }
 }
-#[function_component(UploadPoemAudio)]
-pub fn upload_poem_audio(props:&PoemProps) -> Html {
-    html!{}
-}
+
 #[derive(Properties,PartialEq,Clone)]
 pub struct UploadProps{
-    endpoint:&'static str,
+    x_file:XFileType,
+    x_category:XCategory,
     upload_msg:String,
     uuid:Uuid,
 }
@@ -356,10 +354,13 @@ pub fn upload(props:&UploadProps) -> Html {
         let props = props.clone();
         use_async::<_,(),String>(async move {
             let input = input_ref.cast::<HtmlInputElement>().unwrap();
-            let url = format!("api/upload/{}",props.endpoint);
             if let Some(files) = input.files() {
                 if let Some(file) = files.get(0){
-                    auth_ctx.upload_file(&url,file,props.uuid).await.unwrap()
+                    auth_ctx.upload_file(
+                        props.x_category,
+                        props.x_file,
+                        file,
+                        props.uuid).await.unwrap()
                 }
             }
             Ok(())
@@ -376,8 +377,19 @@ pub fn upload(props:&UploadProps) -> Html {
 #[function_component(UploadPoemTranscript)]
 pub fn upload_poem_transcript(props:&PoemProps) -> Html {
     let upload_props = UploadProps{
-        endpoint: "poem_audio",
-        upload_msg: "Upload Poem Text".to_string(),
+        x_file: XFileType::Transcript,
+        x_category: XCategory::Poem,
+        upload_msg: "Upload Poem Transcript".to_string(),
+        uuid: props.uuid
+    };
+    html!{<Upload ..upload_props/>}
+}
+#[function_component(UploadPoemAudio)]
+pub fn upload_poem_audio(props:&PoemProps) -> Html {
+    let upload_props = UploadProps{
+        x_file: XFileType::Audio,
+        x_category: XCategory::Poem,
+        upload_msg: "Upload Poem Audio".to_string(),
         uuid: props.uuid
     };
     html!{<Upload ..upload_props/>}
@@ -395,11 +407,23 @@ pub fn delete_banter() -> Html {
     html!{}
 }
 #[function_component(UploadBanterAudio)]
-pub fn upload_banter_audio() -> Html {
-    html!{}
+pub fn upload_banter_audio(props:&PoemProps) -> Html {
+    let upload_props = UploadProps{
+        x_file: XFileType::Audio,
+        x_category: XCategory::Banter,
+        upload_msg: "Upload Banter Audio".to_string(),
+        uuid: props.uuid
+    };
+    html!{<Upload ..upload_props/>}
 }
 #[function_component(UploadBanterTranscript)]
-pub fn upload_banter_transcript() -> Html {
-    html!{}
+pub fn upload_banter_transcript(props:&PoemProps) -> Html {
+    let upload_props = UploadProps{
+        x_file: XFileType::Transcript,
+        x_category: XCategory::Banter,
+        upload_msg: "Upload Banter Audio".to_string(),
+        uuid: props.uuid
+    };
+    html!{<Upload ..upload_props/>}
 }
 

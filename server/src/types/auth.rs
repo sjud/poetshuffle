@@ -61,6 +61,26 @@ impl Auth {
             false
         }
     }
+    pub fn can_edit_banter(&self, banter: &entity::banters::Model) -> bool {
+        if !banter.approved {
+            if let Some(permission) = &self.0 {
+                // If you created the set you can edit the set.
+                banter.originator_uuid == permission.user_uuid
+            } else {
+                false
+            }
+        } else {
+            false
+        }
+    }
+    pub fn can_edit_intro(&self) -> bool {
+        if let Some(permission) = &self.0 {
+            OrdRoles(permission.user_role) >= OrdRoles(UserRole::Moderator)
+        } else {
+            false
+        }
+    }
+
     pub fn can_edit_poem(&self, poem: &entity::poems::Model) -> bool {
         if !poem.is_approved {
             if let Some(permission) = &self.0 {

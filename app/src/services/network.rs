@@ -64,12 +64,50 @@ pub fn parse_graph_ql_resp<Data:Clone>(resp:Result<Arc<graphql_client::Response<
         Ok(GraphQlResp::Err(GraphQlRespErrors(resp.as_ref().errors.clone())))
     }
 }
+#[derive(PartialEq,Clone,Debug)]
+pub enum XCategory{
+    Poem,
+    Intro,
+    Banter
+}
 
+impl XCategory{
+    pub fn to_str(&self) -> &'static str {
+        match &self {
+            XCategory::Poem => {"poem"}
+            XCategory::Intro => {"intro"}
+            XCategory::Banter => {"banter"}
+        }
+    }
+}
+#[derive(PartialEq,Clone,Debug)]
+pub enum XFileType{
+    Audio,
+    Transcript
+}
+impl XFileType{
+    pub fn to_str(&self) -> &'static str {
+        match &self {
+            XFileType::Audio => {"audio"}
+            XFileType::Transcript => {"transcript"}
+        }
+    }
+}
 impl AuthToken {
-    pub async fn upload_file(&self,url:&str,file:impl Into<JsValue>,uuid:Uuid) -> Result<()> {
-        gloo::net::http::Request::post(url)
+    pub async fn upload_file(&self,
+                             x_cat:XCategory,
+                             x_file:XFileType,
+                             file:impl Into<JsValue>,
+                             uuid:Uuid) -> Result<()> {
+        gloo::net::http::Request::post("api/upload")
             .header(
                 "x-authorization", &self.token.clone().unwrap()
+            )
+            .header(
+                "x-category",x_cat.to_str()
+            )
+            .header(
+                "x-file-type",x_file.to_str()
             )
             .header("x-uuid",&uuid.to_string())
             .body(file)

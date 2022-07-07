@@ -20,7 +20,6 @@ use tower_http::cors::{CorsLayer};
 use handlers::graphql_handler;
 use crate::email::POSTMARK_API_TRANSACTION;
 use crate::http::handlers::{index_html, presign_url};
-use crate::http::upload::upload_router;
 use crate::storage::StorageApi;
 
 mod handlers;
