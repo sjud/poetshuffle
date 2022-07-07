@@ -2,9 +2,10 @@ use axum::response::Html;
 use axum::{Extension, Router};
 use axum::routing::{get,post};
 use hmac::Hmac;
+use reqwest::header::HeaderValue;
 use sea_orm::DatabaseConnection;
 use sha2::Sha256;
-use tower_http::cors::{Any, CorsLayer};
+use tower_http::cors::{AllowOrigin, Any, CorsLayer};
 use tower_http::trace::TraceLayer;
 use crate::graphql::schema::PoetShuffleSchema;
 use crate::http::handlers::{graphql_handler, health_check, index_html, presign_url};
@@ -12,11 +13,6 @@ use crate::http::upload::upload;
 use crate::storage::StorageApi;
 
 pub fn app(key: Hmac<Sha256>, schema: PoetShuffleSchema, conn: DatabaseConnection) -> Router {
-    // TODO Figure out what CORS should be in production
-    let cors_layer = CorsLayer::new();
-    #[cfg(feature="dev")]
-        let cors_layer = CorsLayer::permissive();
-
     let api_routes = Router::new()
         .route("/graphql", post(graphql_handler))
         .route("/health_check",get(health_check))
@@ -45,5 +41,4 @@ pub fn app(key: Hmac<Sha256>, schema: PoetShuffleSchema, conn: DatabaseConnectio
         // Add our Graphql schema for our handler.
         .layer(Extension(schema))
         .layer(Extension(StorageApi::new()))
-        .layer(cors_layer)
 }

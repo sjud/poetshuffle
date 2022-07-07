@@ -3,8 +3,6 @@ use graphql_client::GraphQLQuery;
 use std::sync::Arc;
 use uuid::Uuid;
 use gloo::console::error;
-use reqwest::header::HeaderValue;
-use reqwest::Url;
 use wasm_bindgen::JsValue;
 
 pub async fn post_graphql<Q: GraphQLQuery>(
