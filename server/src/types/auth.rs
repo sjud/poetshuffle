@@ -4,22 +4,26 @@ use entity::sea_orm_active_enums::UserRole;
 use sea_orm::prelude::Uuid;
 use std::cmp::Ordering;
 use std::collections::BTreeMap;
+use axum::body::{Body};
 use axum::extract::{FromRequest, RequestParts};
 use axum::http::StatusCode;
 use hmac::Hmac;
 use jwt::VerifyWithKey;
 use sha2::Sha256;
+use crate::http::handle_http_error;
 
 pub struct Auth(pub Option<Permission>);
+
 #[async_trait::async_trait]
-impl FromRequest<axum::body::Body> for Auth {
+impl FromRequest<Body> for Auth {
     type Rejection = StatusCode;
 
-    async fn from_request(req: &mut RequestParts<axum::body::Body>)
+    async fn from_request(req: &mut RequestParts<Body>)
         -> std::result::Result<Self, Self::Rejection> {
         let headers = req.headers();
         let key = req.extensions().get::<Hmac<Sha256>>()
-            .ok_or(StatusCode::INTERNAL_SERVER_ERROR)?;
+            .ok_or("Can't find key in extensions.")
+            .map_err(|err|handle_http_error(err))?;
         let auth = match headers.get("x-authorization") {
             Some(header) => match header.to_str() {
                 Ok(token_str) => {

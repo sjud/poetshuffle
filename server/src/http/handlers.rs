@@ -1,28 +1,22 @@
 use crate::graphql::schema::PoetShuffleSchema;
 use crate::types::auth::Auth;
 use async_graphql_axum::{GraphQLRequest, GraphQLResponse};
-use axum::http::{HeaderMap, StatusCode};
+use axum::http::StatusCode;
 use axum::Extension;
-use entity::permissions::Model as Permissions;
-use hmac::Hmac;
-use jwt::VerifyWithKey;
-use sha2::Sha256;
-use std::collections::BTreeMap;
 use axum::body::Bytes;
 use axum::extract::Path;
 use axum::response::{Html, Redirect};
 use crate::storage::StorageApi;
 use tracing::instrument;
-use uuid::Uuid;
+use crate::http::handle_http_error;
 
 #[instrument]
 pub async fn index_html(Extension(storage_api):Extension<StorageApi>) -> Result<Html<Bytes>,StatusCode> {
     let data = storage_api.get_index_file()
         .await
-        .map_err(|err| {
-        tracing::error!("{:?}", err);
-        StatusCode::INTERNAL_SERVER_ERROR
-    })?;
+        .map_err(|err|
+            handle_http_error(err)
+        )?;
     Ok(Html(data.into()))
 }
 
@@ -33,10 +27,9 @@ pub async fn presign_url(
     Extension(storage_api):Extension<StorageApi>) -> Result<Redirect,StatusCode> {
         Ok(Redirect::temporary(
         &storage_api.presigned_url(&path).await
-            .map_err(|err| {
-                tracing::error!("{:?}", err);
-                StatusCode::INTERNAL_SERVER_ERROR
-            })?
+            .map_err(|err|
+                handle_http_error(err)
+            )?
         ))
 }
 

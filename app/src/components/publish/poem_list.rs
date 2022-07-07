@@ -341,16 +341,11 @@ pub fn upload_poem_audio(props:&PoemProps) -> Html {
 }
 #[derive(Properties,PartialEq,Clone)]
 pub struct UploadProps{
-    upload_type:UploadType,
+    endpoint:&'static str,
     upload_msg:String,
     uuid:Uuid,
 }
-// Every Uuid can have one audio, one text associated with it.
-#[derive(PartialEq,Clone)]
-pub enum UploadType{
-    Audio,
-    Text
-}
+
 #[function_component(Upload)]
 pub fn upload(props:&UploadProps) -> Html {
     let auth_ctx = use_context::<AuthContext>().unwrap();
@@ -361,13 +356,10 @@ pub fn upload(props:&UploadProps) -> Html {
         let props = props.clone();
         use_async::<_,(),String>(async move {
             let input = input_ref.cast::<HtmlInputElement>().unwrap();
-            let url = match props.upload_type{
-                UploadType::Audio => format!("api/upload_audio/{}",props.uuid),
-                UploadType::Text => format!("api/upload_text/{}",props.uuid),
-            };
+            let url = format!("api/upload/{}",props.endpoint);
             if let Some(files) = input.files() {
                 if let Some(file) = files.get(0){
-                    auth_ctx.upload_file(&url,file).await.unwrap()
+                    auth_ctx.upload_file(&url,file,props.uuid).await.unwrap()
                 }
             }
             Ok(())
@@ -384,7 +376,7 @@ pub fn upload(props:&UploadProps) -> Html {
 #[function_component(UploadPoemTranscript)]
 pub fn upload_poem_transcript(props:&PoemProps) -> Html {
     let upload_props = UploadProps{
-        upload_type: UploadType::Text,
+        endpoint: "poem_audio",
         upload_msg: "Upload Poem Text".to_string(),
         uuid: props.uuid
     };

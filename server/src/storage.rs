@@ -1,37 +1,26 @@
-
-
 use anyhow::Result;
-use once_cell::sync::Lazy;
 use s3::creds::Credentials;
 use s3::{Bucket, Region};
-use std::path::Path;
-use std::io::Write;
-use tracing::{Level, event, instrument, span};
 use std::fmt::Debug;
-use axum::routing::get;
-use axum::Router;
-use axum::response::{Html};
-use axum::body::Bytes;
 
 lazy_static::lazy_static!{
     pub static ref SPACES_KEY: String = {
         if let Ok(spaces_key) = std::env::var("SPACES_KEY") {
-            spaces_key
+            return spaces_key;
         } else {
             #[cfg(feature = "dev")]
             return "".to_string();
-            panic!("Spaces key must be set in release");
         }
+        panic!("Spaces key must be set in release");
     };
     pub static ref SPACES_SECRET: String = {
         if let Ok(spaces_secret) = std::env::var("SPACES_SECRET") {
-            spaces_secret
+            return spaces_secret;
         } else {
             #[cfg(feature = "dev")]
             return "".to_string();
-            panic!("Spaces key must be set in release");
-
         }
+        panic!("Spaces key must be set in release");
     };
 }
 

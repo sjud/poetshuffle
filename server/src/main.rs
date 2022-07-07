@@ -58,9 +58,10 @@ async fn main() {
     });
     // Spawn our normal HTTP server to handle API calls.
     let server = tokio::task::spawn(async move {
-        http::http_server(conn).await
+        http::http_server::http_server(conn).await
     });
     // We run all processes until the first error.
     try_join!(test_cdn, server).unwrap();
 }
+
 

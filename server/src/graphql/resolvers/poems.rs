@@ -3,10 +3,8 @@ use crate::graphql::resolvers::sets::find_set_by_uuid;
 use entity::edit_poem_history::ActiveModel as ActivePoemHistory;
 use entity::poems::{self, ActiveModel as ActivePoem};
 use entity::sea_orm_active_enums::SetStatus;
-use sea_orm::{ActiveValue, DbBackend, QueryTrait, TransactionTrait, Update};
-use sea_orm::sea_query::Query;
+use sea_orm::{ActiveValue, TransactionTrait};
 use entity::prelude::Poems;
-use migration::Alias;
 
 #[derive(Debug, sea_orm::FromQueryResult)]
 struct PoemUuidResult {

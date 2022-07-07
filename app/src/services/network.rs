@@ -66,15 +66,16 @@ pub fn parse_graph_ql_resp<Data:Clone>(resp:Result<Arc<graphql_client::Response<
 }
 
 impl AuthToken {
-    pub async fn upload_file(&self,url:&str,file:impl Into<JsValue>) -> Result<()> {
+    pub async fn upload_file(&self,url:&str,file:impl Into<JsValue>,uuid:Uuid) -> Result<()> {
         gloo::net::http::Request::post(url)
             .header(
-                "x-authorization", &self.token.unwrap()
+                "x-authorization", &self.token.clone().unwrap()
             )
+            .header("x-uuid",&uuid.to_string())
             .body(file)
             .send()
-            .await
-            .unwrap();
+            .await?;
+        Ok(())
     }
     pub async fn fetch_text_file(&self,path:String) -> String {
         "".into()
