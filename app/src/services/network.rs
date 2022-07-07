@@ -11,18 +11,17 @@ pub async fn post_graphql<Q: GraphQLQuery>(
     vars: <Q as GraphQLQuery>::Variables,
     jwt: Option<String>,
 ) -> Result<Arc<graphql_client::Response<Q::ResponseData>>> {
-    let req = reqwest::Client::new().post(
-        &format!("{}api/graphql",BASE_URL));
+    let req =  gloo::net::http::Request::post("api/graphql");
     let req = if jwt.is_some() {
         req.header(
             "x-authorization",
-            HeaderValue::from_str(&jwt.unwrap_or(String::default()))?
+            &jwt.unwrap_or(String::default())
         )
     } else {
         req
     };
     Ok(Arc::new(
-        req.json(&Q::build_query(vars))
+        req.json(&Q::build_query(vars))?
             .send()
             .await?
             .json()
@@ -97,18 +96,12 @@ impl AuthToken {
     pub async fn upload_file(&self,
                              x_cat:XCategory,
                              x_file:XFileType,
-                             file:impl Into<JsValue>,
+                             file:JsValue,
                              uuid:Uuid) -> Result<()> {
-        gloo::net::http::Request::post("api/upload")
-            .header(
-                "x-authorization", &self.token.clone().unwrap()
-            )
-            .header(
-                "x-category",x_cat.to_str()
-            )
-            .header(
-                "x-file-type",x_file.to_str()
-            )
+        gloo::net::http::Request::post("api/upload/")
+            .header("x-authorization", &self.token.clone().unwrap())
+            .header("x-category",x_cat.to_str())
+            .header("x-file-type",x_file.to_str())
             .header("x-uuid",&uuid.to_string())
             .body(file)
             .send()

@@ -1,5 +1,7 @@
 use std::mem::swap;
+use gloo::file::futures::read_as_bytes;
 use web_sys::HtmlSelectElement;
+use crate::components::app::MAX_SIZE;
 use crate::services::network::{GraphQlResp, XCategory, XFileType};
 use crate::types::edit_poem_list_context::{EditPoemListAction, EditPoemListContext, PoemData};
 use super::*;
@@ -356,11 +358,21 @@ pub fn upload(props:&UploadProps) -> Html {
             let input = input_ref.cast::<HtmlInputElement>().unwrap();
             if let Some(files) = input.files() {
                 if let Some(file) = files.get(0){
+                    let file = wasm_bindgen_futures::JsFuture::from(
+                        file.array_buffer())
+                        .await
+                        .unwrap();
                     auth_ctx.upload_file(
                         props.x_category,
                         props.x_file,
                         file,
-                        props.uuid).await.unwrap()
+                        props.uuid)
+                        .await
+                        .unwrap();
+                } else{
+                    msg_context.dispatch(
+                        new_red_msg_with_std_duration("file.get(0) output: None".into())
+                    )
                 }
             }
             Ok(())

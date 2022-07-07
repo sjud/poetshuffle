@@ -15,10 +15,7 @@ pub fn app(key: Hmac<Sha256>, schema: PoetShuffleSchema, conn: DatabaseConnectio
     // TODO Figure out what CORS should be in production
     let cors_layer = CorsLayer::new();
     #[cfg(feature="dev")]
-        let cors_layer = CorsLayer::new()
-        .allow_headers(Any)
-        .allow_methods(Any)
-        .allow_origin(Any);
+        let cors_layer = CorsLayer::permissive();
 
     let api_routes = Router::new()
         .route("/graphql", post(graphql_handler))

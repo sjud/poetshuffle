@@ -7,6 +7,7 @@ use crate::types::msg_context::{MsgContext, UserMessageView};
 use yew::{context::ContextProvider, prelude::*};
 use yew_router::prelude::*;
 
+pub const MAX_SIZE: u32 = 10_485_760;
 #[function_component(App)]
 pub fn app() -> Html {
     let render = Switch::render(switch);
