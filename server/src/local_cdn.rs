@@ -1,6 +1,7 @@
 use axum::http::{StatusCode};
 use axum::response::IntoResponse;
 use tokio::io;
+use tower_http::cors::CorsLayer;
 
 #[cfg(feature = "local_cdn")]
 pub async fn local_cdn() {
@@ -16,10 +17,7 @@ pub async fn local_cdn() {
     let app = Router::new()
         .fallback(
             ServiceBuilder::new()
-                .layer(SetResponseHeaderLayer::if_not_present(
-                    header::ACCESS_CONTROL_ALLOW_ORIGIN,
-                    HeaderValue::from_static("*"),
-                ))
+                .layer(CorsLayer::very_permissive())
                 .service(get_service(ServeDir::new("static"))
                     .handle_error(handle_error)),
         )

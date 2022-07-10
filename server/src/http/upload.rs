@@ -17,6 +17,7 @@ pub async fn upload(
     _:UploadAuth,
     UuidHeader(uuid):UuidHeader,
     file_type:FileType,
+    file_ext:FileExt,
     table_cat:TableCategory,
     body:ContentLengthLimit<Bytes,MAX_SIZE>,
     Extension(storage_api):Extension<StorageApi>,
@@ -57,7 +58,7 @@ impl FromRequest<Body> for FileType {
         }
     }
 }
-pub struct UuidHeader(String);
+pub struct UuidHeader(pub(crate) String);
 #[async_trait::async_trait]
 impl FromRequest<Body> for UuidHeader {
     type Rejection = StatusCode;
@@ -73,6 +74,32 @@ impl FromRequest<Body> for UuidHeader {
         Ok(Self(uuid.to_string()))
     }
 }
+pub enum FileExt{
+    Mp3,
+    Ogg,
+    Txt
+}
+#[async_trait::async_trait]
+impl FromRequest<Body> for FileExt{
+    type Rejection = StatusCode;
+
+    async fn from_request(req: &mut RequestParts<Body>) -> Result<Self, Self::Rejection> {
+        let headers = req.headers();
+        let ext = headers
+            .get("x-file-ext")
+            .ok_or("Can't find x-file-ext header.")
+            .map_err(|err|handle_http_error(err))?
+            .to_str()
+            .map_err(|err|handle_http_error(err))?;
+        match ext {
+            "mp3" => Ok(FileExt::Mp3),
+            "ogg" => Ok(FileExt::Ogg),
+            "txt" => Ok(FileExt::Txt),
+            _ => Err(handle_http_error(format!("Invalid file-ext {}",ext)))
+        }
+    }
+}
+
 pub enum TableCategory{
     Intros,
     Poems,
@@ -81,15 +108,39 @@ pub enum TableCategory{
 impl TableCategory{
     pub fn storage_path(&self,file_type:FileType,uuid:String) -> String{
         let table_cat = match self {
-            TableCategory::Intros => {"intro"}
-            TableCategory::Poems => {"poem"}
-            TableCategory::Banter => {"banter"}
+            TableCategory::Intros => "intro",
+            TableCategory::Poems => "poem",
+            TableCategory::Banter => "banter",
         };
         let file_ty = match file_type {
-            FileType::Audio => {"audio"}
-            FileType::Transcript => {"transcript"}
+            FileType::Audio => "audio",
+            FileType::Transcript => "transcript"
         };
+        /*
+        let file_ext = match file_ext {
+            FileExt::Txt => "txt",
+            FileExt::Mp3 => "mp3",
+            FileExt::Ogg => "ogg",
+        };*/
         format!("static/files/{}/{}/{}",table_cat,file_ty,uuid)
+    }
+    pub fn storage_path_relative(&self,file_type:FileType,uuid:String) -> String {
+        let table_cat = match self {
+            TableCategory::Intros => "intro",
+            TableCategory::Poems => "poem",
+            TableCategory::Banter => "banter",
+        };
+        let file_ty = match file_type {
+            FileType::Audio => "audio",
+            FileType::Transcript => "transcript"
+        };
+        /*
+        let file_ext = match file_ext {
+            FileExt::Txt => "txt",
+            FileExt::Mp3 => "mp3",
+            FileExt::Ogg => "ogg",
+        };*/
+        format!("files/{}/{}/{}",table_cat,file_ty,uuid)
     }
 }
 

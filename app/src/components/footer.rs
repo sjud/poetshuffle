@@ -7,7 +7,6 @@ use crate::types::msg_context::{MsgActions, MsgContext, MsgForm, MsgTheme};
 use stylist::css;
 use yew::prelude::*;
 use yew_router::{hooks::use_history, prelude::History};
-
 #[function_component(Footer)]
 pub fn footer() -> Html {
     let history = use_history().unwrap();
@@ -52,22 +51,8 @@ pub fn footer() -> Html {
         <div class={list.clone()}>
         <UserMsg/>
         {base}
-        if audio_ctx.is_visible {<AudioFooter/>}
         </div>
     }
-}
-
-#[function_component(AudioFooter)]
-pub fn audio_footer() -> Html {
-    let audio_ctx = use_context::<AudioContext>().unwrap();
-    html! {
-    <div>
-        <button>
-        if !audio_ctx.is_playing{<button>{"Play"}</button>}
-        else {<button>{"Pause"}</button>}
-        </button>
-        </div>
-        }
 }
 /// when we get a message
 /// Display a message

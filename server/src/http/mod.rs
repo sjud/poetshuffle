@@ -26,6 +26,7 @@ mod handlers;
 mod upload;
 pub(crate) mod http_server;
 mod app;
+mod presign_url;
 
 lazy_static::lazy_static!{
         pub static ref SERVER_PORT: String = {

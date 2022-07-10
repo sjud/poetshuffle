@@ -1,6 +1,6 @@
 use anyhow::Result;
 use entity::permissions::Model as Permission;
-use entity::sea_orm_active_enums::UserRole;
+use entity::sea_orm_active_enums::{SetStatus, UserRole};
 use sea_orm::prelude::Uuid;
 use std::cmp::Ordering;
 use std::collections::BTreeMap;

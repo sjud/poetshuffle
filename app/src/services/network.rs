@@ -61,7 +61,7 @@ pub fn parse_graph_ql_resp<Data:Clone>(resp:Result<Arc<graphql_client::Response<
         Ok(GraphQlResp::Err(GraphQlRespErrors(resp.as_ref().errors.clone())))
     }
 }
-#[derive(PartialEq,Clone,Debug)]
+#[derive(PartialEq,Clone,Debug,Copy)]
 pub enum XCategory{
     Poem,
     Intro,
@@ -105,6 +105,18 @@ impl AuthToken {
             .send()
             .await?;
         Ok(())
+    }
+    pub async fn presigned_url(&self,x_cat:XCategory,x_file:XFileType,uuid:Uuid) -> Result<Option<String>> {
+        let result_url:Option<String> = gloo::net::http::Request::get("/api/presign_url")
+            .header("x-authorization", &self.token.clone().unwrap())
+            .header("x-category",x_cat.to_str())
+            .header("x-file-type",x_file.to_str())
+            .header("x-uuid",&uuid.to_string())
+            .send()
+            .await?
+            .json()
+            .await?;
+        Ok(result_url)
     }
     pub async fn fetch_text_file(&self,path:String) -> String {
         "".into()

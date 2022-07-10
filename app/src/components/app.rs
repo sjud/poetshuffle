@@ -6,6 +6,7 @@ use crate::types::footer_context::{FooterContext, FooterOptions};
 use crate::types::msg_context::{MsgContext, UserMessageView};
 use yew::{context::ContextProvider, prelude::*};
 use yew_router::prelude::*;
+use crate::components::audio::audio_player::AudioPlayer;
 
 pub const MAX_SIZE: u32 = 10_485_760;
 #[function_component(App)]
@@ -28,6 +29,7 @@ pub fn app() -> Html {
                 <div class="footer">
                         <Footer/>
                 </div>
+            <AudioPlayer/>
             </BrowserRouter>
         </ContextProvider<MsgContext>>
         </ContextProvider<FooterContext>>

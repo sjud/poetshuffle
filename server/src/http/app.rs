@@ -9,6 +9,7 @@ use tower_http::cors::{AllowOrigin, Any, CorsLayer};
 use tower_http::trace::TraceLayer;
 use crate::graphql::schema::PoetShuffleSchema;
 use crate::http::handlers::{graphql_handler, health_check, index_html, presign_url};
+use crate::http::presign_url::presign_url_as_string;
 use crate::http::upload::upload;
 use crate::storage::StorageApi;
 
@@ -16,7 +17,8 @@ pub fn app(key: Hmac<Sha256>, schema: PoetShuffleSchema, conn: DatabaseConnectio
     let api_routes = Router::new()
         .route("/graphql", post(graphql_handler))
         .route("/health_check",get(health_check))
-        .nest("/upload",post(upload));
+        .route("/upload",post(upload))
+        .route("/presign_url",get(presign_url_as_string));
 
     // For use during development.
     #[cfg(feature = "graphiql")]

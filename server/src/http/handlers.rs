@@ -19,19 +19,19 @@ pub async fn index_html(Extension(storage_api):Extension<StorageApi>) -> Result<
         )?;
     Ok(Html(data.into()))
 }
-
-
 #[instrument]
 pub async fn presign_url(
     Path(path): Path<String>,
     Extension(storage_api):Extension<StorageApi>) -> Result<Redirect,StatusCode> {
-        Ok(Redirect::temporary(
+    Ok(Redirect::temporary(
         &storage_api.presigned_url(&path).await
             .map_err(|err|
                 handle_http_error(err)
             )?
-        ))
+    ))
 }
+
+
 
 /// Executes GraphQL requests against out schema stored in extensions.
 #[instrument(skip_all)]

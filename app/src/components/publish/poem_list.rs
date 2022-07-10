@@ -2,6 +2,7 @@ use std::mem::swap;
 use gloo::file::futures::read_as_bytes;
 use web_sys::HtmlSelectElement;
 use crate::components::app::MAX_SIZE;
+use crate::components::audio::{PlayButtonProps,PlayButton};
 use crate::services::network::{GraphQlResp, XCategory, XFileType};
 use crate::types::edit_poem_list_context::{EditPoemListAction, EditPoemListContext, PoemData};
 use super::*;
@@ -404,7 +405,16 @@ pub fn upload_poem_audio(props:&PoemProps) -> Html {
         upload_msg: "Upload Poem Audio".to_string(),
         uuid: props.uuid
     };
-    html!{<Upload ..upload_props/>}
+    let play_btn_props = PlayButtonProps{
+        uuid: props.uuid,
+        x_cat: XCategory::Poem,
+    };
+    html!{
+        <div>
+        <Upload ..upload_props/>
+        <PlayButton ..play_btn_props/>
+        </div>
+    }
 }
 #[function_component(Banter)]
 pub fn banter(props:&PoemProps) -> Html {
