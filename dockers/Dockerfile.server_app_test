@@ -3,16 +3,16 @@
 
 FROM rustlang/rust:nightly-bullseye as CACHE
 WORKDIR poetshuffle
-RUN mkdir -p entity/src && \
-    echo "" > entity/src/mod.rs && \
-    mkdir -p migration/src && \
-    echo "" > migration/src/lib.rs && \
-    mkdir -p server/src && \
-    echo "fn main() {}" > server/src/main.rs
-COPY ./server/Cargo.toml ./server
-COPY ./entity/Cargo.toml ./entity
-COPY ./migration/Cargo.toml ./migration
-RUN cd server && cargo fetch
+RUN mkdir -p crates/entity/src && \
+    echo "" > crates/entity/src/mod.rs && \
+    mkdir -p crates/migration/src && \
+    echo "" > crates/migration/src/lib.rs && \
+    mkdir -p crates/server/src && \
+    echo "fn main() {}" > crates/server/src/main.rs
+COPY ./crates/server/Cargo.toml ./crates/server
+COPY ./crates/entity/Cargo.toml ./crates/entity
+COPY ./crates/migration/Cargo.toml ./crates/migration
+RUN cd crates/server && cargo fetch
 
 FROM rustlang/rust:nightly-bullseye as BUILD
 COPY --from=CACHE /usr/local/cargo /usr/local/cargo

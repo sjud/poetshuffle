@@ -12,7 +12,7 @@ while [[ "$( PGPASSWORD=PASSWORD psql --port=5433 --user=postgres --host=0.0.0.0
 do
 sleep 1;
 done;
-sea migrate up
+sea migrate up -d ./crates/migration
 cargo run --package server --features dev
 # docker compose -f server-dev-compose.yml down
 # we don't drop compose here, so it will still be running in the

@@ -4,4 +4,9 @@
 .DS_Store
 */.DS_Store
 /entity_dump
-/static/files
+/static/files/banter/audio/*
+/static/files/banter/transcript/*
+/static/files/intro/audio/*
+/static/files/intro/transcript/*
+/static/files/poem/audio/*
+/static/files/poem/transcript/*

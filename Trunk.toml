@@ -1,5 +1,5 @@
 [build]
-target = "app/index.html"
+target = "crates/app/index.html"
 dist = "static/dist"
 public_url = "/static/dist/"
 release = true
