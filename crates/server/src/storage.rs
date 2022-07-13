@@ -28,20 +28,20 @@ lazy_static::lazy_static!{
 
 pub fn storage_path_ws_upload_headers(UploadHeaders{file_ty,table_cat,uuid}:UploadHeaders) -> String {
     format!("static/files/{}/{}/{}",
-            table_cat.as_ref().to_ascii_lowercase(),
-            file_ty.as_ref().to_ascii_lowercase(),
+            table_cat.as_ref(),
+            file_ty.as_ref(),
             uuid)
 }
 pub fn storage_path(table_cat:TableCategory,file_type:FileType,uuid:Uuid) -> String {
         format!("static/files/{}/{}/{}",
-                table_cat.as_ref().to_ascii_lowercase(),
-                file_type.as_ref().to_ascii_lowercase(),
+                table_cat.as_ref(),
+                file_type.as_ref(),
                 uuid)
 }
 pub fn storage_path_relative(table_cat:TableCategory,file_type:FileType,uuid:Uuid) -> String {
         format!("files/{}/{}/{}",
-                table_cat.as_ref().to_ascii_lowercase(),
-                file_type.as_ref().to_ascii_lowercase(),
+                table_cat.as_ref(),
+                file_type.as_ref(),
                 uuid)
 }
 #[derive(Clone)]

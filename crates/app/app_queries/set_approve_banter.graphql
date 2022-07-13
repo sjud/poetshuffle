@@ -1,0 +1,3 @@
+mutation SetApproveBanterMutation($banter_uuid: ID!, $approve:Boolean!) {
+    setApproveBanter(banterUuid: $banter_uuid, approve:$approve)
+}

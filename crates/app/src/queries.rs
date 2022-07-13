@@ -118,3 +118,10 @@ query_path = "app_queries/delete_banter.graphql",
 response_derives = "Serialize,PartialEq,Clone,Debug"
 )]
 pub struct DeleteBanterMutation;
+#[derive(GraphQLQuery)]
+#[graphql(
+schema_path = "schema.graphql",
+query_path = "app_queries/set_approve_banter.graphql",
+response_derives = "Serialize,PartialEq,Clone,Debug"
+)]
+pub struct SetApproveBanterMutation;

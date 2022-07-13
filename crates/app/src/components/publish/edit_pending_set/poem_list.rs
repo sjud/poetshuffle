@@ -3,7 +3,7 @@ use js_sys::Uint8Array;
 use wasm_bindgen_futures::{JsFuture, spawn_local};
 use web_sys::HtmlSelectElement;
 use crate::components::audio::{PlayButtonProps,PlayButton};
-use crate::services::network::{GraphQlResp, XCategory, XFileType};
+use crate::services::network::{GraphQlResp};
 use crate::types::edit_poem_list_context::{EditPoemListAction, EditPoemListContext, PoemData};
 use crate::components::publish::*;
 use futures::{pin_mut, SinkExt, StreamExt};
@@ -12,6 +12,7 @@ use crate::components::publish::edit_pending_set::upload;
 use upload::Upload;
 use crate::components::publish::edit_pending_set::upload::UploadProps;
 use crate::components::text_reader::ReadButton;
+
 #[function_component(EditPoemList)]
 pub fn edit_poem_list() -> Html {
     let poem_list_ctx = use_context::<EditPoemListContext>().unwrap();
@@ -176,10 +177,8 @@ pub fn delete_poem(props:&PoemProps) -> Html {
     let edit_poem_list_ctx = use_context::<EditPoemListContext>().unwrap();
     let msg_ctx = use_context::<MsgContext>().unwrap();
     let auth_ctx = use_context::<AuthContext>().unwrap();
-    let check_ref = use_node_ref();
     let delete = {
         let auth = auth_ctx.clone();
-        let check_ref = check_ref.clone();
         let poem_uuid = props.uuid;
         use_async::<_,(),String>(async move {
                 match auth.update_poem(
@@ -413,8 +412,8 @@ in edit_poem_ctx given a supposedly shared poem_uuid...")
                 <div>
             <DeleteBanter ..banter_props/>
             <ApproveBanter ..banter_props/>
-            <UploadBanterAudio ..*poem_props/>
-            <UploadBanterTranscript ..*poem_props/>
+            <UploadBanterAudio ..banter_props/>
+            <UploadBanterTranscript ..banter_props/>
         {
             if auth_ctx.user_role >= UserRole::Moderator {
             html!{<ApproveBanter ..banter_props/>}
@@ -477,22 +476,80 @@ pub fn add_banter(props:&BanterProps) -> Html {
 }
 #[function_component(DeleteBanter)]
 pub fn delete_banter(props:&BanterProps) -> Html {
-    html!{}
-}
+    let edit_poem_list_ctx = use_context::<EditPoemListContext>().unwrap();
+    let msg_ctx = use_context::<MsgContext>().unwrap();
+    let auth_ctx = use_context::<AuthContext>().unwrap();
+    let delete = {
+        let auth = auth_ctx.clone();
+        let props = props.clone();
+        use_async::<_,(),String>(async move {
+            match auth.delete_banter(props.poem_props.uuid,
+                                     props.banter_uuid.unwrap()).await? {
+                GraphQlResp::Data(data) => {
+                    edit_poem_list_ctx.dispatch(EditPoemListAction::UpdatePoemWithBanter{
+                        poem_uuid: props.poem_props.uuid,
+                        banter_uuid: None,
+                    });
+                    msg_ctx.dispatch(
+                        new_green_msg_with_std_duration(data.delete_banter)
+                    );
+                },
+                GraphQlResp::Err(errors) => {
+                    msg_ctx.dispatch(errors.into_msg_action());
+                }
+            }
+            Ok(())
+        })
+    };
+    let onclick= Callback::from(move|_|{
+        delete.run()
+    });
+    html!{
+        <div>
+        <button {onclick}>{"Delete Banter"}</button>
+        </div>
+    }}
 #[function_component(ApproveBanter)]
 pub fn approve_banter(props:&BanterProps) -> Html {
-    html!{}
+    //TODO include un-approve option
+    let msg_ctx = use_context::<MsgContext>().unwrap();
+    let auth_ctx = use_context::<AuthContext>().unwrap();
+    let approve = {
+        let auth = auth_ctx.clone();
+        let banter_uuid = props.banter_uuid.unwrap();
+        use_async::<_,(),String>(async move {
+            match auth.set_approve_banter(
+                banter_uuid,true
+            ).await? {
+                GraphQlResp::Data(data) => {
+                    msg_ctx.dispatch(
+                        new_green_msg_with_std_duration(data.set_approve_banter)
+                    );
+                },
+                GraphQlResp::Err(errors) => {
+                    msg_ctx.dispatch(errors.into_msg_action());
+                }
+            }
+            Ok(())
+        })
+    };
+    let onclick= Callback::from(move|_|{
+        approve.run()
+    });
+    html!{
+        <button {onclick}>{"Approve Banter"}</button>
+    }
 }
 #[function_component(UploadBanterAudio)]
-pub fn upload_banter_audio(props:&PoemProps) -> Html {
+pub fn upload_banter_audio(props:&BanterProps) -> Html {
     let upload_props = UploadProps{
         file_ty: FileType::Audio,
         tab_cat: TableCategory::Banters,
         upload_msg: "Upload Banter Audio".to_string(),
-        uuid: props.uuid
+        uuid: props.banter_uuid.unwrap()
     };
     let play_btn_props = PlayButtonProps{
-        uuid: props.uuid,
+        uuid: props.banter_uuid.unwrap(),
         tab_cat:TableCategory::Banters
     };
     html!{
@@ -503,12 +560,12 @@ pub fn upload_banter_audio(props:&PoemProps) -> Html {
     }
 }
 #[function_component(UploadBanterTranscript)]
-pub fn upload_banter_transcript(props:&PoemProps) -> Html {
+pub fn upload_banter_transcript(props:&BanterProps) -> Html {
     let upload_props = UploadProps{
         file_ty: FileType::Transcript,
-        tab_cat: TableCategory::Poems,
-        upload_msg: "Upload Poem Transcript".to_string(),
-        uuid: props.uuid
+        tab_cat: TableCategory::Banters,
+        upload_msg: "Upload Banter Transcript".to_string(),
+        uuid: props.banter_uuid.unwrap()
     };
     html!{
         <div>

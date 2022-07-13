@@ -4,6 +4,7 @@ use crate::graphql::resolvers::login::LoginMutation;
 use crate::graphql::resolvers::poems::{PoemMutation, PoemQuery};
 use crate::graphql::resolvers::publish::PublishMutation;
 use crate::graphql::resolvers::sets::{SetMutation, SetsQuery};
+use crate::graphql::resolvers::banters::BanterMutation;
 use async_graphql::{extensions::Tracing, *};
 use hmac::Hmac;
 use sea_orm::DatabaseConnection;
@@ -18,6 +19,7 @@ pub struct Mutation(
     PublishMutation,
     SetMutation,
     PoemMutation,
+    BanterMutation,
 );
 pub type PoetShuffleSchema = Schema<Query, Mutation, EmptySubscription>;
 

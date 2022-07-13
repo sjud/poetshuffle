@@ -22,6 +22,7 @@ use crate::storage::{storage_path, storage_path_relative, storage_path_ws_upload
 
 const MAX_SIZE : u64 = 10_485_760; //10 MiB
 const MAX_SIZE_USIZE : usize = MAX_SIZE as usize;
+/*
 #[tracing::instrument(skip_all)]
 pub async fn upload_ws(
     ws:WebSocketUpgrade,
@@ -114,7 +115,7 @@ pub async fn auth_upload(
                 .ok_or("Banter not found".to_string())?
     };
     result
-}
+}*/
 
 #[tracing::instrument(skip_all)]
 pub async fn delete_file(
@@ -140,7 +141,9 @@ pub async fn upload_file(
     storage_api.store_file(
         storage_path(table_cat,file_type,uuid),
         body.to_vec()
-    ).await.map_err(|err|handle_http_error(err))
+    )
+        .await
+        .map_err(|err|handle_http_error(err))
 }
 pub struct FileTypeFromUri(FileType);
 #[async_trait::async_trait]

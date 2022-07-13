@@ -167,6 +167,18 @@ impl Auth {
             false
         }
     }
+    pub fn can_approve_v2(&self) -> Result<bool,&'static str> {
+        if let Some(permission) = &self.0 {
+            if OrdRoles(permission.user_role) >= OrdRoles(UserRole::Moderator){
+                Ok(true)
+            } else {
+                Err("Must be at least moderator to approve.")
+            }
+        } else {
+            Err("Authorization not found.")
+        }
+    }
+
     pub fn can_issue_promotion(&self, user_role: UserRole) -> bool {
         if let Some(permission) = &self.0 {
             // A greater role can issue a promotion to a lesser role.

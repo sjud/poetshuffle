@@ -60,35 +60,7 @@ pub fn parse_graph_ql_resp<Data:Clone>(resp:Result<Arc<graphql_client::Response<
         Ok(GraphQlResp::Err(GraphQlRespErrors(resp.as_ref().errors.clone())))
     }
 }
-#[derive(PartialEq,Clone,Debug,Copy)]
-pub enum XCategory{
-    Poem,
-    Intro,
-    Banter
-}
 
-impl XCategory{
-    pub fn to_str(&self) -> &'static str {
-        match &self {
-            XCategory::Poem => {"poem"}
-            XCategory::Intro => {"intro"}
-            XCategory::Banter => {"banter"}
-        }
-    }
-}
-#[derive(PartialEq,Clone,Debug)]
-pub enum XFileType{
-    Audio,
-    Transcript
-}
-impl XFileType{
-    pub fn to_str(&self) -> &'static str {
-        match &self {
-            XFileType::Audio => {"audio"}
-            XFileType::Transcript => {"transcript"}
-        }
-    }
-}
 impl AuthToken {
     pub async fn delete_file(
         &self,
@@ -251,11 +223,21 @@ impl AuthToken {
             self.token.clone(),
             ).await)
     }
-    pub async fn delete_banter(&self,banter_uuid:Uuid)
+    pub async fn delete_banter(&self,poem_uuid:Uuid,banter_uuid:Uuid)
     -> GraphQlResult<delete_banter_mutation::ResponseData> {
         parse_graph_ql_resp(post_graphql::<DeleteBanterMutation>(
             delete_banter_mutation::Variables{
+                poem_uuid:poem_uuid.to_string(),
                 banter_uuid:banter_uuid.to_string()
+            },
+            self.token.clone()
+        ).await)
+    }
+    pub async fn set_approve_banter(&self,banter_uuid:Uuid,approve:bool)
+                               -> GraphQlResult<set_approve_banter_mutation::ResponseData> {
+        parse_graph_ql_resp(post_graphql::<SetApproveBanterMutation>(
+            set_approve_banter_mutation::Variables{
+                banter_uuid:banter_uuid.to_string(),approve
             },
             self.token.clone()
         ).await)
