@@ -471,8 +471,7 @@ pub fn add_banter(props:&BanterProps) -> Html {
     });
     return html! {
         <div>
-        <h2>{"Add Poem to Set"}</h2>
-            <button {onclick}>{"Add Poem"}</button>
+            <button {onclick}>{"Add Banter"}</button>
         </div>
     };
 }
