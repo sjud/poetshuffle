@@ -20,7 +20,8 @@ pub(crate) async fn http_server(conn: DatabaseConnection) {
     // Normal tracing boilerplate
     tracing_subscriber::registry()
         .with(tracing_subscriber::EnvFilter::new(
-            std::env::var("RUST_LOG").unwrap_or_else(|_| "server=debug,tower_http=debug".into()),
+            std::env::var("RUST_LOG")
+                .unwrap_or_else(|_| "server=debug,tower_http=debug".into()),
         ))
         .with(tracing_subscriber::fmt::layer())
         .init();
@@ -38,7 +39,9 @@ pub(crate) async fn http_server(conn: DatabaseConnection) {
 
     // Using storage() as a base which handles arbitrary file lookups.
     // See Axum docs for standard server boilerplate.
-    axum::Server::bind(&format!("{}:{}",&*SERVER_IP,&*SERVER_PORT).parse().unwrap())
+    let address = &format!("{}:{}",&*SERVER_IP,&*SERVER_PORT).parse().unwrap();
+    tracing::debug!("Listening on {}",address);
+    axum::Server::bind(address)
         .serve(app(key, schema,conn).into_make_service())
         .await
         .unwrap();

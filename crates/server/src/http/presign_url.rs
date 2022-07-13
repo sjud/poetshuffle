@@ -3,9 +3,11 @@ use axum::extract::{FromRequest, RequestParts};
 use axum::body::Body;
 use axum::Json;
 use entity::sea_orm_active_enums::SetStatus;
-use crate::http::upload::{FileType, TableCategory, UuidHeader};
+use crate::http::upload::{FileTypeHeader, TabCatHeader, UuidHeader};
 use crate::types::auth::Auth;
 use sea_orm::{ColumnTrait, EntityTrait,QueryFilter};
+use shared::{FileType,TableCategory};
+use crate::storage::storage_path_relative;
 
 use super::*;
 #[tracing::instrument]
@@ -33,9 +35,11 @@ impl FromRequest<Body> for PathForPresignedUrl {
 
     async fn from_request(req: &mut RequestParts<Body>) -> Result<Self, Self::Rejection> {
         let auth = req.extract::<Auth>().await?;
-        let uuid = &req.extract::<UuidHeader>().await?.0;
-        let table_cat = req.extract::<TableCategory>().await?;
-        let file_ty = req.extract::<FileType>().await?;
+        let uuid = sea_orm::prelude::Uuid::from_u128(
+            req.extract::<UuidHeader>().await?.0.as_u128()
+        );
+        let table_cat = req.extract::<TabCatHeader>().await?.0;
+        let file_ty = req.extract::<FileTypeHeader>().await?.0;
         let db = req
             .extensions()
             .get::<DatabaseConnection>()
@@ -44,8 +48,7 @@ impl FromRequest<Body> for PathForPresignedUrl {
         let set_uuid = match table_cat {
             TableCategory::Intros => {
                 if let Some(intro) = entity::intros::Entity::find_by_id(
-                    sea_orm::prelude::Uuid::from_str(uuid)
-                        .map_err(|err|handle_http_error(err))?
+                   uuid
                 ).one(db)
                     .await
                     .map_err(|err|handle_http_error(err))? {
@@ -56,8 +59,7 @@ impl FromRequest<Body> for PathForPresignedUrl {
             }
             TableCategory::Poems => {
                 if let Some(poem) = entity::poems::Entity::find_by_id(
-                    sea_orm::prelude::Uuid::from_str(uuid)
-                        .map_err(|err|handle_http_error(err))?
+                    uuid
                 ).one(db)
                     .await
                     .map_err(|err|handle_http_error(err))? {
@@ -67,11 +69,10 @@ impl FromRequest<Body> for PathForPresignedUrl {
                     Err(handle_http_error("Poem not found."))
                 }
             }
-            TableCategory::Banter => {
+            TableCategory::Banters => {
                 //TODO give banter poem_uuid and set_uuid fields.
                 if let Some(banter) = entity::banters::Entity::find_by_id(
-                    sea_orm::prelude::Uuid::from_str(uuid)
-                        .map_err(|err|handle_http_error(err))?
+                    uuid
                 ).one(db)
                     .await
                     .map_err(|err|handle_http_error(err))? {
@@ -94,15 +95,14 @@ impl FromRequest<Body> for PathForPresignedUrl {
             .one(db)
             .await
             .map_err(|err|handle_http_error(err))? {
+            let uuid = uuid::Uuid::from_u128(uuid.as_u128());
             if set.set_status == SetStatus::Published {
                 Ok(PathForPresignedUrl(
-                    table_cat.storage_path_relative(file_ty,uuid.clone()
-                    )))
+                    storage_path_relative(table_cat,file_ty,uuid)))
             } else {
                 if auth.can_read_pending_set(&set) {
                     Ok(PathForPresignedUrl(
-                        table_cat.storage_path_relative(file_ty,uuid.clone()
-                        )))
+                        storage_path_relative(table_cat,file_ty,uuid)))
                 } else {
                     Err(StatusCode::UNAUTHORIZED)
                 }

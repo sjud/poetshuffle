@@ -7,8 +7,11 @@ use crate::services::network::{GraphQlResp, XCategory, XFileType};
 use crate::types::edit_poem_list_context::{EditPoemListAction, EditPoemListContext, PoemData};
 use crate::components::publish::*;
 use futures::{pin_mut, SinkExt, StreamExt};
+use shared::{FileType, TableCategory};
 use crate::components::publish::edit_pending_set::upload;
 use upload::Upload;
+use crate::components::publish::edit_pending_set::upload::UploadProps;
+use crate::components::text_reader::ReadButton;
 #[function_component(EditPoemList)]
 pub fn edit_poem_list() -> Html {
     let poem_list_ctx = use_context::<EditPoemListContext>().unwrap();
@@ -153,9 +156,9 @@ pub fn poem(props:&PoemProps) -> Html {
         <UpdatePoemTitle ..*props/>
         <UpdatePoemIdx ..*props/>
         <UploadPoemAudio ..*props/>
-//        <UploadPoemTranscript ..*props/>
+        <UploadPoemTranscript ..*props/>
         <DeletePoem ..*props/>
-  //      <Banter ..*props/>
+        <Banter ..*props/>
         {
             if auth_ctx.user_role >= UserRole::Moderator {
             html!{<ApprovePoem ..*props/>}
@@ -348,87 +351,122 @@ pub fn update_idx(props:&PoemProps) -> Html {
 #[function_component(UploadPoemAudio)]
 pub fn upload_poem_audio(props:&PoemProps) -> Html {
     let upload_props = upload::UploadProps{
-        file_ty: shared::FileType::Audio,
-        tab_cat: shared::TableCategory::Poems,
+        file_ty: FileType::Audio,
+        tab_cat: TableCategory::Poems,
         upload_msg: "Upload Poem Audio".to_string(),
         uuid: props.uuid
-    };/*
+    };
     let play_btn_props = PlayButtonProps{
         uuid: props.uuid,
-        x_cat: XCategory::Poem,
-    };*/
+        tab_cat:TableCategory::Poems
+    };
     html!{
         <div>
         <Upload ..upload_props/>
-        //<PlayButton ..play_btn_props/>
+        <PlayButton ..play_btn_props/>
         </div>
     }
 }
-/*
+
 #[function_component(UploadPoemTranscript)]
 pub fn upload_poem_transcript(props:&PoemProps) -> Html {
     let upload_props = UploadProps{
-        x_file: XFileType::Transcript,
-        x_category: XCategory::Poem,
+        file_ty: FileType::Transcript,
+        tab_cat: TableCategory::Poems,
         upload_msg: "Upload Poem Transcript".to_string(),
         uuid: props.uuid
     };
     html!{
         <div>
         <Upload ..upload_props/>
+        <ReadButton/>
         </div>
-
     }
 }
 #[derive(PartialEq, Properties, Clone,Copy,Debug)]
 pub struct BanterProps{
     poem_props:PoemProps,
-    banter_uuid:Uuid,
+    banter_uuid:Option<Uuid>,
 }
 #[function_component(Banter)]
 pub fn banter(poem_props:&PoemProps) -> Html {
     let auth_ctx = use_context::<AuthContext>().unwrap();
     let msg_ctx = use_context::<MsgContext>().unwrap();
     let edit_poem_ctx = use_context::<EditPoemListContext>().unwrap();
-    if let Some(banter_uuid) = edit_poem_ctx.find_by_poem_uuid(poem_props.uuid)
-        .unwrap()
-        .banter_uuid{
-        let banter_props = BanterProps{ poem_props:poem_props.clone(),banter_uuid};
-        return html!{
-            <div>
+    let banter_props = BanterProps{
+        poem_props:poem_props.clone(),
+        banter_uuid: {
+            if let Some(poem_data) = edit_poem_ctx.find_by_poem_uuid(poem_props.uuid)
+            { poem_data.banter_uuid } else {
+                //TODO Handle unhandled program state.
+                panic!("\
+Banter props requires poem props which requires a PoemData inside edit_poem_ctx to exist with a shared poem_uuid.\
+We've panicked because we have a poem props which we've passed to banter but could not find a PoemData\
+in edit_poem_ctx given a supposedly shared poem_uuid...")
+            }
+        }
+    };
 
-            </div>
-        };
-    }
-    return html!{};
+    return html!{
+        <div>
+        <AddBanter ..banter_props/>
+        <DeleteBanter ..banter_props/>
+        <ApproveBanter ..banter_props/>
+        <UploadBanterAudio ..*poem_props/>
+        <UploadBanterTranscript ..*poem_props/>
+        {
+            if auth_ctx.user_role >= UserRole::Moderator {
+            html!{<ApproveBanter ..banter_props/>}
+        } else {
+            html!{}
+            }
+        }
+        </div>
+    };
 }
 #[function_component(AddBanter)]
-pub fn add_banter() -> Html {
+pub fn add_banter(props:&BanterProps) -> Html {
     html!{}
 }
 #[function_component(DeleteBanter)]
-pub fn delete_banter() -> Html {
+pub fn delete_banter(props:&BanterProps) -> Html {
+    html!{}
+}
+#[function_component(ApproveBanter)]
+pub fn approve_banter(props:&BanterProps) -> Html {
     html!{}
 }
 #[function_component(UploadBanterAudio)]
 pub fn upload_banter_audio(props:&PoemProps) -> Html {
-    let upload_props = UploadProps{
-        x_file: XFileType::Audio,
-        x_category: XCategory::Banter,
+    let upload_props = upload::UploadProps{
+        file_ty: FileType::Audio,
+        tab_cat: TableCategory::Banters,
         upload_msg: "Upload Banter Audio".to_string(),
         uuid: props.uuid
     };
-    html!{<Upload ..upload_props/>}
+    let play_btn_props = PlayButtonProps{
+        uuid: props.uuid,
+        tab_cat:TableCategory::Banters
+    };
+    html!{
+        <div>
+        <Upload ..upload_props/>
+        <PlayButton ..play_btn_props/>
+        </div>
+    }
 }
 #[function_component(UploadBanterTranscript)]
 pub fn upload_banter_transcript(props:&PoemProps) -> Html {
     let upload_props = UploadProps{
-        x_file: XFileType::Transcript,
-        x_category: XCategory::Banter,
-        upload_msg: "Upload Banter Audio".to_string(),
+        file_ty: FileType::Transcript,
+        tab_cat: TableCategory::Poems,
+        upload_msg: "Upload Poem Transcript".to_string(),
         uuid: props.uuid
     };
-    html!{<Upload ..upload_props/>}
+    html!{
+        <div>
+        <Upload ..upload_props/>
+        <ReadButton/>
+        </div>
+    }
 }
-
-*/

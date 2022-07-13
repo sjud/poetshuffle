@@ -1,6 +1,7 @@
 use uuid::Uuid;
 use yew::prelude::*;
 use yew_hooks::use_async;
+use shared::{FileType, TableCategory};
 use crate::services::network::{XCategory, XFileType};
 use crate::types::audio_context::{AudioActions, AudioContext};
 use crate::types::auth_context::AuthContext;
@@ -11,7 +12,7 @@ pub mod audio_player;
 #[derive(Properties,PartialEq,Clone,Debug)]
 pub struct PlayButtonProps{
     pub uuid:Uuid,
-    pub x_cat:XCategory,
+    pub tab_cat:TableCategory,
 }
 #[tracing::instrument]
 #[function_component(PlayButton)]
@@ -22,7 +23,7 @@ pub fn play_button(props:&PlayButtonProps) -> Html {
     let req = {
         let props = props.clone();
         use_async::<_,(),String>(async move {
-            match auth_ctx.presigned_url(props.x_cat,XFileType::Audio,props.uuid).await {
+            match auth_ctx.presigned_url(props.tab_cat,FileType::Audio,props.uuid).await {
                 Ok(Some(src)) => {
                     audio_ctx.dispatch(AudioActions::SetSrc(Some(src)))
                 },

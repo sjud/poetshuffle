@@ -58,6 +58,7 @@ lazy_static::lazy_static!{
     };
 }
 
+#[tracing::instrument]
 pub fn handle_http_error(err:impl Debug) -> StatusCode {
     tracing::error!("{:?}",err);
     StatusCode::INTERNAL_SERVER_ERROR

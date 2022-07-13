@@ -28,11 +28,8 @@ serde_json = "1.0.81"
 uuid = {version="1.1.2",features=["serde","v4","js"]}
 shared = {path= "../shared" }
 bincode = "2.0.0-rc.1"
-
-[dev-dependencies]
-tracing-test = "0.2.2"
-
-[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+bytes = "1.1.0"
+axum-macros = "0.2.3"
 tokio = {version="1.18.2",features=["full","rt-multi-thread"]}
 tokio-util = {version="0.7.2",features=["rt"]}
 axum = {version="0.5.12",features=["ws"]}
@@ -53,3 +50,7 @@ postmark = {version="0.5.0",features=["reqwest"]}
 passwords = "3.1.9"
 mockall = { version="0.11.1",optional=true}
 rust-s3 = "0.31.0"
+
+[dev-dependencies]
+tracing-test = "0.2.2"
+

@@ -10,3 +10,4 @@ pub mod publish;
 pub mod register;
 pub mod validate_registration;
 pub mod audio;
+pub mod text_reader;

@@ -1,5 +1,6 @@
 use uuid::Uuid;
 use bincode::{Encode,Decode};
+use strum::{AsRefStr,EnumString};
 #[derive(Encode,Decode,Clone,Debug,PartialEq)]
 pub struct UploadWsBinary{
     pub headers:UploadHeaders,
@@ -12,14 +13,30 @@ pub struct UploadHeaders{
     #[bincode(with_serde)]
     pub uuid:Uuid,
 }
-#[derive(Encode,Decode,Clone,Debug,Copy,PartialEq)]
+#[derive(Encode,Decode,Clone,Debug,Copy,PartialEq,AsRefStr,EnumString)]
 pub enum FileType{
+    #[strum(ascii_case_insensitive)]
     Audio,
+    #[strum(ascii_case_insensitive)]
     Transcript
 }
-#[derive(Encode,Decode,Clone,Debug,Copy,PartialEq)]
+impl FileType{
+    pub fn header_name() -> &'static str {
+        "x-file-type"
+    }
+}
+#[derive(Encode,Decode,Clone,Debug,Copy,PartialEq,AsRefStr,EnumString)]
 pub enum TableCategory{
+    #[strum(ascii_case_insensitive)]
     Intros,
+    #[strum(ascii_case_insensitive)]
     Poems,
-    Banter,
+    #[strum(ascii_case_insensitive)]
+    Banters,
+}
+
+impl TableCategory{
+    pub fn header_name() -> &'static str {
+        "x-category"
+    }
 }

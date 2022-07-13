@@ -26,42 +26,23 @@ lazy_static::lazy_static!{
     };
 }
 
-pub fn storage_path_ws_upload_headers(headers:UploadHeaders) -> String {
-    let table_cat = match headers.table_cat {
-        TableCategory::Intros => "intro",
-        TableCategory::Poems => "poem",
-        TableCategory::Banter => "banter",
-    };
-    let file_ty = match headers.file_ty {
-        FileType::Audio => "audio",
-        FileType::Transcript => "transcript"
-    };
-    format!("static/files/{}/{}/{}",table_cat,file_ty,headers.uuid)
+pub fn storage_path_ws_upload_headers(UploadHeaders{file_ty,table_cat,uuid}:UploadHeaders) -> String {
+    format!("static/files/{}/{}/{}",
+            table_cat.as_ref().to_ascii_lowercase(),
+            file_ty.as_ref().to_ascii_lowercase(),
+            uuid)
 }
-pub fn storage_path(table_cat:TableCategory,file_type:FileType,uuid:Uuid) -> String{
-    let table_cat = match table_cat {
-        TableCategory::Intros => "intro",
-        TableCategory::Poems => "poem",
-        TableCategory::Banter => "banter",
-    };
-    let file_ty = match file_type {
-        FileType::Audio => "audio",
-        FileType::Transcript => "transcript"
-    };
-    format!("static/files/{}/{}/{}",table_cat,file_ty,uuid)
+pub fn storage_path(table_cat:TableCategory,file_type:FileType,uuid:Uuid) -> String {
+        format!("static/files/{}/{}/{}",
+                table_cat.as_ref().to_ascii_lowercase(),
+                file_type.as_ref().to_ascii_lowercase(),
+                uuid)
 }
-pub fn storage_path_relative(table_cat:TableCategory,file_type:FileType,uuid:String) -> String {
-    let table_cat = match table_cat {
-        TableCategory::Intros => "intro",
-        TableCategory::Poems => "poem",
-        TableCategory::Banter => "banter",
-    };
-    let file_ty = match file_type {
-        FileType::Audio => "audio",
-        FileType::Transcript => "transcript"
-    };
-
-    format!("files/{}/{}/{}",table_cat,file_ty,uuid)
+pub fn storage_path_relative(table_cat:TableCategory,file_type:FileType,uuid:Uuid) -> String {
+        format!("files/{}/{}/{}",
+                table_cat.as_ref().to_ascii_lowercase(),
+                file_type.as_ref().to_ascii_lowercase(),
+                uuid)
 }
 #[derive(Clone)]
 pub struct Storage {
@@ -142,9 +123,11 @@ impl StorageApi{
         Ok(self.bucket.presign_get(path, 60,None)?)
     }
 
+    #[tracing::instrument(skip_all)]
     pub(crate) async fn store_file(&self, path: String,data: Vec<u8>) -> Result<()> {
         #[cfg(feature="local_cdn")]
-        {std::fs::write(path,data)?;return Ok(());}
+        {   std::fs::write(path,data)?;
+            return Ok(());}
 
         let _ = self.bucket.put_object(path,&*data).await?;
         Ok(())

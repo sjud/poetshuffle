@@ -75,6 +75,10 @@ impl EditPoemListData{
 
 pub enum EditPoemListAction {
     PushPoemData(PoemData),
+    UpdatePoemWithBanter{
+        poem_uuid:Uuid,
+        banter_uuid:Option<Uuid>
+    },
     SwapIdx(i64,i64),
     UpdatePoemData(PoemData),
     DeletePoemData(PoemData),
@@ -121,6 +125,16 @@ impl Reducible for EditPoemListData {
                         poem})
                     .collect::<Vec<PoemData>>()
             }),
+            EditPoemListAction::UpdatePoemWithBanter { poem_uuid,banter_uuid } =>
+                Rc::new({
+                            let mut poems: Vec<PoemData> = self.poems.clone()
+                                .into_iter()
+                                .filter(|poem| poem.uuid != poem_uuid)
+                                .collect();
+                            let poem = self.find_by_poem_uuid(poem_uuid).unwrap();
+                            poems.push(PoemData { banter_uuid, ..poem });
+                            EditPoemListData::new_from_unsorted_poem_data(poems)
+                })
         }
     }
 }

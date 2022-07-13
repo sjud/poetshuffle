@@ -42,6 +42,8 @@ impl GraphQlRespErrors {
 use crate::queries::*;
 #[cfg(test)]
 use wasm_bindgen_test::*;
+use web_sys::HtmlInputElement;
+use shared::{FileType, TableCategory};
 use crate::services::utility::map_graphql_errors_to_string;
 use crate::types::auth_context::{AuthToken};
 use crate::types::msg_context::{MsgActions, new_red_msg_with_std_duration};
@@ -124,11 +126,35 @@ impl AuthToken {
         }
 
     }
-    pub async fn presigned_url(&self,x_cat:XCategory,x_file:XFileType,uuid:Uuid) -> Result<Option<String>> {
+    pub async fn upload(
+        &self,
+        tab_cat:TableCategory,
+        file_ty:FileType,
+        uuid:Uuid,
+        input:HtmlInputElement) -> Result<()> {
+        let file = gloo::file::Blob::from(
+            gloo::file::File::from(
+                input
+                    .files()
+                    .unwrap()
+                    .get(0)
+                    .unwrap()
+            ));
+        gloo::net::http::Request::post("/api/upload")
+            .header("x-authorization", &self.token.clone().unwrap())
+            .header(TableCategory::header_name(),tab_cat.as_ref())
+            .header(FileType::header_name(),file_ty.as_ref())
+            .header("x-uuid",&uuid.to_string())
+            .body(file)
+            .send()
+            .await?;
+        Ok(())
+    }
+    pub async fn presigned_url(&self,x_cat:TableCategory,x_file:FileType,uuid:Uuid) -> Result<Option<String>> {
         let result_url:Option<String> = gloo::net::http::Request::get("/api/presign_url")
             .header("x-authorization", &self.token.clone().unwrap())
-            .header("x-category",x_cat.to_str())
-            .header("x-file-type",x_file.to_str())
+            .header(TableCategory::header_name(),x_cat.as_ref())
+            .header(FileType::header_name(),x_file.as_ref())
             .header("x-uuid",&uuid.to_string())
             .send()
             .await?
