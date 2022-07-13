@@ -9,6 +9,8 @@ type Mutation {
     createPendingSet: Set!
     updateSet(setUuid: ID!, title:String,link:String,delete:Boolean,approve:Boolean): String!
     addPoem(setUuid:ID!) : Poem!
+    addBanter(poemUuid:ID!) : Banter!
+    deleteBanter(banterUuid:ID!) : String!
     updatePoem(poemUuid:ID!, banterUuid:ID, title:String,delete:Boolean,approve:Boolean): String!
     updatePoemIdx(setUuid:ID!, poemAIdx:Int!, poemBIdx:Int!): String!
 }
@@ -40,6 +42,13 @@ type Poem {
     partOfPoetshuffle: Boolean!
     editorUuid: ID
     approved: Boolean
+}
+type Banter {
+    banterUuid: ID!
+    poemUuid: ID!
+    originatorUuid: ID!
+    creationTs: Int!
+    approved: Boolean!
 }
 type Set {
     setUuid: ID!

@@ -158,7 +158,6 @@ pub fn poem(props:&PoemProps) -> Html {
         <UploadPoemAudio ..*props/>
         <UploadPoemTranscript ..*props/>
         <DeletePoem ..*props/>
-        <Banter ..*props/>
         {
             if auth_ctx.user_role >= UserRole::Moderator {
             html!{<ApprovePoem ..*props/>}
@@ -166,6 +165,8 @@ pub fn poem(props:&PoemProps) -> Html {
             html!{}
             }
         }
+        <Banter ..*props/>
+
         </div>
     }
 }
@@ -393,27 +394,27 @@ pub fn banter(poem_props:&PoemProps) -> Html {
     let auth_ctx = use_context::<AuthContext>().unwrap();
     let msg_ctx = use_context::<MsgContext>().unwrap();
     let edit_poem_ctx = use_context::<EditPoemListContext>().unwrap();
-    let banter_props = BanterProps{
-        poem_props:poem_props.clone(),
-        banter_uuid: {
-            if let Some(poem_data) = edit_poem_ctx.find_by_poem_uuid(poem_props.uuid)
-            { poem_data.banter_uuid } else {
-                //TODO Handle unhandled program state.
-                panic!("\
+    let banter_uuid = {
+        if let Some(poem_data) = edit_poem_ctx.find_by_poem_uuid(poem_props.uuid)
+        { poem_data.banter_uuid } else {
+            //TODO Handle unhandled program state.
+            panic!("\
 Banter props requires poem props which requires a PoemData inside edit_poem_ctx to exist with a shared poem_uuid.\
 We've panicked because we have a poem props which we've passed to banter but could not find a PoemData\
 in edit_poem_ctx given a supposedly shared poem_uuid...")
-            }
         }
     };
-
-    return html!{
-        <div>
-        <AddBanter ..banter_props/>
-        <DeleteBanter ..banter_props/>
-        <ApproveBanter ..banter_props/>
-        <UploadBanterAudio ..*poem_props/>
-        <UploadBanterTranscript ..*poem_props/>
+    let banter_props = BanterProps{
+        poem_props:poem_props.clone(),
+        banter_uuid
+    };
+    let banter_exists_html =
+        html!{
+                <div>
+            <DeleteBanter ..banter_props/>
+            <ApproveBanter ..banter_props/>
+            <UploadBanterAudio ..*poem_props/>
+            <UploadBanterTranscript ..*poem_props/>
         {
             if auth_ctx.user_role >= UserRole::Moderator {
             html!{<ApproveBanter ..banter_props/>}
@@ -421,12 +422,59 @@ in edit_poem_ctx given a supposedly shared poem_uuid...")
             html!{}
             }
         }
+            </div>};
+    return html!{
+        <div>
+        { if banter_uuid.is_some(){
+            {banter_exists_html}
+        } else {
+            html!{
+                <AddBanter ..banter_props/>
+            }
+        }}
         </div>
     };
 }
 #[function_component(AddBanter)]
 pub fn add_banter(props:&BanterProps) -> Html {
-    html!{}
+    let auth_ctx = use_context::<AuthContext>().unwrap();
+    let msg_context = use_context::<MsgContext>().unwrap();
+    let poem_list_ctx = use_context::<EditPoemListContext>().unwrap();
+    let add_banter = {
+        let auth = auth_ctx.clone();
+        let msg_context = msg_context.clone();
+        let poem_list_ctx = poem_list_ctx.clone();
+        let props = props.clone();
+        use_async::<_, (), String>(async move {
+            match auth.add_banter(props.poem_props.uuid)
+                .await? {
+                GraphQlResp::Data(data) => {
+                    poem_list_ctx.dispatch(
+                        EditPoemListAction::UpdatePoemWithBanter{
+                            poem_uuid: props.poem_props.uuid,
+                            banter_uuid: Some(
+                                Uuid::from_str(
+                                &data.add_banter.banter_uuid)
+                                    .unwrap()),
+                        });
+                    msg_context.dispatch(
+                        new_green_msg_with_std_duration("Banter Added".into()));
+                },
+                GraphQlResp::Err(errors) =>
+                    msg_context.dispatch(errors.into_msg_action())
+            }
+            Ok(())
+        })
+    };
+    let onclick = Callback::from(move |_| {
+        add_banter.run();
+    });
+    return html! {
+        <div>
+        <h2>{"Add Poem to Set"}</h2>
+            <button {onclick}>{"Add Poem"}</button>
+        </div>
+    };
 }
 #[function_component(DeleteBanter)]
 pub fn delete_banter(props:&BanterProps) -> Html {
@@ -438,7 +486,7 @@ pub fn approve_banter(props:&BanterProps) -> Html {
 }
 #[function_component(UploadBanterAudio)]
 pub fn upload_banter_audio(props:&PoemProps) -> Html {
-    let upload_props = upload::UploadProps{
+    let upload_props = UploadProps{
         file_ty: FileType::Audio,
         tab_cat: TableCategory::Banters,
         upload_msg: "Upload Banter Audio".to_string(),

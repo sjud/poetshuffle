@@ -90,43 +90,22 @@ impl XFileType{
     }
 }
 impl AuthToken {
-    pub async fn upload_file(&self,
-                             x_cat:XCategory,
-                             x_file:XFileType,
-                             file:gloo::file::Blob,
-                             uuid:Uuid) -> Result<()> {
-        gloo::net::http::Request::post("api/upload/")
+    pub async fn delete_file(
+        &self,
+        tab_cat:TableCategory,
+        file_ty:FileType,
+        uuid:Uuid,
+    ) -> Result<()> {
+        gloo::net::http::Request::put("/api/delete_file")
             .header("x-authorization", &self.token.clone().unwrap())
-            .header("x-category",x_cat.to_str())
-            .header("x-file-type",x_file.to_str())
+            .header(TableCategory::header_name(),tab_cat.as_ref())
+            .header(FileType::header_name(),file_ty.as_ref())
             .header("x-uuid",&uuid.to_string())
-            .body(file)
             .send()
             .await?;
         Ok(())
     }
-    pub async fn check_if_file_exists_given_args(&self,
-    x_cat:XCategory,
-    x_file:XFileType,
-    uuid:Uuid) -> Result<bool> {
-        let resp = gloo::net::http::Request::get("api/check_file_existence")
-            .header("x-authorization", &self.token.clone().unwrap())
-            .header("x-category",x_cat.to_str())
-            .header("x-file-type",x_file.to_str())
-            .header("x-uuid",&uuid.to_string())
-            .send()
-            .await?;
-        match resp.status() {
-            200 => Ok(true),
-            404 => Ok(false),
-            err => Err(anyhow::Error::msg(
-                format!(
-                    "Expecting 200 or 404, got {}",err
-                ))),
-        }
-
-    }
-    pub async fn upload(
+    pub async fn upload_file(
         &self,
         tab_cat:TableCategory,
         file_ty:FileType,
@@ -140,7 +119,7 @@ impl AuthToken {
                     .get(0)
                     .unwrap()
             ));
-        gloo::net::http::Request::post("/api/upload")
+        gloo::net::http::Request::put("/api/upload_file")
             .header("x-authorization", &self.token.clone().unwrap())
             .header(TableCategory::header_name(),tab_cat.as_ref())
             .header(FileType::header_name(),file_ty.as_ref())
@@ -161,9 +140,6 @@ impl AuthToken {
             .json()
             .await?;
         Ok(result_url)
-    }
-    pub async fn fetch_text_file(&self,path:String) -> String {
-        "".into()
     }
     #[cfg(test)]
     pub async fn new_from_login_super_admin() -> Self {
@@ -264,6 +240,24 @@ impl AuthToken {
                 set_uuid: set_uuid.to_string(),
             },
             self.token.clone(),
+        ).await)
+    }
+    pub async fn add_banter(&self,poem_uuid:Uuid)
+    -> GraphQlResult<add_banter_mutation::ResponseData> {
+        parse_graph_ql_resp(post_graphql::<AddBanterMutation>(
+            add_banter_mutation::Variables{
+                poem_uuid:poem_uuid.to_string()
+            },
+            self.token.clone(),
+            ).await)
+    }
+    pub async fn delete_banter(&self,banter_uuid:Uuid)
+    -> GraphQlResult<delete_banter_mutation::ResponseData> {
+        parse_graph_ql_resp(post_graphql::<DeleteBanterMutation>(
+            delete_banter_mutation::Variables{
+                banter_uuid:banter_uuid.to_string()
+            },
+            self.token.clone()
         ).await)
     }
     pub async fn invite_poet(&self, email: String)

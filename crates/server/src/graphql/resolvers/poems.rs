@@ -58,8 +58,7 @@ pub async fn add_poem(
         Ok(poem)
     } else {
         Err(Error::new("This is a weird error:\
-         couldn't find poem after inserting into db... After? After inserting?\
-         Yes."))
+         couldn't find poem after inserting into db..."))
     }
 }
 
@@ -151,7 +150,7 @@ pub struct PoemQuery;
 #[Object]
 impl PoemMutation {
     async fn add_poem(&self, ctx: &Context<'_>, set_uuid: Uuid) -> Result<poems::Model> {
-        let db = ctx.data::<DatabaseConnection>().unwrap();
+        let db = ctx.data::<DatabaseConnection>()?;
         let auth = ctx.data::<Auth>()?;
         if auth.can_edit_set(
             &find_set_by_uuid(db, set_uuid)

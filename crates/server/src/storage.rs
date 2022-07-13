@@ -127,9 +127,20 @@ impl StorageApi{
     pub(crate) async fn store_file(&self, path: String,data: Vec<u8>) -> Result<()> {
         #[cfg(feature="local_cdn")]
         {   std::fs::write(path,data)?;
-            return Ok(());}
+            return Ok(());
+        }
 
         let _ = self.bucket.put_object(path,&*data).await?;
+        Ok(())
+    }
+    #[tracing::instrument(skip_all)]
+    pub async fn delete_file(&self, path:String) -> Result<()> {
+        #[cfg(feature="local_cdn")]
+        {   std::fs::remove_file(path)?;
+            return Ok(());
+        }
+
+        let _ = self.bucket.delete_object(path).await?;
         Ok(())
     }
 }

@@ -1,0 +1,3 @@
+mutation DeleteBanterMutation($banter_uuid: String!) {
+  deleteBanter(banterUuid: $banter_uuid)
+}

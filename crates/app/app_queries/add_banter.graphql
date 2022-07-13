@@ -1,0 +1,5 @@
+mutation AddBanterMutation($poem_uuid: String!) {
+  addBanter(poemUuid: $poem_uuid) {
+    banterUuid
+  }
+}

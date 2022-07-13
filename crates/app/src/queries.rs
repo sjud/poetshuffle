@@ -104,3 +104,17 @@ pub struct PoemUuidsBySetUuidQuery;
 response_derives = "Serialize,PartialEq,Clone,Debug"
 )]
 pub struct PoemQuery;
+#[derive(GraphQLQuery)]
+#[graphql(
+schema_path = "schema.graphql",
+query_path = "app_queries/add_banter.graphql",
+response_derives = "Serialize,PartialEq,Clone,Debug"
+)]
+pub struct AddBanterMutation;
+#[derive(GraphQLQuery)]
+#[graphql(
+schema_path = "schema.graphql",
+query_path = "app_queries/delete_banter.graphql",
+response_derives = "Serialize,PartialEq,Clone,Debug"
+)]
+pub struct DeleteBanterMutation;

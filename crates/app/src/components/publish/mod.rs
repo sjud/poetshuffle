@@ -50,9 +50,7 @@ pub fn public_publish_info() -> Html {
         let info = info.clone();
         let auth_ctx = auth_ctx.clone();
         use_async::<_,(),String>(async move {
-            let text = auth_ctx.fetch_text_file(
-                "pubic_publish_info".into()).await;
-            info.set(text);
+            info.set("pubic_publish_info".into());
             Ok(())
         }).run();
     };

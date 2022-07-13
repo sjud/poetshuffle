@@ -117,7 +117,19 @@ pub async fn auth_upload(
 }
 
 #[tracing::instrument(skip_all)]
-pub async fn upload(
+pub async fn delete_file(
+    _:UploadAuth,
+    UuidHeader(uuid):UuidHeader,
+    FileTypeHeader(file_type):FileTypeHeader,
+    TabCatHeader(table_cat):TabCatHeader,
+    Extension(storage_api):Extension<StorageApi>,
+) -> Result<(),StatusCode> {
+    storage_api.delete_file(
+        storage_path(table_cat,file_type,uuid)
+    ).await.map_err(|err|handle_http_error(err))
+}
+#[tracing::instrument(skip_all)]
+pub async fn upload_file(
     _:UploadAuth,
     UuidHeader(uuid):UuidHeader,
     FileTypeHeader(file_type):FileTypeHeader,

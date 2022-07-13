@@ -14,6 +14,7 @@ pub mod login;
 pub mod poems;
 pub mod publish;
 pub mod sets;
+pub mod banters;
 
 pub fn time_now() -> DateTimeWithTimeZone {
     use chrono::Utc;

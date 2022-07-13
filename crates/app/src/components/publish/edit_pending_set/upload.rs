@@ -26,7 +26,7 @@ pub fn upload(props:&UploadProps) -> Html {
         let msg_context = msg_context.clone();
         use_async::<_, (), ()>(async move {
             let input = input_ref.cast::<HtmlInputElement>().unwrap();
-            match auth.upload(props.tab_cat,props.file_ty,props.uuid,input)
+            match auth.upload_file(props.tab_cat,props.file_ty,props.uuid,input)
                 .await {
                 Ok(()) => msg_context
                     .dispatch(
