@@ -7,6 +7,8 @@ use entity::sea_orm_active_enums::UserRole;
 use hmac::Hmac;
 use jwt::SignWithKey;
 use std::collections::BTreeMap;
+use crate::graphql::guards::*;
+use entity::prelude::Logins;
 lazy_static::lazy_static!{
     pub static ref ADMIN_USER: String = {
         if let Ok(user_name) = std::env::var("ADMIN_USER") {
@@ -59,73 +61,73 @@ impl AdminMutation {
             Err(Error::new("Admin credentials invalid."))
         }
     }
+    #[graphql(guard = "MinRoleGuard::new(new_user_role)")]
     async fn modify_user_role(
         &self,
         ctx: &Context<'_>,
         email: String,
         new_user_role: UserRole,
     ) -> Result<String> {
-        let auth = ctx.data::<Auth>()?;
         let db = ctx.data::<DatabaseConnection>()?;
-        if let Some(login) = find_login_by_email(db, &email).await? {
-            if auth.can_issue_promotion(new_user_role) {
-                ActivePermissions {
-                    user_uuid: Set(login.user_uuid),
-                    user_role: Set(new_user_role),
-                }
-                .update(db)
-                .await?;
-                Ok("Role updated.".into())
-            } else {
-                Err("UnAuthorized".into())
-            }
-        } else {
-            Err("Can't find user to promote given email.".into())
-        }
-    }
+        let login =  Logins::find()
+            .having(entity::logins::Column::Email.eq(email))
+            .group_by(entity::logins::Column::UserUuid)
+            .one(db)
+            .await?
+            .ok_or(Error::new("Can't find user to promote given email"))?;
+            ActivePermissions {
+                user_uuid: Set(login.user_uuid),
+                user_role: Set(new_user_role),
+            }.update(db).await?;
+        Ok("Role updated.".into())
 
+    }
+    #[graphql(guard = "MinRoleGuard::new(user_role)")]
     async fn invite_user(
         &self,
         ctx: &Context<'_>,
         email: String,
         user_role: UserRole,
     ) -> Result<String> {
-        let auth = ctx.data::<Auth>()?;
+        let invitor_uuid = ctx.data::<Auth>()?
+            .0
+            .as_ref()
+            .ok_or("Can't find permission")?
+            .user_uuid;
         let db = ctx.data::<DatabaseConnection>()?;
         #[cfg(test)]
         let email_client = ctx.data::<TestEmail>()?;
         #[cfg(not(test))]
         let email_client = ctx.data::<Postmark>()?;
-        if auth.can_issue_promotion(user_role) {
-            if let Some(login) = find_login_by_email(db, &email).await? {
-                let perm: entity::permissions::Model =
-                    entity::prelude::Permissions::find_by_id(login.user_uuid)
-                        .one(db)
-                        .await?
-                        .ok_or("Server error: Login without valid permissions.")?;
-                if OrdRoles(perm.user_role) >= OrdRoles(user_role) {
-                    Err("User equivalent or greater role")?;
-                }
-            }
-            let invite_uuid = Uuid::new_v4();
-            let invitor_uuid = auth.uuid()?;
-            entity::invitations::ActiveModel {
-                invite_uuid: Set(invite_uuid),
-                invitor_uuid: Set(invitor_uuid),
-                invitee_email: Set(email.clone()),
-                user_role: Set(user_role),
-                ..Default::default()
-            }
+        let login = Logins::find()
+            .having(entity::logins::Column::Email.eq(email.clone()))
+            .group_by(entity::logins::Column::UserUuid)
+            .one(db)
+            .await?
+            .ok_or(Error::new("Can't find user to promote given email"))?;
+        let perm: entity::permissions::Model =
+            entity::prelude::Permissions::find_by_id(login.user_uuid)
+                .one(db)
+                .await?
+                .ok_or("Server error: Login without valid permissions.")?;
+        if OrdRoles(perm.user_role) >= OrdRoles(user_role) {
+            Err("User equivalent or greater role")?;
+        }
+        let invite_uuid = Uuid::new_v4();
+        entity::invitations::ActiveModel {
+            invite_uuid: Set(invite_uuid),
+            invitor_uuid: Set(invitor_uuid),
+            invitee_email: Set(email.clone()),
+            user_role: Set(user_role),
+            ..Default::default()
+        }
             .insert(db)
             .await?;
-            email_client.invite_user(email, invite_uuid.into()).await?;
-            Ok("Invitation sent to email.".into())
-        } else {
-            Err(Error::new("Unauthorized."))
-        }
+        email_client.invite_user(email, invite_uuid.into()).await?;
+        Ok("User invited".into())
     }
 }
-
+/*
 #[cfg(test)]
 mod test {
     use super::*;
@@ -288,3 +290,4 @@ mod test {
         assert_eq!(result.errors[0].message, String::from("Unauthorized."));
     }
 }
+*/

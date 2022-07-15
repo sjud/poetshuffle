@@ -414,7 +414,7 @@ impl LoginMutation {
         Ok("You may now login with your new password.".into())
     }
 }
-
+/*
 #[cfg(test)]
 mod test {
     use super::*;
@@ -688,3 +688,4 @@ mod test {
         assert!(result.errors.is_empty());
     }
 }
+*/
