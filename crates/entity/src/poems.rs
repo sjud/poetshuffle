@@ -25,9 +25,7 @@ pub struct Model {
     pub banter_uuid: Option<Uuid>,
     pub title: String,
     pub idx: i32,
-    pub part_of_poetshuffle: bool,
     pub is_approved: bool,
-    pub is_deleted: bool,
     pub last_edit_ts: Option<DateTimeUtc>,
 }
 
@@ -40,9 +38,7 @@ pub enum Column {
     BanterUuid,
     Title,
     Idx,
-    PartOfPoetshuffle,
     IsApproved,
-    IsDeleted,
     LastEditTs,
 }
 
@@ -64,7 +60,6 @@ pub enum Relation {
     Users,
     Sets,
     Comments,
-    EditPoemHistory,
 }
 
 impl ColumnTrait for Column {
@@ -78,9 +73,7 @@ impl ColumnTrait for Column {
             Self::BanterUuid => ColumnType::Uuid.def().null(),
             Self::Title => ColumnType::String(Some(100u32)).def(),
             Self::Idx => ColumnType::Integer.def(),
-            Self::PartOfPoetshuffle => ColumnType::Boolean.def(),
             Self::IsApproved => ColumnType::Boolean.def(),
-            Self::IsDeleted => ColumnType::Boolean.def(),
             Self::LastEditTs => ColumnType::Timestamp.def().null(),
         }
     }
@@ -102,7 +95,6 @@ impl RelationTrait for Relation {
                 .to(super::sets::Column::SetUuid)
                 .into(),
             Self::Comments => Entity::has_many(super::comments::Entity).into(),
-            Self::EditPoemHistory => Entity::has_many(super::edit_poem_history::Entity).into(),
         }
     }
 }
@@ -128,12 +120,6 @@ impl Related<super::sets::Entity> for Entity {
 impl Related<super::comments::Entity> for Entity {
     fn to() -> RelationDef {
         Relation::Comments.def()
-    }
-}
-
-impl Related<super::edit_poem_history::Entity> for Entity {
-    fn to() -> RelationDef {
-        Relation::EditPoemHistory.def()
     }
 }
 

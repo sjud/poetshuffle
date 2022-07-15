@@ -1,3 +1,3 @@
-mutation UpdatePoemMutation($poem_uuid: String!, $banter_uuid:ID, $title:String, $delete:Boolean, $approve:Boolean) {
-  updatePoem(poemUuid: $poem_uuid, banterUuid:$banter_uuid, title:$title, delete: $delete, approve:$approve)
+mutation UpdatePoemMutation($poem_uuid: String!, $banter_uuid:ID, $title:String) {
+  updatePoem(poemUuid: $poem_uuid, banterUuid:$banter_uuid, title:$title)
 }

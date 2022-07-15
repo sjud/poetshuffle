@@ -1,146 +1,82 @@
 use super::*;
-use crate::graphql::resolvers::poems::{build_approve_value, build_history_value_option};
-use entity::edit_set_history::ActiveModel as ActiveSetHistory;
 use entity::prelude::Sets;
-use entity::sea_orm_active_enums::SetStatus;
+use entity::sea_orm_active_enums::{SetStatus,UserRole};
 use entity::sets;
-use entity::sets::ActiveModel as ActiveModelSet;
+use entity::sets::ActiveModel as ActiveSet;
 use sea_orm::ActiveValue;
+use crate::graphql::guards::*;
 
-pub fn build_edit_set_value<V: Into<sea_orm::Value> + migration::Nullable>(
-    auth: &Auth,
-    v: Option<V>,
-    set: &sets::Model,
-) -> Result<ActiveValue<V>> {
-    if let Some(value) = v {
-        if auth.can_edit_set(&set) {
-            return Ok(ActiveValue::set(value));
-        } else {
-            Err(Error::new("Unauthorized update."))?;
-        }
-    }
-    Ok(ActiveValue::not_set())
-}
-pub fn build_edit_poem_value_option<V: Into<sea_orm::Value> + migration::Nullable>(
-    auth: &Auth,
-    v: Option<V>,
-    set: &sets::Model,
-) -> Result<ActiveValue<Option<V>>> {
-    if let Some(value) = v {
-        if auth.can_edit_set(&set) {
-            return Ok(ActiveValue::set(Some(value)));
-        } else {
-            Err(Error::new("Unauthorized update."))?;
-        }
-    }
-    Ok(ActiveValue::not_set())
-}
-pub async fn find_pending_set_by_user(
-    db: &DatabaseConnection,
-    user_uuid: Uuid,
-) -> Result<Option<sets::Model>> {
-    Sets::find()
-        .filter(sets::Column::OriginatorUuid.eq(user_uuid))
-        .filter(sets::Column::IsDeleted.eq(false))
-        .filter(sets::Column::SetStatus.eq(SetStatus::Pending))
-        .one(db)
-        .await
-        .map_err(|err| Error::new(format!("{:?}", err)))
-}
-pub async fn find_set_by_uuid(
-    db: &DatabaseConnection,
-    set_uuid: Uuid,
-) -> Result<Option<sets::Model>> {
-    Sets::find_by_id(set_uuid)
-        .one(db)
-        .await
-        .map_err(|err| Error::new(format!("{:?}", err)))
-}
-pub async fn create_pending_set(db: &DatabaseConnection, user_uuid: Uuid) -> Result<sets::Model> {
-    let set_uuid = Uuid::new_v4();
-    entity::sets::ActiveModel {
-        set_uuid: Set(set_uuid),
-        title: Set(String::new()),
-        originator_uuid: Set(user_uuid),
-        set_status: Set(SetStatus::Pending),
-        link: Set(String::new()),
-        is_approved: Set(false),
-        ..Default::default()
-    }
-    .insert(db)
-    .await?;
-    if let Some(set) = Sets::find_by_id(set_uuid)
-        .one(db)
-        .await? {
-        Ok(set)
-    } else {
-        Err(Error::new("Can't find set that was just created"))
-    }
-}
 
 #[derive(Default)]
 pub struct SetMutation;
 #[Object]
 impl SetMutation {
+    #[graphql(guard = "MinRoleGuard::new(UserRole::Moderator)\
+    .and(IsSetEditor::new(set_uuid))")]
+    async fn set_approve_set(
+        &self,
+        ctx:&Context<'_>,
+        set_uuid:Uuid,
+        approve:bool
+    ) -> Result<String> {
+        let db = ctx.data::<DatabaseConnection>()?;
+        ActiveSet {
+            set_uuid:Set(set_uuid),
+            is_approved: Set(approve),
+            ..Default::default()
+        }
+            .update(db)
+            .await?;
+        Ok("Set Updated".into())
+    }
 
+    #[graphql(guard = "MinRoleGuard::new(UserRole::Poet)\
+    .and(IsOriginator::new(set_uuid,OriginationCategory::Set))")]
     async fn update_set(
         &self,
         ctx: &Context<'_>,
         set_uuid: Uuid,
         title: Option<String>,
         link: Option<String>,
-        delete: Option<bool>,
     ) -> Result<String> {
         let db = ctx.data::<DatabaseConnection>().unwrap();
-        let auth = ctx.data::<Auth>()?;
-        if let Ok(Some(set)) = find_set_by_uuid(db, set_uuid).await {
-            ActiveModelSet {
-                set_uuid: build_edit_set_value(auth, Some(set_uuid), &set)?,
-                title: build_edit_set_value(auth, title.clone(), &set)?,
-                link: build_edit_set_value(auth, link, &set)?,
-                is_deleted: build_edit_set_value(auth, delete, &set)?,
-                is_approved: build_approve_value(auth, approve)?,
-                ..Default::default()
-            }
-            .update(db)
+        ActiveSet{
+            set_uuid:Set(set_uuid),
+            title: update_value(title),
+            link: update_value(link),
+            ..Default::default()
+        }.update(db)
             .await?;
-            ActiveSetHistory {
-                history_uuid: Set(Uuid::new_v4()),
-                user_uuid: Set(auth
-                    .0
-                    .as_ref()
-                    //Checked above when inserting with poem_uuid... Test confirms.
-                    .unwrap()
-                    .user_uuid),
-                set_uuid: Set(set_uuid),
-                edit_title: build_history_value_option(title)?,
-                is_deleted: build_history_value_option(delete)?,
-                is_approved: build_history_value_option(approve)?,
-                ..Default::default()
-            }
-            .insert(db)
-            .await?;
-            Ok("Set Updated".into())
-        } else {
-            Err(Error::new("Can't update set. Set not found."))
-        }
+        Ok("Set Updated".into())
     }
 
+    #[graphql(guard = "MinRoleGuard::new(UserRole::Poet)\
+    .and(UniquePendingSet)")]
     async fn create_pending_set(&self, ctx: &Context<'_>) -> Result<sets::Model> {
         let db = ctx.data::<DatabaseConnection>().unwrap();
-        let auth = ctx.data::<Auth>()?;
-        if let Some(permission) = auth.0.clone() {
-            if find_pending_set_by_user(db, permission.user_uuid)
-                .await?
-                .is_none()
-            {
-                let set = create_pending_set(db, permission.user_uuid).await?;
-                Ok(set)
-            } else {
-                Err(Error::new("You have an ongoing pending set."))
-            }
+        let user_uuid = ctx.data::<Auth>()?
+            .0
+            .as_ref()
+            .ok_or("No permission in auth.")?
+            .user_uuid;
+        let set_uuid = Uuid::new_v4();
+        entity::sets::ActiveModel {
+            set_uuid: Set(set_uuid),
+            title: Set(String::new()),
+            originator_uuid: Set(user_uuid),
+            set_status: Set(SetStatus::Pending),
+            link: Set(String::new()),
+            is_approved: Set(false),
+            ..Default::default()
+        }
+            .insert(db)
+            .await?;
+        if let Some(set) = Sets::find_by_id(set_uuid)
+            .one(db)
+            .await? {
+            Ok(set)
         } else {
-            Err(Error::new("Not logged in."))
+            Err(Error::new("Can't find set that was just created"))
         }
     }
 }
@@ -150,26 +86,25 @@ pub struct SetsQuery;
 
 #[Object]
 impl SetsQuery {
+    #[graphql(guard = "MinRoleGuard::new(UserRole::Poet)\
+    .and(AboutSelf::new(user_uuid))\
+    .or(MinRoleGuard::new(UserRole::Moderator))")]
     async fn pending_set_by_user(
         &self,
         ctx: &Context<'_>,
         user_uuid: Uuid,
     ) -> Result<Option<sets::Model>> {
         let db = ctx.data::<DatabaseConnection>().unwrap();
-        let auth = ctx.data::<Auth>()?;
-        Ok({
-            if let Some(set) = find_pending_set_by_user(db, user_uuid).await? {
-                if auth.can_read_pending_set(&set) {
-                    Some(set)
-                } else {
-                    Err(Error::new("Unauthorized."))?
-                }
-            } else {
-                None
-            }
-        })
+        Ok(Sets::find()
+            .filter(sets::Column::OriginatorUuid.eq(user_uuid))
+            .filter(sets::Column::IsDeleted.eq(false))
+            .filter(sets::Column::SetStatus.eq(SetStatus::Pending))
+            .one(db)
+            .await?)
+
     }
 }
+/*
 #[cfg(test)]
 mod test {
     use super::*;
@@ -409,3 +344,4 @@ mod test {
         );
     }
 }
+*/

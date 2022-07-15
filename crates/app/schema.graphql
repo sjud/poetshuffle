@@ -7,12 +7,16 @@ type Mutation {
     inviteUser(email:String!,userRole:UserRole!): String!
     acceptInvitation(password:String,inviteUuid:ID!): String!
     createPendingSet: Set!
-    updateSet(setUuid: ID!, title:String,link:String,delete:Boolean,approve:Boolean): String!
+    setApproveSet(setUuid: ID!, approve: Boolean!) : String!
+    deleteSet(setUuid:ID!) : String!
+    updateSet(setUuid: ID!, title:String,link:String): String!
     addPoem(setUuid:ID!) : Poem!
     addBanter(poemUuid:ID!) : Banter!
     deleteBanter(poemUuid:ID!, banterUuid:ID!) : String!
     setApproveBanter(banterUuid:ID!,set_uuid:ID!,approve:Boolean!): String!
-    updatePoem(poemUuid:ID!, banterUuid:ID, title:String,delete:Boolean,approve:Boolean): String!
+    updatePoem(poemUuid:ID!, banterUuid:ID, title:String): String!
+    setPoemApprove(poemUuid:ID!,setUuid:ID!,approve:Boolean!):String
+    deletePoem(poemUuid:ID!):String
     updatePoemIdx(setUuid:ID!, poemAIdx:Int!, poemBIdx:Int!): String!
 }
 

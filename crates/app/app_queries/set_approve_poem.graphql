@@ -1,0 +1,3 @@
+mutation SetApprovePoemMutation($poem_uuid: ID!,$set_uuid: ID! $approve:Boolean!) {
+    setApprovePoem(poem_uuid: $poem_uuid,setUuid:$set_uuid, approve:$approve)
+}

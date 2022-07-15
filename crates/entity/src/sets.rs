@@ -56,12 +56,9 @@ impl PrimaryKeyTrait for PrimaryKey {
 #[derive(Copy, Clone, Debug, EnumIter)]
 pub enum Relation {
     Users,
-    SetOptions,
     Comments,
     Intros,
-    Orders,
     Poems,
-    EditSetHistory,
     SetEditors,
 }
 
@@ -89,12 +86,9 @@ impl RelationTrait for Relation {
                 .from(Column::OriginatorUuid)
                 .to(super::users::Column::UserUuid)
                 .into(),
-            Self::SetOptions => Entity::has_many(super::set_options::Entity).into(),
             Self::Comments => Entity::has_many(super::comments::Entity).into(),
             Self::Intros => Entity::has_many(super::intros::Entity).into(),
-            Self::Orders => Entity::has_many(super::orders::Entity).into(),
             Self::Poems => Entity::has_many(super::poems::Entity).into(),
-            Self::EditSetHistory => Entity::has_many(super::edit_set_history::Entity).into(),
             Self::SetEditors => Entity::has_many(super::set_editors::Entity).into(),
         }
     }
@@ -103,12 +97,6 @@ impl RelationTrait for Relation {
 impl Related<super::users::Entity> for Entity {
     fn to() -> RelationDef {
         Relation::Users.def()
-    }
-}
-
-impl Related<super::set_options::Entity> for Entity {
-    fn to() -> RelationDef {
-        Relation::SetOptions.def()
     }
 }
 
@@ -124,23 +112,9 @@ impl Related<super::intros::Entity> for Entity {
     }
 }
 
-impl Related<super::orders::Entity> for Entity {
-    fn to() -> RelationDef {
-        Relation::Orders.def()
-    }
-}
 
-impl Related<super::poems::Entity> for Entity {
-    fn to() -> RelationDef {
-        Relation::Poems.def()
-    }
-}
 
-impl Related<super::edit_set_history::Entity> for Entity {
-    fn to() -> RelationDef {
-        Relation::EditSetHistory.def()
-    }
-}
+
 
 impl Related<super::set_editors::Entity> for Entity {
     fn to() -> RelationDef {

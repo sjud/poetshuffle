@@ -1,10 +1,9 @@
 use super::*;
-use crate::graphql::resolvers::sets::find_set_by_uuid;
-use entity::edit_poem_history::ActiveModel as ActivePoemHistory;
 use entity::poems::{self, ActiveModel as ActivePoem};
-use entity::sea_orm_active_enums::SetStatus;
+use entity::sea_orm_active_enums::{SetStatus,UserRole};
 use sea_orm::{ActiveValue, TransactionTrait};
 use entity::prelude::Poems;
+use crate::graphql::guards::*;
 
 #[derive(Debug, sea_orm::FromQueryResult)]
 struct PoemUuidResult {
@@ -19,7 +18,6 @@ pub async fn find_poem_uuids_by_set_uuid(
         .column(poems::Column::PoemUuid)
         .column_as(poems::Column::PoemUuid, "uuid")
         .filter(poems::Column::SetUuid.eq(set_uuid))
-        .filter(poems::Column::IsDeleted.eq(false))
         .into_model::<PoemUuidResult>()
         .all(db)
         .await
@@ -34,12 +32,10 @@ pub async fn add_poem(
     user_uuid: Uuid,
     set_uuid: Uuid,
 ) -> Result<poems::Model> {
-    //TODO We need idx to be unique over originator_uuid+set_uuid
-    // and to return an error if it isn't.
+
     let poem_uuid = Uuid::new_v4();
     let idx = Poems::find()
         .filter(poems::Column::SetUuid.eq(set_uuid))
-        .filter(poems::Column::IsDeleted.eq(false))
         .all(db)
         .await?
         .len();
@@ -49,7 +45,6 @@ pub async fn add_poem(
         set_uuid: Set(set_uuid),
         idx: Set(idx as i32),
         title: Set("".to_string()),
-        part_of_poetshuffle: Set(true),
         ..Default::default()
     }
     .insert(db)
@@ -73,7 +68,6 @@ pub async fn find_poem_given_idx_set_uuid(db: &DatabaseConnection, set_uuid: Uui
         poems::Entity::find()
             .filter(poems::Column::SetUuid.eq(set_uuid))
             .filter(poems::Column::Idx.eq(idx))
-            .filter(poems::Column::IsDeleted.eq(false))
             .one(db)
             .await
             .map_err(|err| Error::new(format!("Sea-orm: {:?}", err)))
@@ -149,26 +143,42 @@ pub struct PoemMutation;
 pub struct PoemQuery;
 #[Object]
 impl PoemMutation {
+
+    #[graphql(guard = "MinRoleGuard::new(UserRole::Poet)\
+    .and(IsOriginator::new(set_uuid,OriginationCategory::Set))")]
     async fn add_poem(&self, ctx: &Context<'_>, set_uuid: Uuid) -> Result<poems::Model> {
         let db = ctx.data::<DatabaseConnection>()?;
-        let auth = ctx.data::<Auth>()?;
-        if auth.can_edit_set(
-            &find_set_by_uuid(db, set_uuid)
-                .await?
-                .ok_or("Set not found")?,
-        ) {
-            let user_uuid = auth
-                .0
-                .as_ref()
-                .ok_or(
-                    Error::new("Impossible authorization error???")
-                )?.user_uuid;
-            let poem = add_poem(db, user_uuid, set_uuid).await?;
+        let user_uuid = ctx.data::<Auth>()?
+            .0
+            .as_ref()
+            .ok_or(Error::new("No permission in authorization."))?
+            .user_uuid;
+        let poem_uuid = Uuid::new_v4();
+        let idx = Poems::find()
+            .filter(poems::Column::SetUuid.eq(set_uuid))
+            .all(db)
+            .await?
+            .len();
+        ActivePoem {
+            poem_uuid: Set(poem_uuid),
+            originator_uuid: Set(user_uuid),
+            set_uuid: Set(set_uuid),
+            idx: Set(idx as i32),
+            title: Set("".to_string()),
+            ..Default::default()
+        }
+            .insert(db)
+            .await?;
+        if let Some(poem) = Poems::find_by_id(poem_uuid).one(db).await?{
             Ok(poem)
         } else {
-            Err(Error::new("Unauthorized."))
+            Err(Error::new("This is a weird error:\
+         couldn't find poem after inserting into db..."))
         }
     }
+
+    #[graphql(guard = "MinRoleGuard::new(UserRole::Poet)\
+    .and(IsOriginator::new(set_uuid,OriginationCategory::Set))")]
     pub async fn update_poem_idx(
         &self,
         ctx: &Context<'_>,
@@ -176,18 +186,17 @@ impl PoemMutation {
         poem_a_idx:i32,
         poem_b_idx:i32) -> Result<String> {
         let db = ctx.data::<DatabaseConnection>()?;
-        let auth = ctx.data::<Auth>()?;
         if let Ok(Some(poem_a)) = find_poem_given_idx_set_uuid(db,set_uuid,poem_a_idx).await {
             if let Ok(Some(poem_b)) = find_poem_given_idx_set_uuid(db, set_uuid, poem_b_idx).await {
                 let txn = db.begin().await?;
                 ActivePoem{
-                    poem_uuid:build_edit_poem_value(&auth,Some(poem_a.poem_uuid),&poem_a)?,
-                    idx:build_edit_poem_value(&auth, Some(poem_b_idx),&poem_a)?,
+                    poem_uuid:Set(poem_a.poem_uuid),
+                    idx:Set(poem_b_idx),
                     ..poem_a.into()
                 }.save(&txn).await?;
                 ActivePoem{
-                    poem_uuid:build_edit_poem_value(&auth,Some(poem_b.poem_uuid),&poem_b)?,
-                    idx:build_edit_poem_value(&auth, Some(poem_a_idx),&poem_b)?,
+                    poem_uuid:Set(poem_b.poem_uuid),
+                    idx:Set(poem_a_idx),
                     ..poem_b.into()
                 }.save(&txn).await?;
                 txn.commit().await?;
@@ -198,62 +207,84 @@ impl PoemMutation {
         } else {
             Err(Error::new("Poem A not found."))
         }
-
     }
+
+    #[graphql(guard = "MinRoleGuard::new(UserRole::Moderator)\
+    .and(IsSetEditor::new(set_uuid))")]
+    async fn set_approve_poem(
+        &self,
+        ctx: &Context<'_>,
+        poem_uuid:Uuid,
+        set_uuid:Uuid,
+        approve: bool,
+    ) -> Result<String> {
+        let db = ctx.data::<DatabaseConnection>()?;
+        ActivePoem {
+            poem_uuid:Set(poem_uuid),
+            is_approved: Set(approve),
+            ..Default::default()
+        }
+            .update(db)
+            .await?;
+        Ok("Poem Approved".into())
+    }
+
+    #[graphql(guard = "MinRoleGuard::new(UserRole::Poet)\
+    .and(IsOriginator::new(poem_uuid,OriginationCategory::Poem))")]
+    async fn delete_poem(&self, ctx:&Context<'_>, poem_uuid:Uuid)
+                           -> Result<String> {
+        let db = ctx.data::<DatabaseConnection>()?;
+        if let Some(poem) = entity::poems::Entity::find_by_id(poem_uuid)
+            .one(db)
+            .await? {
+            let txn = db.begin().await?;
+            if let Some(banter_uuid) = poem.banter_uuid{
+                entity::banters::ActiveModel{
+                    banter_uuid:Set(banter_uuid),
+                    ..Default::default()
+                }.delete(&txn).await?;
+            }
+            let poems =
+                find_poems_of_greater_idx(db,poem.set_uuid,poem.idx).await?;
+            for poem in poems.iter() {
+                ActivePoem {
+                    poem_uuid:Set(poem.poem_uuid),
+                    idx:Set(poem.idx-1),
+                    ..Default::default()
+                }
+                    .update(&txn)
+                    .await?;
+            }
+            ActivePoem{
+                poem_uuid:Set(poem_uuid),
+                ..Default::default()
+            }.delete(&txn).await?;
+            txn.commit().await?;
+            Ok(String::from("Poem Deleted."))
+        } else {
+            Err("Poem not found".into())
+        }
+    }
+
+    #[graphql(guard = "MinRoleGuard::new(UserRole::Poet)\
+    .and(IsOriginator::new(poem_uuid,OriginationCategory::Poem))")]
     async fn update_poem(
         &self,
         ctx: &Context<'_>,
         poem_uuid: Uuid,
         banter_uuid: Option<Uuid>,
         title: Option<String>,
-        delete: Option<bool>,
-        approve: Option<bool>,
     ) -> Result<String> {
         let db = ctx.data::<DatabaseConnection>()?;
-        let auth = ctx.data::<Auth>()?;
         if let Some(poem) = find_poem(db, poem_uuid).await? {
-            let txn = db.begin().await?;
             ActivePoem {
-                poem_uuid: build_edit_poem_value(auth, Some(poem_uuid), &poem)?,
-                banter_uuid: build_edit_poem_value_option(auth, banter_uuid, &poem)?,
-                title: build_edit_poem_value(auth, title.clone(), &poem)?,
-                is_deleted: build_edit_poem_value(auth, delete, &poem)?,
-                is_approved: build_approve_value(auth, approve)?,
-                ..Default::default()
-            }
-            .update(&txn)
-            .await?;
-            if Some(true) == delete {
-                let poems =
-                    find_poems_of_greater_idx(db,poem.set_uuid,poem.idx).await?;
-                for poem in poems.iter() {
-                    ActivePoem {
-                        poem_uuid: build_edit_poem_value(auth, Some(poem.poem_uuid), &poem)?,
-                        idx:build_edit_poem_value(auth,Some(poem.idx-1),&poem)?,
-                        ..Default::default()
-                    }
-                        .update(&txn)
-                        .await?;
-                }
-            }
-            ActivePoemHistory {
-                history_uuid: Set(Uuid::new_v4()),
-                user_uuid: Set(auth
-                    .0
-                    .as_ref()
-                    //Checked above when inserting with poem_uuid... Test confirms.
-                    .unwrap()
-                    .user_uuid),
                 poem_uuid: Set(poem_uuid),
-                edit_title: build_history_value_option(title)?,
-                edit_is_deleted: build_history_value_option(delete)?,
-                edit_is_approved: build_history_value_option(approve)?,
-                edit_banter_uuid: build_history_value_option(banter_uuid)?,
+                banter_uuid:  update_nullable_value(banter_uuid),
+                title: update_value(title),
                 ..Default::default()
             }
-            .insert(&txn)
+            .update(db)
             .await?;
-            txn.commit().await?;
             Ok("Poem Updated".into())
         } else {
             Err(Error::new("Can't update poem. Poem not found."))
@@ -285,7 +316,8 @@ impl PoemQuery {
     ) -> Result<Vec<uuid::Uuid>> {
         let db = ctx.data::<DatabaseConnection>().unwrap();
         let auth = ctx.data::<Auth>()?;
-        let set: entity::sets::Model = find_set_by_uuid(db, set_uuid)
+        let set: entity::sets::Model = entity::prelude::Sets::find_by_id(set_uuid)
+            .one(db)
             .await?
             .ok_or("Set not found")?;
         if set.set_status == SetStatus::Pending {
@@ -299,7 +331,7 @@ impl PoemQuery {
         }
     }
 }
-
+/*
 #[cfg(test)]
 mod test {
     use super::*;
@@ -513,3 +545,4 @@ mod test {
         no_graphql_errors_or_print_them(result.errors).unwrap();
     }
 }
+*/

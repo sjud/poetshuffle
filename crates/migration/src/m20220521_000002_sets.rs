@@ -18,6 +18,7 @@ impl MigrationTrait for Migration {
     originator_uuid UUID NOT NULL REFERENCES users(user_uuid),
     set_status set_status NOT NULL,
     collection_link VARCHAR(250) NOT NULL,
+    editor_uuid UUID REFERENCES users(user_uuid),
     approved BOOL NOT NULL
 );"#;
         let stmt = Statement::from_string(manager.get_database_backend(), sql.to_owned());

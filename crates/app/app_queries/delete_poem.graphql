@@ -1,0 +1,3 @@
+mutation DeletePoemMutation($poem_uuid:ID!, $banter_uuid: String!) {
+  deletePoem(poemUuid:$poem_uuid)
+}

@@ -46,7 +46,6 @@ impl PrimaryKeyTrait for PrimaryKey {
 pub enum Relation {
     Users,
     Poems,
-    EditPoemHistory,
 }
 
 impl ColumnTrait for Column {
@@ -69,7 +68,6 @@ impl RelationTrait for Relation {
                 .to(super::users::Column::UserUuid)
                 .into(),
             Self::Poems => Entity::has_many(super::poems::Entity).into(),
-            Self::EditPoemHistory => Entity::has_many(super::edit_poem_history::Entity).into(),
         }
     }
 }
@@ -86,10 +84,5 @@ impl Related<super::poems::Entity> for Entity {
     }
 }
 
-impl Related<super::edit_poem_history::Entity> for Entity {
-    fn to() -> RelationDef {
-        Relation::EditPoemHistory.def()
-    }
-}
 
 impl ActiveModelBehavior for ActiveModel {}

@@ -1,10 +1,33 @@
-use entity::sea_orm_active_enums::UserRole;
+use entity::sea_orm_active_enums::{SetStatus, UserRole};
 use async_graphql::*;
 use sea_orm::{ColumnTrait, DatabaseConnection};
 use crate::types::auth::{Auth, OrdRoles};
 use sea_orm::EntityTrait;
 use sea_orm::QueryFilter;
 use sea_orm::prelude::Uuid;
+
+pub struct AboutSelf{
+    user_uuid:Uuid,
+}
+impl AboutSelf{
+    pub fn new(user_uuid:Uuid) -> Self { Self { user_uuid } }
+}
+#[async_trait::async_trait]
+impl Guard for AboutSelf {
+    async fn check(&self, ctx: &Context<'_>) -> Result<()> {
+        let user_uuid = ctx
+            .data::<Auth>()?
+            .0
+            .as_ref()
+            .ok_or(Error::new("Permission not found"))?
+            .user_uuid;
+         if self.user_uuid == user_uuid {
+             Ok(())
+         } else {
+             Err("User uuid given, doesn't match user uuid in authorization.".into())
+         }
+    }
+}
 
 /// MinRoleGuard's guard impl checks that the role in the authorization,
 /// provided by the  JWT in the request Is equal to or greater than
@@ -144,6 +167,32 @@ impl Guard for IsOriginator {
         } else {
             Err("A match between originator uuid, \
                 item uuid, and user uuid does not exist.".into())
+        }
+    }
+}
+
+pub struct UniquePendingSet;
+#[async_trait::async_trait]
+impl Guard for UniquePendingSet {
+    async fn check(&self, ctx: &Context<'_>) -> Result<()> {
+        let db = ctx.data::<DatabaseConnection>()?;
+        let user_uuid = ctx
+            .data::<Auth>()?
+            .0
+            .as_ref()
+            .ok_or(Error::new("Can't find permission."))?
+            .user_uuid;
+        let unique = entity::prelude::Sets::find()
+            .filter(entity::sets::Column::OriginatorUuid.eq(user_uuid))
+            .filter(entity::sets::Column::SetStatus.eq(SetStatus::Pending))
+            .one(db)
+            .await?
+            .is_none();
+        if unique{
+            Ok(())
+        } else {
+            Err("You can't create a new pending set.\
+             A pending set already exists for you.".into())
         }
     }
 }

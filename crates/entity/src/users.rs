@@ -46,7 +46,6 @@ pub enum Relation {
     Permissions,
     PenNames,
     Comments,
-    Orders,
     Logins,
 }
 
@@ -72,7 +71,6 @@ impl RelationTrait for Relation {
             Self::Permissions => Entity::has_many(super::permissions::Entity).into(),
             Self::PenNames => Entity::has_many(super::pen_names::Entity).into(),
             Self::Comments => Entity::has_many(super::comments::Entity).into(),
-            Self::Orders => Entity::has_many(super::orders::Entity).into(),
             Self::Logins => Entity::has_many(super::logins::Entity).into(),
         }
     }
@@ -96,11 +94,6 @@ impl Related<super::comments::Entity> for Entity {
     }
 }
 
-impl Related<super::orders::Entity> for Entity {
-    fn to() -> RelationDef {
-        Relation::Orders.def()
-    }
-}
 
 impl Related<super::logins::Entity> for Entity {
     fn to() -> RelationDef {

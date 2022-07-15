@@ -29,7 +29,6 @@ impl BanterMutation {
         approve:bool,
     ) -> Result<String> {
         let db = ctx.data::<DatabaseConnection>()?;
-        let auth = ctx.data::<Auth>()?;
         ActiveBanter {
             banter_uuid:Set(banter_uuid),
             approved: Set(approve),
