@@ -2,6 +2,7 @@
 
 pub use super::banters::Entity as Banters;
 pub use super::comments::Entity as Comments;
+pub use super::edit_poem_history::Entity as EditPoemHistory;
 pub use super::edit_set_history::Entity as EditSetHistory;
 pub use super::intros::Entity as Intros;
 pub use super::invitations::Entity as Invitations;
@@ -11,6 +12,7 @@ pub use super::pen_names::Entity as PenNames;
 pub use super::permissions::Entity as Permissions;
 pub use super::poems::Entity as Poems;
 pub use super::seaql_migrations::Entity as SeaqlMigrations;
+pub use super::set_editors::Entity as SetEditors;
 pub use super::set_options::Entity as SetOptions;
 pub use super::sets::Entity as Sets;
 pub use super::users::Entity as Users;

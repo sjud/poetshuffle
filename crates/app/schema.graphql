@@ -11,7 +11,7 @@ type Mutation {
     addPoem(setUuid:ID!) : Poem!
     addBanter(poemUuid:ID!) : Banter!
     deleteBanter(poemUuid:ID!, banterUuid:ID!) : String!
-    setApproveBanter(banterUuid:ID!,approve:Boolean!): String!
+    setApproveBanter(banterUuid:ID!,set_uuid:ID!,approve:Boolean!): String!
     updatePoem(poemUuid:ID!, banterUuid:ID, title:String,delete:Boolean,approve:Boolean): String!
     updatePoemIdx(setUuid:ID!, poemAIdx:Int!, poemBIdx:Int!): String!
 }

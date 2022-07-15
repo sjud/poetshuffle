@@ -8,35 +8,32 @@ pub struct Entity;
 
 impl EntityName for Entity {
     fn table_name(&self) -> &str {
-        "banters"
+        "set_editors"
     }
 }
 
-use async_graphql::*;
-#[derive(Clone, Debug, PartialEq, DeriveModel, DeriveActiveModel, SimpleObject)]
-#[graphql(concrete(name = "Banter", params()))]
+#[derive(Clone, Debug, PartialEq, DeriveModel, DeriveActiveModel, Serialize, Deserialize)]
 pub struct Model {
-    pub banter_uuid: Uuid,
+    pub user_uuid: Uuid,
+    pub set_uuid: Uuid,
     pub creation_ts: DateTimeWithTimeZone,
-    pub originator_uuid: Uuid,
-    pub approved: bool,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveColumn)]
 pub enum Column {
-    BanterUuid,
+    UserUuid,
+    SetUuid,
     CreationTs,
-    OriginatorUuid,
-    Approved,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DerivePrimaryKey)]
 pub enum PrimaryKey {
-    BanterUuid,
+    UserUuid,
+    SetUuid,
 }
 
 impl PrimaryKeyTrait for PrimaryKey {
-    type ValueType = Uuid;
+    type ValueType = (Uuid, Uuid);
     fn auto_increment() -> bool {
         false
     }
@@ -44,19 +41,17 @@ impl PrimaryKeyTrait for PrimaryKey {
 
 #[derive(Copy, Clone, Debug, EnumIter)]
 pub enum Relation {
+    Sets,
     Users,
-    Poems,
-    EditPoemHistory,
 }
 
 impl ColumnTrait for Column {
     type EntityName = Entity;
     fn def(&self) -> ColumnDef {
         match self {
-            Self::BanterUuid => ColumnType::Uuid.def(),
+            Self::UserUuid => ColumnType::Uuid.def(),
+            Self::SetUuid => ColumnType::Uuid.def(),
             Self::CreationTs => ColumnType::TimestampWithTimeZone.def(),
-            Self::OriginatorUuid => ColumnType::Uuid.def(),
-            Self::Approved => ColumnType::Boolean.def(),
         }
     }
 }
@@ -64,31 +59,27 @@ impl ColumnTrait for Column {
 impl RelationTrait for Relation {
     fn def(&self) -> RelationDef {
         match self {
+            Self::Sets => Entity::belongs_to(super::sets::Entity)
+                .from(Column::SetUuid)
+                .to(super::sets::Column::SetUuid)
+                .into(),
             Self::Users => Entity::belongs_to(super::users::Entity)
-                .from(Column::OriginatorUuid)
+                .from(Column::UserUuid)
                 .to(super::users::Column::UserUuid)
                 .into(),
-            Self::Poems => Entity::has_many(super::poems::Entity).into(),
-            Self::EditPoemHistory => Entity::has_many(super::edit_poem_history::Entity).into(),
         }
+    }
+}
+
+impl Related<super::sets::Entity> for Entity {
+    fn to() -> RelationDef {
+        Relation::Sets.def()
     }
 }
 
 impl Related<super::users::Entity> for Entity {
     fn to() -> RelationDef {
         Relation::Users.def()
-    }
-}
-
-impl Related<super::poems::Entity> for Entity {
-    fn to() -> RelationDef {
-        Relation::Poems.def()
-    }
-}
-
-impl Related<super::edit_poem_history::Entity> for Entity {
-    fn to() -> RelationDef {
-        Relation::EditPoemHistory.def()
     }
 }
 

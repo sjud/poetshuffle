@@ -15,6 +15,7 @@ pub mod permissions;
 pub mod poems;
 pub mod sea_orm_active_enums;
 pub mod seaql_migrations;
+pub mod set_editors;
 pub mod set_options;
 pub mod sets;
 pub mod users;

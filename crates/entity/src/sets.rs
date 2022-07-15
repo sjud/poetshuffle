@@ -21,7 +21,6 @@ pub struct Model {
     pub creation_ts: DateTimeWithTimeZone,
     pub originator_uuid: Uuid,
     pub set_status: SetStatus,
-    pub editor_uuid: Option<Uuid>,
     pub title: String,
     pub link: String,
     pub is_approved: bool,
@@ -35,7 +34,6 @@ pub enum Column {
     CreationTs,
     OriginatorUuid,
     SetStatus,
-    EditorUuid,
     Title,
     Link,
     IsApproved,
@@ -57,14 +55,14 @@ impl PrimaryKeyTrait for PrimaryKey {
 
 #[derive(Copy, Clone, Debug, EnumIter)]
 pub enum Relation {
-    Users2,
-    Users1,
-    Intros,
-    Comments,
-    Poems,
-    Orders,
-    EditSetHistory,
+    Users,
     SetOptions,
+    Comments,
+    Intros,
+    Orders,
+    Poems,
+    EditSetHistory,
+    SetEditors,
 }
 
 impl ColumnTrait for Column {
@@ -75,7 +73,6 @@ impl ColumnTrait for Column {
             Self::CreationTs => ColumnType::TimestampWithTimeZone.def(),
             Self::OriginatorUuid => ColumnType::Uuid.def(),
             Self::SetStatus => SetStatus::db_type(),
-            Self::EditorUuid => ColumnType::Uuid.def().null(),
             Self::Title => ColumnType::String(None).def(),
             Self::Link => ColumnType::String(None).def(),
             Self::IsApproved => ColumnType::Boolean.def(),
@@ -88,27 +85,30 @@ impl ColumnTrait for Column {
 impl RelationTrait for Relation {
     fn def(&self) -> RelationDef {
         match self {
-            Self::Users2 => Entity::belongs_to(super::users::Entity)
-                .from(Column::EditorUuid)
-                .to(super::users::Column::UserUuid)
-                .into(),
-            Self::Users1 => Entity::belongs_to(super::users::Entity)
+            Self::Users => Entity::belongs_to(super::users::Entity)
                 .from(Column::OriginatorUuid)
                 .to(super::users::Column::UserUuid)
                 .into(),
-            Self::Intros => Entity::has_many(super::intros::Entity).into(),
-            Self::Comments => Entity::has_many(super::comments::Entity).into(),
-            Self::Poems => Entity::has_many(super::poems::Entity).into(),
-            Self::Orders => Entity::has_many(super::orders::Entity).into(),
-            Self::EditSetHistory => Entity::has_many(super::edit_set_history::Entity).into(),
             Self::SetOptions => Entity::has_many(super::set_options::Entity).into(),
+            Self::Comments => Entity::has_many(super::comments::Entity).into(),
+            Self::Intros => Entity::has_many(super::intros::Entity).into(),
+            Self::Orders => Entity::has_many(super::orders::Entity).into(),
+            Self::Poems => Entity::has_many(super::poems::Entity).into(),
+            Self::EditSetHistory => Entity::has_many(super::edit_set_history::Entity).into(),
+            Self::SetEditors => Entity::has_many(super::set_editors::Entity).into(),
         }
     }
 }
 
-impl Related<super::intros::Entity> for Entity {
+impl Related<super::users::Entity> for Entity {
     fn to() -> RelationDef {
-        Relation::Intros.def()
+        Relation::Users.def()
+    }
+}
+
+impl Related<super::set_options::Entity> for Entity {
+    fn to() -> RelationDef {
+        Relation::SetOptions.def()
     }
 }
 
@@ -118,9 +118,9 @@ impl Related<super::comments::Entity> for Entity {
     }
 }
 
-impl Related<super::poems::Entity> for Entity {
+impl Related<super::intros::Entity> for Entity {
     fn to() -> RelationDef {
-        Relation::Poems.def()
+        Relation::Intros.def()
     }
 }
 
@@ -130,15 +130,21 @@ impl Related<super::orders::Entity> for Entity {
     }
 }
 
+impl Related<super::poems::Entity> for Entity {
+    fn to() -> RelationDef {
+        Relation::Poems.def()
+    }
+}
+
 impl Related<super::edit_set_history::Entity> for Entity {
     fn to() -> RelationDef {
         Relation::EditSetHistory.def()
     }
 }
 
-impl Related<super::set_options::Entity> for Entity {
+impl Related<super::set_editors::Entity> for Entity {
     fn to() -> RelationDef {
-        Relation::SetOptions.def()
+        Relation::SetEditors.def()
     }
 }
 

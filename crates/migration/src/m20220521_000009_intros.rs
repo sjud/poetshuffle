@@ -12,10 +12,10 @@ impl MigrationName for Migration {
 impl MigrationTrait for Migration {
     async fn up(&self, manager: &SchemaManager) -> Result<(), DbErr> {
         let sql = r#"CREATE TABLE IF NOT EXISTS intros(
-        set_uuid UUID NOT NULL PRIMARY KEY REFERENCES sets(set_uuid),
+        intro_uuid UUID NOT NULL PRIMARY KEY,
+        set_uuid UUID NOT NULL REFERENCES sets(set_uuid),
         creation_ts TIMESTAMPTZ NOT NULL DEFAULT current_timestamp,
         originator_uuid UUID NOT NULL REFERENCES users(user_uuid),
-        editor_uuid UUID NOT NULL REFERENCES users(user_uuid),
         approved BOOL
 );"#;
         let stmt = Statement::from_string(manager.get_database_backend(), sql.to_owned());

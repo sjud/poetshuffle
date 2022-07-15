@@ -1,0 +1,7 @@
+for a fresh migration against a local db
+sea migrate fresh -d ./crates/migration
+then generate the entity in our entity_dump folder
+sea generate entity --expanded-format --include-hidden-tables -v --database-url=postgresql://postgres:PASSWORD@0.0.0.0:5433/postgres --with-serde both -o entity_dump
+take whatever modifcations have been made, i.e async_graphql derives and add them
+to the file in the dump
+copy the file in the dump to the entity folder overwriting similary named files

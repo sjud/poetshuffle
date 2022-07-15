@@ -14,7 +14,7 @@ impl EntityName for Entity {
 
 use async_graphql::*;
 #[derive(
-    Clone, Debug, PartialEq, Serialize, Deserialize, DeriveModel, DeriveActiveModel, SimpleObject,
+Clone, Debug, PartialEq, Serialize, Deserialize, DeriveModel, DeriveActiveModel, SimpleObject,
 )]
 #[graphql(concrete(name = "Poem", params()))]
 pub struct Model {
@@ -26,7 +26,6 @@ pub struct Model {
     pub title: String,
     pub idx: i32,
     pub part_of_poetshuffle: bool,
-    pub editor_uuid: Option<Uuid>,
     pub is_approved: bool,
     pub is_deleted: bool,
     pub last_edit_ts: Option<DateTimeUtc>,
@@ -42,7 +41,6 @@ pub enum Column {
     Title,
     Idx,
     PartOfPoetshuffle,
-    EditorUuid,
     IsApproved,
     IsDeleted,
     LastEditTs,
@@ -63,8 +61,7 @@ impl PrimaryKeyTrait for PrimaryKey {
 #[derive(Copy, Clone, Debug, EnumIter)]
 pub enum Relation {
     Banters,
-    Users2,
-    Users1,
+    Users,
     Sets,
     Comments,
     EditPoemHistory,
@@ -82,7 +79,6 @@ impl ColumnTrait for Column {
             Self::Title => ColumnType::String(Some(100u32)).def(),
             Self::Idx => ColumnType::Integer.def(),
             Self::PartOfPoetshuffle => ColumnType::Boolean.def(),
-            Self::EditorUuid => ColumnType::Uuid.def().null(),
             Self::IsApproved => ColumnType::Boolean.def(),
             Self::IsDeleted => ColumnType::Boolean.def(),
             Self::LastEditTs => ColumnType::Timestamp.def().null(),
@@ -97,11 +93,7 @@ impl RelationTrait for Relation {
                 .from(Column::BanterUuid)
                 .to(super::banters::Column::BanterUuid)
                 .into(),
-            Self::Users2 => Entity::belongs_to(super::users::Entity)
-                .from(Column::EditorUuid)
-                .to(super::users::Column::UserUuid)
-                .into(),
-            Self::Users1 => Entity::belongs_to(super::users::Entity)
+            Self::Users => Entity::belongs_to(super::users::Entity)
                 .from(Column::OriginatorUuid)
                 .to(super::users::Column::UserUuid)
                 .into(),
@@ -118,6 +110,12 @@ impl RelationTrait for Relation {
 impl Related<super::banters::Entity> for Entity {
     fn to() -> RelationDef {
         Relation::Banters.def()
+    }
+}
+
+impl Related<super::users::Entity> for Entity {
+    fn to() -> RelationDef {
+        Relation::Users.def()
     }
 }
 

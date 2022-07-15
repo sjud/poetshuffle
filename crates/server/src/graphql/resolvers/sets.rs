@@ -64,7 +64,6 @@ pub async fn create_pending_set(db: &DatabaseConnection, user_uuid: Uuid) -> Res
         originator_uuid: Set(user_uuid),
         set_status: Set(SetStatus::Pending),
         link: Set(String::new()),
-        editor_uuid: Set(None),
         is_approved: Set(false),
         ..Default::default()
     }
@@ -83,6 +82,7 @@ pub async fn create_pending_set(db: &DatabaseConnection, user_uuid: Uuid) -> Res
 pub struct SetMutation;
 #[Object]
 impl SetMutation {
+
     async fn update_set(
         &self,
         ctx: &Context<'_>,
@@ -90,7 +90,6 @@ impl SetMutation {
         title: Option<String>,
         link: Option<String>,
         delete: Option<bool>,
-        approve: Option<bool>,
     ) -> Result<String> {
         let db = ctx.data::<DatabaseConnection>().unwrap();
         let auth = ctx.data::<Auth>()?;
