@@ -6,7 +6,6 @@ use entity::sea_orm_active_enums::SetStatus;
 use sea_orm::{ActiveValue, TransactionTrait};
 use entity::prelude::Banters;
 use entity::prelude::Poems;
-use crate::graphql::resolvers::poems::build_approve_value;
 use entity::sea_orm_active_enums::UserRole;
 use super::super::guards::{
     MinRoleGuard,

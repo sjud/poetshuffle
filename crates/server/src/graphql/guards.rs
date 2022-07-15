@@ -6,6 +6,80 @@ use sea_orm::EntityTrait;
 use sea_orm::QueryFilter;
 use sea_orm::prelude::Uuid;
 
+pub struct IsApproved{
+    item_uuid:Uuid,
+    approved_cat:ApprovedCategory
+}
+pub enum ApprovedCategory{
+    Set,
+    Intro,
+    Poem,
+    Banter
+}
+impl IsApproved{
+    pub fn new(item_uuid:Uuid,approved_cat:ApprovedCategory) -> Self {
+        Self{ item_uuid, approved_cat}
+    }
+}
+#[async_trait::async_trait]
+impl Guard for IsApproved {
+    async fn check(&self, ctx: &Context<'_>) -> Result<()> {
+        let db = ctx.data::<DatabaseConnection>()?;
+        let is_approved = match self.approved_cat{
+            ApprovedCategory::Set =>  entity::poems::Entity::find()
+                .filter(entity::poems::Column::PoemUuid.eq(
+                    self.item_uuid
+                ))
+                .filter(entity::banters::Column::Approved.eq(
+                    true
+                ))
+                .one(db)
+                .await?
+                .is_some(),
+            ApprovedCategory::Intro =>
+                entity::intros::Entity::find()
+                    .filter(entity::intros::Column::IntroUuid.eq(
+                        self.item_uuid
+                    ))
+                    .filter(entity::intros::Column::Approved.eq(
+                        true
+                    ))
+                    .one(db)
+                    .await?
+                    .is_some(),
+            ApprovedCategory::Poem =>
+                entity::poems::Entity::find()
+                    .filter(entity::poems::Column::PoemUuid.eq(
+                        self.item_uuid
+
+                    ))
+                    .filter(entity::banters::Column::Approved.eq(
+                        true
+                    ))
+                    .one(db)
+                    .await?
+                    .is_some(),
+            ApprovedCategory::Banter =>
+                entity::banters::Entity::find()
+                    .filter(entity::banters::Column::BanterUuid.eq(
+                        self.item_uuid
+                    ))
+                    .filter(entity::banters::Column::Approved.eq(
+                        true
+                    ))
+                    .one(db)
+                    .await?
+                    .is_some()
+        };
+        if is_approved {
+            Ok(())
+        } else {
+            Err("A match between originator uuid, \
+                item uuid, and user uuid does not exist.".into())
+        }
+    }
+}
+
 pub struct AboutSelf{
     user_uuid:Uuid,
 }

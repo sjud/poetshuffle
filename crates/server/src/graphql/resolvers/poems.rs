@@ -5,137 +5,7 @@ use sea_orm::{ActiveValue, TransactionTrait};
 use entity::prelude::Poems;
 use crate::graphql::guards::*;
 
-#[derive(Debug, sea_orm::FromQueryResult)]
-struct PoemUuidResult {
-    uuid: Uuid,
-}
-pub async fn find_poem_uuids_by_set_uuid(
-    db: &DatabaseConnection,
-    set_uuid: Uuid,
-) -> Result<Vec<uuid::Uuid>> {
-    Ok(entity::poems::Entity::find()
-        .select_only()
-        .column(poems::Column::PoemUuid)
-        .column_as(poems::Column::PoemUuid, "uuid")
-        .filter(poems::Column::SetUuid.eq(set_uuid))
-        .into_model::<PoemUuidResult>()
-        .all(db)
-        .await
-        .map_err(|err| Error::new(format!("Sea-orm: {:?}", err)))?
-        .into_iter()
-        .map(|poem| uuid::Uuid::from_u128(poem.uuid.as_u128()))
-        .collect::<Vec<uuid::Uuid>>())
-}
 
-pub async fn add_poem(
-    db: &DatabaseConnection,
-    user_uuid: Uuid,
-    set_uuid: Uuid,
-) -> Result<poems::Model> {
-
-    let poem_uuid = Uuid::new_v4();
-    let idx = Poems::find()
-        .filter(poems::Column::SetUuid.eq(set_uuid))
-        .all(db)
-        .await?
-        .len();
-    ActivePoem {
-        poem_uuid: Set(poem_uuid),
-        originator_uuid: Set(user_uuid),
-        set_uuid: Set(set_uuid),
-        idx: Set(idx as i32),
-        title: Set("".to_string()),
-        ..Default::default()
-    }
-    .insert(db)
-    .await?;
-    if let Some(poem) = Poems::find_by_id(poem_uuid).one(db).await?{
-        Ok(poem)
-    } else {
-        Err(Error::new("This is a weird error:\
-         couldn't find poem after inserting into db..."))
-    }
-}
-
-
-pub async fn find_poem(db: &DatabaseConnection, poem_uuid: Uuid) -> Result<Option<poems::Model>> {
-    entity::poems::Entity::find_by_id(poem_uuid)
-        .one(db)
-        .await
-        .map_err(|err| Error::new(format!("Sea-orm: {:?}", err)))
-}
-pub async fn find_poem_given_idx_set_uuid(db: &DatabaseConnection, set_uuid: Uuid, idx: i32) -> Result<Option<poems::Model>> {
-        poems::Entity::find()
-            .filter(poems::Column::SetUuid.eq(set_uuid))
-            .filter(poems::Column::Idx.eq(idx))
-            .one(db)
-            .await
-            .map_err(|err| Error::new(format!("Sea-orm: {:?}", err)))
-}
-pub fn build_edit_poem_value<V: Into<sea_orm::Value> + migration::Nullable>(
-    auth: &Auth,
-    v: Option<V>,
-    poem: &poems::Model,
-) -> Result<ActiveValue<V>> {
-    if let Some(value) = v {
-        if auth.can_edit_poem(&poem) {
-            return Ok(ActiveValue::set(value));
-        } else {
-            Err(Error::new("Unauthorized update."))?;
-        }
-    }
-    Ok(ActiveValue::not_set())
-}
-
-pub async fn find_poems_of_greater_idx(
-    db:&DatabaseConnection,
-    set_uuid:Uuid,
-    idx:i32) -> Result<Vec<poems::Model>> {
-    Poems::find()
-        .filter(poems::Column::SetUuid.eq(set_uuid))
-        .filter(poems::Column::Idx.gt(idx))
-        .all(db)
-        .await
-        .map_err(|err| Error::new(format!("Sea-orm: {:?}", err)))
-}
-
-pub fn build_edit_poem_value_option<V: Into<sea_orm::Value> + migration::Nullable>(
-    auth: &Auth,
-    v: Option<V>,
-    poem: &poems::Model,
-) -> Result<ActiveValue<Option<V>>> {
-    if let Some(value) = v {
-        if auth.can_edit_poem(&poem) {
-            return Ok(ActiveValue::set(Some(value)));
-        } else {
-            Err(Error::new("Unauthorized update."))?;
-        }
-    }
-    Ok(ActiveValue::not_set())
-}
-
-pub fn build_approve_value<V: Into<sea_orm::Value> + migration::Nullable>(
-    auth: &Auth,
-    v: Option<V>,
-) -> Result<ActiveValue<V>> {
-    if let Some(value) = v {
-        if auth.can_approve() {
-            return Ok(ActiveValue::set(value));
-        } else {
-            Err(Error::new("Unauthorized approval."))?;
-        }
-    }
-    Ok(ActiveValue::not_set())
-}
-
-pub fn build_history_value_option<V: Into<sea_orm::Value> + migration::Nullable>(
-    v: Option<V>,
-) -> Result<ActiveValue<Option<V>>> {
-    if let Some(value) = v {
-        return Ok(ActiveValue::set(Some(value)));
-    }
-    Ok(ActiveValue::not_set())
-}
 
 #[derive(Default)]
 pub struct PoemMutation;
@@ -186,27 +56,34 @@ impl PoemMutation {
         poem_a_idx:i32,
         poem_b_idx:i32) -> Result<String> {
         let db = ctx.data::<DatabaseConnection>()?;
-        if let Ok(Some(poem_a)) = find_poem_given_idx_set_uuid(db,set_uuid,poem_a_idx).await {
-            if let Ok(Some(poem_b)) = find_poem_given_idx_set_uuid(db, set_uuid, poem_b_idx).await {
-                let txn = db.begin().await?;
-                ActivePoem{
-                    poem_uuid:Set(poem_a.poem_uuid),
-                    idx:Set(poem_b_idx),
-                    ..poem_a.into()
-                }.save(&txn).await?;
-                ActivePoem{
-                    poem_uuid:Set(poem_b.poem_uuid),
-                    idx:Set(poem_a_idx),
-                    ..poem_b.into()
-                }.save(&txn).await?;
-                txn.commit().await?;
-                Ok("Idx Swap".into())
-            } else {
-                Err(Error::new("Poem B not found."))
-            }
-        } else {
-            Err(Error::new("Poem A not found."))
-        }
+        let find_poem_given_idx_set_uuid = async move |set_uuid:Uuid, idx:i32,msg:&'static str|
+            -> Result<poems::Model> {
+            let poem = poems::Entity::find()
+                .filter(poems::Column::SetUuid.eq(set_uuid))
+                .filter(poems::Column::Idx.eq(idx))
+                .one(db)
+                .await?
+                .ok_or(msg)?;
+            Ok(poem)
+        };
+        let (poem_a, poem_b) = (
+            find_poem_given_idx_set_uuid(set_uuid,poem_a_idx,"Poem A not found").await?,
+            find_poem_given_idx_set_uuid( set_uuid, poem_b_idx,"Poem B not found").await?
+        );
+        let txn = db.begin().await?;
+        ActivePoem{
+            poem_uuid:Set(poem_a.poem_uuid),
+            idx:Set(poem_b_idx),
+            ..poem_a.into()
+            }.save(&txn).await?;
+        ActivePoem{
+            poem_uuid:Set(poem_b.poem_uuid),
+            idx:Set(poem_a_idx),
+            ..poem_b.into()
+        }.save(&txn).await?;
+        txn.commit().await?;
+        Ok("Idx Swap".into())
+
     }
 
     #[graphql(guard = "MinRoleGuard::new(UserRole::Moderator)\
@@ -234,36 +111,44 @@ impl PoemMutation {
     async fn delete_poem(&self, ctx:&Context<'_>, poem_uuid:Uuid)
                            -> Result<String> {
         let db = ctx.data::<DatabaseConnection>()?;
-        if let Some(poem) = entity::poems::Entity::find_by_id(poem_uuid)
+        let find_poems_of_greater_idx = async move |set_uuid:Uuid,idx:i32|
+            -> Result<Vec<poems::Model>>{
+            let poems = Poems::find()
+                .filter(poems::Column::SetUuid.eq(set_uuid))
+                .filter(poems::Column::Idx.gt(idx))
+                .all(db)
+                .await?;
+            Ok(poems)
+        };
+        let poem = entity::poems::Entity::find_by_id(poem_uuid)
             .one(db)
-            .await? {
-            let txn = db.begin().await?;
-            if let Some(banter_uuid) = poem.banter_uuid{
-                entity::banters::ActiveModel{
-                    banter_uuid:Set(banter_uuid),
-                    ..Default::default()
-                }.delete(&txn).await?;
-            }
-            let poems =
-                find_poems_of_greater_idx(db,poem.set_uuid,poem.idx).await?;
-            for poem in poems.iter() {
-                ActivePoem {
-                    poem_uuid:Set(poem.poem_uuid),
-                    idx:Set(poem.idx-1),
-                    ..Default::default()
-                }
-                    .update(&txn)
-                    .await?;
-            }
-            ActivePoem{
-                poem_uuid:Set(poem_uuid),
+            .await?
+            .ok_or("Poem not found")?;
+        let txn = db.begin().await?;
+        if let Some(banter_uuid) = poem.banter_uuid{
+            entity::banters::ActiveModel{
+                banter_uuid:Set(banter_uuid),
                 ..Default::default()
             }.delete(&txn).await?;
-            txn.commit().await?;
-            Ok(String::from("Poem Deleted."))
-        } else {
-            Err("Poem not found".into())
         }
+        let poems =
+            find_poems_of_greater_idx(poem.set_uuid,poem.idx).await?;
+        for poem in poems.iter() {
+            ActivePoem {
+                poem_uuid:Set(poem.poem_uuid),
+                idx:Set(poem.idx-1),
+                ..Default::default()
+            }
+                .update(&txn)
+                .await?;
+        }
+        ActivePoem{
+            poem_uuid:Set(poem_uuid),
+            ..Default::default()
+        }.delete(&txn).await?;
+        txn.commit().await?;
+        Ok(String::from("Poem Deleted."))
+
     }
 
     #[graphql(guard = "MinRoleGuard::new(UserRole::Poet)\
@@ -276,7 +161,7 @@ impl PoemMutation {
         title: Option<String>,
     ) -> Result<String> {
         let db = ctx.data::<DatabaseConnection>()?;
-        if let Some(poem) = find_poem(db, poem_uuid).await? {
+        if let Some(poem) = Poems::find_by_id(poem_uuid).one(db).await? {
             ActivePoem {
                 poem_uuid: Set(poem_uuid),
                 banter_uuid:  update_nullable_value(banter_uuid),
@@ -293,44 +178,46 @@ impl PoemMutation {
 }
 #[Object]
 impl PoemQuery {
+    #[graphql(guard = "IsApproved::new(poem_uuid,ApprovedCategory::Poem)\
+    .or(MinRoleGuard::new(UserRole::Poet)\
+    .and(IsOriginator::new(poem_uuid,OriginationCategory::Poem)))\
+    .or(MinRoleGuard::new(UserRole::Moderator))")]
     async fn poem(&self, ctx: &Context<'_>, poem_uuid: Uuid) -> Result<Option<poems::Model>> {
         let db = ctx.data::<DatabaseConnection>().unwrap();
-        let auth = ctx.data::<Auth>()?;
-        Ok({
-            if let Some(poem) = find_poem(db, poem_uuid).await? {
-                if auth.can_read_poem(&poem) {
-                    Some(poem)
-                } else {
-                    Err(Error::new("Unauthorized."))?
-                }
-            } else {
-                None
-            }
-        })
+        let poem = entity::poems::Entity::find_by_id(poem_uuid)
+            .one(db)
+            .await?;
+        Ok(poem)
     }
 
+    #[graphql(guard = "IsApproved::new(set_uuid,ApprovedCategory::Set)\
+    .or(MinRoleGuard::new(UserRole::Poet)\
+    .and(IsOriginator::new(set_uuid,OriginationCategory::Set)))\
+    .or(MinRoleGuard::new(UserRole::Moderator))")]
     async fn poem_uuids_by_set_uuid(
         &self,
         ctx: &Context<'_>,
         set_uuid: Uuid,
-    ) -> Result<Vec<uuid::Uuid>> {
+    ) -> Result<Vec<Uuid>> {
         let db = ctx.data::<DatabaseConnection>().unwrap();
-        let auth = ctx.data::<Auth>()?;
-        let set: entity::sets::Model = entity::prelude::Sets::find_by_id(set_uuid)
-            .one(db)
+        Ok(entity::poems::Entity::find()
+            .select_only()
+            .column(poems::Column::PoemUuid)
+            .column_as(poems::Column::PoemUuid, "uuid")
+            .filter(poems::Column::SetUuid.eq(set_uuid))
+            .into_model::<PoemUuidResult>()
+            .all(db)
             .await?
-            .ok_or("Set not found")?;
-        if set.set_status == SetStatus::Pending {
-            if auth.can_read_pending_set(&set) {
-                Ok(find_poem_uuids_by_set_uuid(db, set_uuid).await?)
-            } else {
-                Err(Error::new("Unauthorized."))
-            }
-        } else {
-            Ok(find_poem_uuids_by_set_uuid(db, set_uuid).await?)
-        }
+            .into_iter()
+            .map(|poem|poem.uuid)
+            .collect::<Vec<Uuid>>())
     }
 }
+#[derive(Debug, sea_orm::FromQueryResult)]
+struct PoemUuidResult {
+    uuid: Uuid,
+}
+
 /*
 #[cfg(test)]
 mod test {
