@@ -4,6 +4,7 @@ use crate::types::audio_context::{AudioContext, AudioOptions};
 use crate::types::auth_context::{AuthContext, AuthToken};
 use crate::types::footer_context::{FooterContext, FooterOptions};
 use crate::types::msg_context::{MsgContext, UserMessageView};
+use crate::types::transcript_context::{TranscriptOptions,TranscriptContext};
 use yew::{context::ContextProvider, prelude::*};
 use yew_router::prelude::*;
 use crate::components::audio::audio_player::AudioPlayer;
@@ -14,6 +15,7 @@ pub fn app() -> Html {
     let render = Switch::render(switch);
     let auth_token = use_reducer(|| AuthToken::default());
     let audio_options = use_reducer(|| AudioOptions::default());
+    let transcript_options = use_reducer(||TranscriptOptions::default());
     let footer_options = use_reducer(|| FooterOptions::default());
     let user_msg = use_reducer(|| UserMessageView::default());
 
@@ -22,6 +24,7 @@ pub fn app() -> Html {
         <ContextProvider<AudioContext> context={audio_options}>
         <ContextProvider<FooterContext> context={footer_options}>
         <ContextProvider<MsgContext> context={user_msg}>
+        <ContextProvider<TranscriptContext> context={transcript_options}>
             <BrowserRouter>
             <div class ="main">
                     <Switch<Route> {render} />
@@ -31,6 +34,7 @@ pub fn app() -> Html {
                 </div>
             <AudioPlayer/>
             </BrowserRouter>
+        </ContextProvider<TranscriptContext>>
         </ContextProvider<MsgContext>>
         </ContextProvider<FooterContext>>
         </ContextProvider<AudioContext>>

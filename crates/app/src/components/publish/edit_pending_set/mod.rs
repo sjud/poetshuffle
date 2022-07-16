@@ -32,7 +32,8 @@ pub fn edit_pending_set() -> Html {
                         edit_set_ctx.dispatch(
                             EditSetActions::EditableSet(
                                 Some(EditableSet {
-                                    set_uuid: Uuid::from_str(&set.set_uuid).unwrap(),
+                                    set_uuid: Uuid::from_str(&set.set_uuid)
+                                        .unwrap(),
                                     link: set.link.clone(),
                                     title: set.title.clone(),
                                 })));

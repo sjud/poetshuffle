@@ -1,7 +1,8 @@
+use crate::components::text_reader::ReadButtonProps;
 use super::*;
 #[function_component(UploadPoemAudio)]
 pub fn upload_poem_audio(props:&PoemProps) -> Html {
-    let upload_props = upload::UploadProps{
+    let upload_props = UploadProps{
         file_ty: FileType::Audio,
         tab_cat: TableCategory::Poems,
         upload_msg: "Upload Poem Audio".to_string(),
@@ -27,10 +28,14 @@ pub fn upload_poem_transcript(props:&PoemProps) -> Html {
         upload_msg: "Upload Poem Transcript".to_string(),
         uuid: props.uuid
     };
+    let read_btn_props = ReadButtonProps{
+        uuid: props.uuid,
+        tab_cat:TableCategory::Poems
+    };
     html!{
         <div>
         <Upload ..upload_props/>
-        <ReadButton/>
+        <ReadButton ..read_btn_props/>
         </div>
     }
 }
@@ -62,10 +67,14 @@ pub fn upload_banter_transcript(props:&BanterProps) -> Html {
         upload_msg: "Upload Banter Transcript".to_string(),
         uuid: props.banter_uuid.unwrap()
     };
+    let read_btn_props = ReadButtonProps{
+        tab_cat: TableCategory::Banters,
+        uuid: props.banter_uuid.unwrap(),
+    };
     html!{
         <div>
         <Upload ..upload_props/>
-        <ReadButton/>
+        <ReadButton ..read_btn_props/>
         </div>
     }
 }

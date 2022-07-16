@@ -32,7 +32,7 @@ pub fn play_button(props:&PlayButtonProps) -> Html {
                         )),
                 Err(err) => {
                     tracing::error!("{:?}",err);
-                    msg_ctx.dispatch(new_red_msg_with_std_duration(format!("{:?}",err)));
+                    msg_ctx.dispatch(new_red_msg_with_std_duration(err.to_string()));
                 },
             };
             Ok(())
