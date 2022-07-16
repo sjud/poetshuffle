@@ -1,0 +1,24 @@
+type Mutation {
+        addPoem(setUuid:ID!) : Poem!
+        updatePoem(poemUuid:ID!, banterUuid:ID, title:String): String!
+        setApprovePoem(poemUuid:ID!,setUuid:ID!,approve:Boolean!): String!
+        deletePoem(poemUuid:ID!):String!
+        updatePoemIdx(setUuid:ID!, poemAIdx:Int!, poemBIdx:Int!): String!
+}
+
+type Query {
+    poemUuidsBySetUuid(setUuid: ID!) : [ID!]!
+    poem(poemUuid:ID!) : Poem
+}
+
+type Poem {
+    poemUuid: ID!
+    originatorUuid: ID!
+    creationTs: Int!
+    setUuid: ID!
+    banterUuid: ID
+    title: String!
+    idx: Int!
+    editorUuid: ID
+    approved: Boolean!
+}

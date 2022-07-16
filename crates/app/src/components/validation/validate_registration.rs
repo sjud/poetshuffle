@@ -1,13 +1,11 @@
-use crate::components::login::{Login, LoginProps};
-use crate::queries::{validate_registration_mutation::Variables, ValidateRegistrationMutation};
-use crate::services::network::post_graphql;
+use super::*;
+use crate::components::validation::login::{Login, LoginProps};
 use crate::services::utility::map_graphql_errors_to_string;
 use crate::styles::{form_css, form_elem};
 use crate::types::msg_context::{
     new_green_msg_with_std_duration, new_red_msg_with_std_duration, MsgContext,
 };
 use web_sys::HtmlInputElement;
-use yew::prelude::*;
 use yew_hooks::prelude::*;
 
 #[derive(Properties, PartialEq)]
@@ -31,7 +29,7 @@ pub fn validate_registration(props: &ValidateRegistrationProps) -> Html {
         use_async::<_, (), String>(async move {
             // Get the values from the fields and post a login graphql query to our server
             let resp = post_graphql::<ValidateRegistrationMutation>(
-                Variables {
+                validate_registration_mutation::Variables {
                     email,
                     new_password: pass.cast::<HtmlInputElement>().unwrap().value(),
                     lost_password_code,

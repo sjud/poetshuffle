@@ -1,9 +1,5 @@
-use crate::components::login::{Login, LoginProps};
-use crate::queries::{
-    modify_user_role_mutation::{self, UserRole as QueryUserRole},
-    ModifyUserRoleMutation,
-};
-use crate::services::network::post_graphql;
+use super::*;
+use crate::components::validation::login::{Login, LoginProps};
 use crate::services::utility::map_graphql_errors_to_string;
 use crate::styles::{form_css, form_elem};
 use crate::types::auth_context::{AuthContext, UserRole};
@@ -11,8 +7,8 @@ use crate::types::msg_context::{
     new_green_msg_with_std_duration, new_red_msg_with_std_duration, MsgContext,
 };
 use web_sys::{HtmlInputElement, HtmlSelectElement};
-use yew::prelude::*;
 use yew_hooks::use_async;
+use crate::queries::validation::modify_user_role_mutation::UserRole as QueryUserRole;
 
 impl QueryUserRole {
     pub fn from_str(role: &str) -> Option<Self> {
@@ -26,6 +22,7 @@ impl QueryUserRole {
         }
     }
 }
+
 
 #[function_component(Admin)]
 pub fn admin() -> Html {

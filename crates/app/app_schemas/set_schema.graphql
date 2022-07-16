@@ -1,0 +1,24 @@
+type Mutation {
+    createPendingSet: Set!
+    updateSet(setUuid: ID!, title:String,link:String): String!
+    deleteSet(setUuid:ID!) : String!
+    setApproveSet(setUuid: ID!, approve: Boolean!) : String!
+
+}
+type Query {
+    pendingSetByUser(user_uuid:ID!): Set
+}
+type Set {
+    setUuid: ID!
+    creationTs: Int!
+    title: String!
+    originatorUuid: ID!
+    setStatus: SetStatus!
+    link: String!
+    editorUuid: ID
+    approved: Boolean!
+}
+enum SetStatus {
+    PENDING
+    PUBLISHED
+}

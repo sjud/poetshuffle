@@ -1,13 +1,8 @@
-pub mod accept_invitation;
-pub mod admin;
 pub mod app;
 pub mod footer;
-pub mod login;
-pub mod login_register;
 pub mod main_menu;
 pub mod poetshuffle;
 pub mod publish;
-pub mod register;
-pub mod validate_registration;
 pub mod audio;
 pub mod text_reader;
+pub mod validation;

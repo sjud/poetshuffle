@@ -2,7 +2,12 @@ use anyhow::Result;
 use graphql_client::GraphQLQuery;
 use std::sync::Arc;
 use uuid::Uuid;
-
+use crate::queries::{
+    banter::*,
+    set::*,
+    poem::*,
+    validation::*,
+};
 pub async fn post_graphql<Q: GraphQLQuery>(
     vars: <Q as GraphQLQuery>::Variables,
     jwt: Option<String>,
@@ -146,16 +151,14 @@ impl AuthToken {
     pub async fn update_poem(&self,
                              poem_uuid:Uuid,
                              banter_uuid: Option<Uuid>,
-                             title: Option<String>,
-                             delete: Option<bool>,
-                             approve: Option<bool>,)
+                             title: Option<String>, )
         -> GraphQlResult<update_poem_mutation::ResponseData> {
         parse_graph_ql_resp(
             post_graphql::<UpdatePoemMutation>(
                 update_poem_mutation::Variables {
                     poem_uuid: poem_uuid.to_string(),
                     banter_uuid: banter_uuid.map(|uuid|uuid.to_string()),
-                    title, delete,approve
+                    title
                 },
                 self.token.clone(),
             )
@@ -223,6 +226,17 @@ impl AuthToken {
             self.token.clone(),
             ).await)
     }
+
+    pub async fn set_approve_poem(&self,poem_uuid:Uuid,set_uuid:Uuid,approve:bool)
+    -> GraphQlResult<set_approve_poem_mutation::ResponseData> {
+        parse_graph_ql_resp(post_graphql::<SetApprovePoemMutation>(
+            set_approve_poem_mutation::Variables{
+                poem_uuid:poem_uuid.to_string(),
+                set_uuid:set_uuid.to_string(),
+                approve
+            },self.token.clone()
+        ).await)
+    }
     pub async fn delete_banter(&self,poem_uuid:Uuid,banter_uuid:Uuid)
     -> GraphQlResult<delete_banter_mutation::ResponseData> {
         parse_graph_ql_resp(post_graphql::<DeleteBanterMutation>(
@@ -233,11 +247,19 @@ impl AuthToken {
             self.token.clone()
         ).await)
     }
-    pub async fn set_approve_banter(&self,banter_uuid:Uuid,approve:bool)
+    pub async fn delete_poem(&self,poem_uuid:Uuid) -> GraphQlResult<delete_poem_mutation::ResponseData> {
+        parse_graph_ql_resp(post_graphql::<DeletePoemMutation>(
+            delete_poem_mutation::Variables{
+                poem_uuid:poem_uuid.to_string()
+            },
+            self.token.clone()
+        ).await)
+    }
+    pub async fn set_approve_banter(&self,banter_uuid:Uuid,set_uuid:Uuid,approve:bool)
                                -> GraphQlResult<set_approve_banter_mutation::ResponseData> {
         parse_graph_ql_resp(post_graphql::<SetApproveBanterMutation>(
             set_approve_banter_mutation::Variables{
-                banter_uuid:banter_uuid.to_string(),approve
+                banter_uuid:banter_uuid.to_string(),set_uuid:set_uuid.to_string(),approve
             },
             self.token.clone()
         ).await)

@@ -1,5 +1,5 @@
-use crate::components::login::LoginProps;
-use crate::components::{login::Login, register::Register};
+use crate::components::validation::login::{Login, LoginProps};
+use crate::components::validation::register::Register;
 use crate::styles::login_register_style;
 use crate::types::footer_context::{FooterContext, FooterForm, FooterOptionsActions};
 use yew::prelude::*;

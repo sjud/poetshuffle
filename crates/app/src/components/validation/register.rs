@@ -1,12 +1,10 @@
-use crate::queries::{register_mutation::Variables, RegisterMutation};
-use crate::services::network::post_graphql;
+use super::*;
 use crate::services::utility::map_graphql_errors_to_string;
 use crate::styles::{form_css, form_elem};
 use crate::types::msg_context::{
     new_green_msg_with_std_duration, new_red_msg_with_std_duration, MsgContext,
 };
 use web_sys::HtmlInputElement;
-use yew::prelude::*;
 use yew_hooks::prelude::*;
 
 #[function_component(Register)]
@@ -22,7 +20,7 @@ pub fn login() -> Html {
         use_async::<_, (), String>(async move {
             // Get the values from the fields and post a login graphql query to our server
             let resp = post_graphql::<RegisterMutation>(
-                Variables {
+                register_mutation::Variables {
                     email: email.cast::<HtmlInputElement>().unwrap().value(),
                 },
                 None,

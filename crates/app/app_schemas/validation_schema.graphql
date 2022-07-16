@@ -1,0 +1,20 @@
+type Mutation {
+    login(email: String!, pass: String!): String!
+    superAdminLogin(email:String!, pass: String!): String!
+    register(email:String!): String!
+    validateUser(email:String!, newPassword: String!, lostPasswordCode: String!): String!
+    modifyUserRole(email:String!,newUserRole: UserRole!): String!
+    inviteUser(email:String!,userRole:UserRole!): String!
+    acceptInvitation(password:String,inviteUuid:ID!): String!
+}
+
+enum UserRole {
+    LISTENER
+    POET
+    MODERATOR
+    ADMIN
+    SUPERADMIN
+}
+
+
+

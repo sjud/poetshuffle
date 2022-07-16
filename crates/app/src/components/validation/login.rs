@@ -1,8 +1,5 @@
-use crate::queries::{
-    login_mutation, super_admin_login_mutation, LoginMutation, SuperAdminLoginMutation,
-};
+use super::*;
 use crate::routes::Route;
-use crate::services::network::post_graphql;
 use crate::services::utility::map_graphql_errors_to_string;
 use crate::styles::{form_css, form_elem};
 use crate::types::auth_context::{AuthContext, AuthTokenAction};
@@ -10,7 +7,6 @@ use crate::types::msg_context::{
     new_green_msg_with_std_duration, new_red_msg_with_std_duration, MsgContext,
 };
 use web_sys::HtmlInputElement;
-use yew::prelude::*;
 use yew_hooks::prelude::*;
 use yew_router::hooks::use_history;
 use yew_router::prelude::History;

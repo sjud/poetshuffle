@@ -2,11 +2,11 @@
 
 mod components;
 mod console_writer;
-mod queries;
 mod routes;
 mod services;
 mod styles;
 mod types;
+mod queries;
 
 use crate::{components::app::App, console_writer::WASMConsoleWriter};
 use std::sync::Mutex;

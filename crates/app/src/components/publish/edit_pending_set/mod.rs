@@ -6,6 +6,7 @@ use super::*;
 use crate::types::edit_set_context::{EditableSet, EditSetActions, EditSetContext};
 use crate::types::edit_poem_list_context::{EditPoemListContext, EditPoemListData};
 use poem_list::EditPoemList;
+use crate::queries::set::*;
 
 #[function_component(EditPendingSet)]
 pub fn edit_pending_set() -> Html {

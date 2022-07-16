@@ -3,9 +3,6 @@ pub mod edit_pending_set;
 
 use crate::components::publish::invite_poet::InvitePoet;
 use edit_pending_set::EditPendingSet;
-use crate::queries::{
-    create_pending_set_mutation, CreatePendingSetMutation,
-};
 use crate::services::network::post_graphql;
 use crate::services::utility::map_graphql_errors_to_string;
 use crate::styles::{form_css, form_elem, main_menu_style};

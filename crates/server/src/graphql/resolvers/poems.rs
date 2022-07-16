@@ -35,6 +35,7 @@ impl PoemMutation {
             set_uuid: Set(set_uuid),
             idx: Set(idx as i32),
             title: Set("".to_string()),
+            banter_uuid:Set(None),
             ..Default::default()
         }
             .insert(db)

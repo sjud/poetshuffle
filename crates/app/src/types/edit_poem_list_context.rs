@@ -17,6 +17,7 @@ pub struct PoemData{
     pub(crate) title:String,
     pub(crate) set_uuid:Uuid,
     pub(crate) banter_uuid:Option<Uuid>,
+    pub(crate) approved:bool,
     pub(crate) idx:i64,
 }
 

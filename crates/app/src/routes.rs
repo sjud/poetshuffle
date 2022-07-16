@@ -1,14 +1,14 @@
 use crate::components::{
-    accept_invitation::{AcceptInvitation, AcceptInvitationProps},
-    admin::Admin,
-    login_register::LoginRegister,
     main_menu::MainMenu,
     publish::Publish,
-    validate_registration::ValidateRegistration,
 };
 use uuid::Uuid;
 use yew::prelude::*;
 use yew_router::prelude::*;
+use crate::components::validation::accept_invitation::{AcceptInvitation, AcceptInvitationProps};
+use crate::components::validation::admin::Admin;
+use crate::components::validation::login_register::LoginRegister;
+use crate::components::validation::validate_registration::ValidateRegistration;
 
 #[derive(Routable, PartialEq, Clone, Debug)]
 pub enum Route {
@@ -41,7 +41,7 @@ pub(crate) fn switch(routes: &Route) -> Html {
         Route::MainMenu => html! {<MainMenu />},
         Route::NotFound => html! { {"404"}},
         Route::ValidateRegistration { email, code } => {
-            let props = crate::components::validate_registration::ValidateRegistrationProps {
+            let props = crate::components::validation::validate_registration::ValidateRegistrationProps {
                 email: email.clone(),
                 code: code.clone(),
             };

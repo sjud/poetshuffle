@@ -10,6 +10,7 @@ use futures::{pin_mut, SinkExt, StreamExt};
 use shared::{FileType, TableCategory};
 use crate::components::publish::edit_pending_set::upload;
 use upload::Upload;
+use crate::components::app::app;
 use crate::components::publish::edit_pending_set::upload::UploadProps;
 use crate::components::text_reader::ReadButton;
 
@@ -26,8 +27,7 @@ pub fn edit_poem_list() -> Html {
         let user_uuid = auth.user_uuid.unwrap();
         let set_uuid = edit_set_ctx.editable_set.clone().unwrap().set_uuid;
         use_async::<_, (), String>(async move {
-            match auth.poem_uuids_by_set_uuid(
-                Uuid::from_str(&set_uuid.to_string()).unwrap()).await? {
+            match auth.poem_uuids_by_set_uuid(set_uuid).await? {
                 GraphQlResp::Data(data) => {
                     for uuid in data.poem_uuids_by_set_uuid
                         .iter()
@@ -43,7 +43,8 @@ pub fn edit_poem_list() -> Html {
                                             set_uuid:Uuid::from_str(&poem.set_uuid).unwrap(),
                                             banter_uuid: poem.banter_uuid
                                                 .map(|uuid|Uuid::from_str(&uuid).unwrap()),
-                                            idx: poem.idx
+                                            idx: poem.idx,
+                                            approved: poem.approved
                                         }));
                                 } else {
                                     msg_ctx.dispatch(
@@ -99,6 +100,7 @@ pub fn add_poem() -> Html {
                                 idx: data.add_poem.idx,
                                 banter_uuid: None,
                                 set_uuid,
+                                approved: false
                             }
                         ));
                     msg_context.dispatch(new_green_msg_with_std_duration("Poem Added".into()));
@@ -181,19 +183,14 @@ pub fn delete_poem(props:&PoemProps) -> Html {
         let auth = auth_ctx.clone();
         let poem_uuid = props.uuid;
         use_async::<_,(),String>(async move {
-                match auth.update_poem(
-                    poem_uuid,
-                    None,
-                    None,
-                    Some(true),
-                    None,
-                ).await? {
+                match auth.delete_poem(poem_uuid).await? {
                     GraphQlResp::Data(data) => {
                         edit_poem_list_ctx.dispatch(EditPoemListAction::DeletePoemData(
                             edit_poem_list_ctx.find_by_poem_uuid(poem_uuid).unwrap()
                         ));
                         msg_ctx.dispatch(
-                            new_green_msg_with_std_duration(data.update_poem)
+                            new_green_msg_with_std_duration(
+                                data.delete_poem)
                         );
                     },
                     GraphQlResp::Err(errors) => {
@@ -216,20 +213,38 @@ pub fn delete_poem(props:&PoemProps) -> Html {
 pub fn approve_poem(props:&PoemProps) -> Html {
     let msg_ctx = use_context::<MsgContext>().unwrap();
     let auth_ctx = use_context::<AuthContext>().unwrap();
+    let poem_ctx = use_context::<EditPoemListContext>().unwrap();
+    let set_uuid = use_context::<EditSetContext>()
+        .unwrap()
+        .editable_set
+        .as_ref()
+        .unwrap()
+        .set_uuid;
+    let approve_state = use_state(||true);
+    if use_is_first_mount() {
+        // Set state to opposite of data so when we update to state we switch data.
+        approve_state.set(
+        !poem_ctx.find_by_poem_uuid(props.uuid).unwrap().approved
+        );
+    }
     let approve = {
         let auth = auth_ctx.clone();
-        let uuid = props.uuid;
+        let poem_uuid = props.uuid;
+        let approve_state = approve_state.clone();
+        let poem_ctx = poem_ctx.clone();
         use_async::<_,(),String>(async move {
-                match auth.update_poem(
-                    uuid,
-                    None,
-                    None,
-                    None,
-                    Some(true),
+                match auth.set_approve_poem(
+                    poem_uuid,set_uuid,*approve_state
+
                 ).await? {
                     GraphQlResp::Data(data) => {
+                        let poem_data = poem_ctx.find_by_poem_uuid(poem_uuid).unwrap();
+                        poem_ctx.dispatch(EditPoemListAction::UpdatePoemData(PoemData{
+                            approved:*approve_state,..poem_data
+                        }));
+                        approve_state.set(!*approve_state);
                         msg_ctx.dispatch(
-                            new_green_msg_with_std_duration(data.update_poem)
+                            new_green_msg_with_std_duration(data.set_approve_poem)
                         );
                     },
                     GraphQlResp::Err(errors) => {
@@ -242,8 +257,15 @@ pub fn approve_poem(props:&PoemProps) -> Html {
     let onclick= Callback::from(move|_|{
         approve.run()
     });
+    let msg = {
+        if *approve_state {
+            "Approve Poem"
+        } else {
+            "Un-Approve Poem"
+        }
+    };
     html!{
-        <button {onclick}>{"Approve Poem"}</button>
+        <button {onclick}>{msg}</button>
     }
 }
 #[function_component(UpdatePoemTitle)]
@@ -262,8 +284,6 @@ pub fn update_poem_title(props:&PoemProps) -> Html {
                 poem_uuid,
                 None,
                 Some(title.clone()),
-                None,
-                None,
             ).await? {
                 GraphQlResp::Data(data) => {
                     let poem_data = edit_poem_list_ctx
@@ -514,12 +534,17 @@ pub fn approve_banter(props:&BanterProps) -> Html {
     //TODO include un-approve option
     let msg_ctx = use_context::<MsgContext>().unwrap();
     let auth_ctx = use_context::<AuthContext>().unwrap();
+    let set_uuid = use_context::<EditSetContext>().unwrap()
+        .editable_set
+        .as_ref()
+        .unwrap()
+        .set_uuid;
     let approve = {
         let auth = auth_ctx.clone();
         let banter_uuid = props.banter_uuid.unwrap();
         use_async::<_,(),String>(async move {
             match auth.set_approve_banter(
-                banter_uuid,true
+                banter_uuid,set_uuid,true
             ).await? {
                 GraphQlResp::Data(data) => {
                     msg_ctx.dispatch(

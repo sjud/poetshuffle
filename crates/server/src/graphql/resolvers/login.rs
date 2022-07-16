@@ -46,7 +46,7 @@ pub async fn create_login_with_password_and_role(
     }
     .update(db)
     .await?;
-    entity::permissions::ActiveModel {
+    entity::permissions::ActiveModel{
         user_uuid: Set(uuid),
         user_role: Set(user_role),
     }
@@ -167,8 +167,11 @@ async fn update_login_with_password_given_lost_password_code(
     let stmt = Statement::from_string(DatabaseBackend::Postgres, query);
     eprintln!("{:?}", stmt);
     match db.query_one(stmt).await? {
-        Some(result) => result.try_get("", "user_uuid").map_err(|err| err.into()),
-        None => Err("Can't find given login entry, with email and lost password code.".into()),
+        Some(result) => result
+            .try_get("", "user_uuid")
+            .map_err(|err| err.into()),
+        None => Err("Can't find given login entry,\
+         with email and lost password code.".into()),
     }
 }
 
@@ -414,6 +417,9 @@ impl LoginMutation {
         Ok("You may now login with your new password.".into())
     }
 }
+
+
+
 /*
 #[cfg(test)]
 mod test {

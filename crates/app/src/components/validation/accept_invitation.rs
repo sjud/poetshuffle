@@ -1,13 +1,10 @@
-use crate::queries::{accept_invitation_mutation, AcceptInvitationMutation};
-use crate::services::network::post_graphql;
-use crate::services::utility::map_graphql_errors_to_string;
+use super::*;
+
 use crate::styles::{form_css, form_elem};
 use crate::types::msg_context::{
     green_msg, new_red_msg_with_std_duration, MsgContext,
 };
-use uuid::Uuid;
 use web_sys::HtmlInputElement;
-use yew::prelude::*;
 use yew_hooks::{use_async, use_is_first_mount};
 
 #[derive(Properties, PartialEq)]

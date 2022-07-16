@@ -97,7 +97,6 @@ impl SetsQuery {
         let db = ctx.data::<DatabaseConnection>().unwrap();
         Ok(Sets::find()
             .filter(sets::Column::OriginatorUuid.eq(user_uuid))
-            .filter(sets::Column::IsDeleted.eq(false))
             .filter(sets::Column::SetStatus.eq(SetStatus::Pending))
             .one(db)
             .await?)

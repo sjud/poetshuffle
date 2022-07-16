@@ -1,0 +1,12 @@
+type Mutation {
+    setApproveBanter(banterUuid:ID!,setUuid:ID!,approve:Boolean!): String!
+    addBanter(poemUuid:ID!) : Banter!
+    deleteBanter(poemUuid:ID!, banterUuid:ID!) : String!
+}
+type Banter {
+    banterUuid: ID!
+    poemUuid: ID!
+    originatorUuid: ID!
+    creationTs: Int!
+    approved: Boolean!
+}

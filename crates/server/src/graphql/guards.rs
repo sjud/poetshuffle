@@ -191,11 +191,12 @@ impl Guard for IsOriginator {
             .ok_or(Error::new("Can't find permission."))?
             .user_uuid;
         let is_originator = match self.orig_cat{
-            OriginationCategory::Set =>  entity::poems::Entity::find()
-                .filter(entity::poems::Column::PoemUuid.eq(
+            OriginationCategory::Set =>
+                entity::sets::Entity::find()
+                .filter(entity::sets::Column::SetUuid.eq(
                     self.item_uuid
                 ))
-                .filter(entity::banters::Column::OriginatorUuid.eq(
+                .filter(entity::sets::Column::OriginatorUuid.eq(
                     user_uuid
                 ))
                 .one(db)
@@ -218,7 +219,7 @@ impl Guard for IsOriginator {
                         self.item_uuid
 
                     ))
-                    .filter(entity::banters::Column::OriginatorUuid.eq(
+                    .filter(entity::poems::Column::OriginatorUuid.eq(
                         user_uuid
                     ))
                     .one(db)

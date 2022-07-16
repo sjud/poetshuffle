@@ -4,5 +4,6 @@ query PoemQuery($poem_uuid: ID!) {
         idx
         banterUuid
         setUuid
+        approved
     }
 }
