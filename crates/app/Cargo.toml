@@ -31,7 +31,7 @@ js-sys = "0.3.57"
 yew = {version = "0.19.3" }
 yew-router = {version = "0.16.0"}
 yew-hooks = "0.1.56"
-web-sys = {version="0.3.57",features=["HtmlElement","HtmlInputElement","HtmlSelectElement","Navigator","HtmlParagraphElement","File","FileList"]}
+web-sys = {version="0.3.57",features=["ReadableStreamDefaultReader","HtmlElement","HtmlInputElement","HtmlSelectElement","Navigator","HtmlParagraphElement","File","FileList"]}
 stylist = {version="0.10.0",features=["yew_integration"]}
 gloo = "0.8.0"
 graphql_client = {version="0.10.0"}
@@ -39,6 +39,6 @@ wasm-logger = "0.2.0"
 wee_alloc = "0.4.5"
 console_error_panic_hook = "0.1.7"
 base64 = "0.13.0"
-
+wasm-streams = "0.2.3"
 [target.'cfg(target_arch = "wasm32")'.dev-dependencies]
 wasm-bindgen-test = "0.3.31"

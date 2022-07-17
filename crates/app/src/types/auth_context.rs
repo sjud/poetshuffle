@@ -96,10 +96,6 @@ impl AuthToken{
         if let Value::Object(map) = serde_json::from_slice(&payload).unwrap() {
             let perm: Permissions =
                 serde_json::from_value(map.get("sub").unwrap().clone()).unwrap();
-            gloo::console::log!(&format!(
-                            "Uuid: {}\n Role: {:?}",
-                            perm.user_uuid, perm.user_role
-                        ));
             return Some(Self {
                 token: Some(token),
                 user_uuid: Some(perm.user_uuid),

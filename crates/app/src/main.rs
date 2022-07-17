@@ -31,7 +31,6 @@ fn main() {
         .with_writer(Mutex::new(WASMConsoleWriter))
         .pretty()
         .init();
-    tracing::error!("main");
     yew::start_app::<App>();
 }
 

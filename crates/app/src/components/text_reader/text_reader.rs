@@ -1,4 +1,8 @@
+use futures::StreamExt;
+use js_sys::Uint8Array;
 use yew_hooks::use_mount;
+use wasm_streams::ReadableStream;
+use wasm_bindgen::{JsCast,UnwrapThrowExt};
 use super::*;
 
 #[function_component(TextReader)]
@@ -15,9 +19,26 @@ pub fn reader() -> Html {
                     Ok(resp) => {
                         if let Some(body) = resp.body() {
                             // body.to_string() -> JsString which impl From<String>
+                            let mut data = Vec::new();
+                            let mut stream = ReadableStream::from_raw(
+                                body
+                                    .dyn_into()
+                                    .unwrap_throw()
+                            ).into_stream();
+                            while let Some(Ok(chunk)) = stream.next().await {
+                                data.push(chunk
+                                    .dyn_into::<Uint8Array>()
+                                    .unwrap_throw()
+                                    .to_vec());
+                            }
                             ts_ctx.dispatch(
                                 TranscriptActions::UpdateText(Some(
-                                    body.to_string().into()
+                                    String::from_utf8(
+                                        data
+                                            .into_iter()
+                                            .flatten()
+                                            .collect()
+                                    ).unwrap()
                                 ))
                             );
                         } else {
