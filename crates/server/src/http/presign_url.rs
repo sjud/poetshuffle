@@ -100,7 +100,7 @@ impl FromRequest<Body> for PathForPresignedUrl {
                 Ok(PathForPresignedUrl(
                     storage_path_relative(table_cat,file_ty,uuid)))
             } else {
-                if auth.can_read_pending_set(&set) {
+                if auth.presign_urls_for_set(&set) {
                     Ok(PathForPresignedUrl(
                         storage_path_relative(table_cat,file_ty,uuid)))
                 } else {

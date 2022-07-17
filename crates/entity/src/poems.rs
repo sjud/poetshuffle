@@ -25,8 +25,8 @@ pub struct Model {
     pub banter_uuid: Option<Uuid>,
     pub title: String,
     pub idx: i32,
-    pub is_approved: bool,
     pub last_edit_ts: Option<DateTimeUtc>,
+    pub approved: bool,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveColumn)]
@@ -38,8 +38,8 @@ pub enum Column {
     BanterUuid,
     Title,
     Idx,
-    IsApproved,
     LastEditTs,
+    Approved,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DerivePrimaryKey)]
@@ -73,8 +73,8 @@ impl ColumnTrait for Column {
             Self::BanterUuid => ColumnType::Uuid.def().null(),
             Self::Title => ColumnType::String(Some(100u32)).def(),
             Self::Idx => ColumnType::Integer.def(),
-            Self::IsApproved => ColumnType::Boolean.def(),
             Self::LastEditTs => ColumnType::Timestamp.def().null(),
+            Self::Approved => ColumnType::Boolean.def(),
         }
     }
 }

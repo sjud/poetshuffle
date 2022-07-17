@@ -21,6 +21,7 @@ mod m20220715_000001_create_set_editors;
 mod m20220715_000002_alter_sets;
 mod m20220715_000003_alter_poems;
 mod m20220715_000004_alter_poems;
+mod m20220716_000001_alter_poems;
 
 pub struct Migrator;
 
@@ -49,6 +50,7 @@ impl MigratorTrait for Migrator {
             Box::new(m20220715_000002_alter_sets::Migration),
             Box::new(m20220715_000003_alter_poems::Migration),
             Box::new(m20220715_000004_alter_poems::Migration),
+            Box::new(m20220716_000001_alter_poems::Migration),
 
 
 

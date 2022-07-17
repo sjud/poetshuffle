@@ -6,3 +6,4 @@ pub mod publish;
 pub mod audio;
 pub mod text_reader;
 pub mod validation;
+pub mod audio_with_reader;

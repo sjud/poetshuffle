@@ -204,7 +204,9 @@ impl FromRequest<Body> for UuidHeader {
         ))
     }
 }
+
 pub struct UuidFromUri(Uuid);
+
 #[async_trait::async_trait]
 impl FromRequest<Body> for UuidFromUri {
     type Rejection = StatusCode;
@@ -244,7 +246,9 @@ impl FromRequest<Body> for TabCatHeader {
         ))
     }
 }
+
 pub struct TableCategoryFromUri(TableCategory);
+
 #[async_trait::async_trait]
 impl FromRequest<Body> for TableCategoryFromUri {
     type Rejection = StatusCode;
@@ -264,6 +268,7 @@ impl FromRequest<Body> for TableCategoryFromUri {
 }
 
 pub struct UploadAuth;
+
 #[async_trait::async_trait]
 impl FromRequest<Body> for UploadAuth{
     type Rejection = StatusCode;
@@ -286,22 +291,23 @@ impl FromRequest<Body> for UploadAuth{
                     .one(db)
                     .await
                     .map_err(|err|handle_http_error(err))? // Map error ? result
-                    .map(|poem|auth.can_edit_poem_v2(&poem)) // if poem exists check auth
+                    .map(|poem|auth.can_upload_poem(&poem)) // if poem exists check auth
                     .ok_or(StatusCode::NOT_FOUND)? // if it's not okay (poem doesn't exist, propagate)
                 ,
-            TableCategory::Intros => auth.can_edit_intro_v2(),
+            TableCategory::Intros => auth.can_upload_intro(),
             TableCategory::Banters =>
                 entity::banters::Entity::find_by_id(uuid)
                     .one(db)
                     .await
                     .map_err(|err| handle_http_error(err))?
-                    .map(|banter| auth.can_edit_banter_v2(&banter))
+                    .map(|banter| auth.can_upload_banter(&banter))
                     .ok_or(StatusCode::NOT_FOUND)?
         };
         result.map_err(|err|handle_http_error(err))?;
         Ok(Self)
     }
 }
+
 
 
 

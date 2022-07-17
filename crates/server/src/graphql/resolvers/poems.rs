@@ -99,7 +99,7 @@ impl PoemMutation {
         let db = ctx.data::<DatabaseConnection>()?;
         ActivePoem {
             poem_uuid:Set(poem_uuid),
-            is_approved: Set(approve),
+            approved: Set(approve),
             ..Default::default()
         }
             .update(db)

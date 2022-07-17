@@ -22,7 +22,6 @@ pub fn update_idx(props:&PoemProps) -> Html {
         let edit_poem_list_ctx = edit_poem_list_ctx.clone();
         let select_ref = select_ref.clone();
         use_async::<_, (), String>(async move {
-            // We only cast value when updated.
             let poem_b_idx = select_ref.cast::<HtmlSelectElement>().unwrap().value();
             let poem_b_idx = i64::from_str(&poem_b_idx)
                 .map_err(|err|format!("{:?}",err))?;

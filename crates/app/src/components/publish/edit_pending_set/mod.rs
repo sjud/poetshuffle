@@ -14,6 +14,7 @@ use crate::types::edit_set_context::{EditableSet, EditSetActions, EditSetContext
 use crate::types::edit_poem_list_context::{EditPoemListContext, EditPoemListData};
 use poem_list::EditPoemList;
 use crate::queries::set::*;
+use crate::components::text_reader::TextReader;
 
 #[function_component(EditPendingSet)]
 pub fn edit_pending_set() -> Html {
@@ -47,13 +48,15 @@ pub fn edit_pending_set() -> Html {
     }
     return html!{<EditPendingSetDecider/>};
 }
+
 #[function_component(EditPendingSetDecider)]
 pub fn edit_pending_set_decider() -> Html {
     let edit_set_ctx = use_context::<EditSetContext>().unwrap();
     let msg_context = use_context::<MsgContext>().unwrap();
     let auth_ctx = use_context::<AuthContext>().unwrap();
     if edit_set_ctx.editable_set.is_some() {
-        let edit_poem_list_ctx = use_reducer(||EditPoemListData::default());
+        let edit_poem_list_ctx =
+            use_reducer(||EditPoemListData::default());
         return html! {
             <ContextProvider<EditPoemListContext> context={edit_poem_list_ctx}>
             <div>

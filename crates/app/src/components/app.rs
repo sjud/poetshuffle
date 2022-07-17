@@ -7,7 +7,7 @@ use crate::types::msg_context::{MsgContext, UserMessageView};
 use crate::types::transcript_context::{TranscriptOptions,TranscriptContext};
 use yew::{context::ContextProvider, prelude::*};
 use yew_router::prelude::*;
-use crate::components::audio::audio_player::AudioPlayer;
+use crate::components::audio_with_reader::AudioWithReader;
 
 pub const MAX_SIZE: u32 = 10_485_760;
 #[function_component(App)]
@@ -32,7 +32,7 @@ pub fn app() -> Html {
                 <div class="footer">
                         <Footer/>
                 </div>
-            <AudioPlayer/>
+            <AudioWithReader/>
             </BrowserRouter>
         </ContextProvider<TranscriptContext>>
         </ContextProvider<MsgContext>>

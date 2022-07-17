@@ -71,33 +71,41 @@ impl FromRequest<Body> for Auth {
         Ok(auth)
     }
 }
+
 impl Auth {
-    pub fn can_edit_set(&self, set: &entity::sets::Model) -> bool {
-        // Can only edit sets that haven't been approved.
-        if !set.is_approved {
+    pub fn can_upload_poem(&self, poem:&entity::poems::Model) -> Result<(),String> {
+        if !poem.approved {
             if let Some(permission) = &self.0 {
-                // If you created the set you can edit the set.
-                set.originator_uuid == permission.user_uuid
+                // If you created the poem you can edit the poem.
+                if poem.originator_uuid == permission.user_uuid {
+                    Ok(())
+                } else {
+                    Err("Unauthorized".into())
+                }
             } else {
-                false
+                Err("Authorization not found.".into())
             }
         } else {
-            false
+            Err("Poem has already been approved and can't be edited.".into())
         }
     }
-    pub fn can_edit_banter(&self, banter: &entity::banters::Model) -> bool {
-        if !banter.approved {
+    pub fn can_upload_banter(&self, item:&entity::banters::Model) -> Result<(),String> {
+        if !item.approved {
             if let Some(permission) = &self.0 {
-                // If you created the set you can edit the set.
-                banter.originator_uuid == permission.user_uuid
+                // If you created the poem you can edit the poem.
+                if item.originator_uuid == permission.user_uuid {
+                    Ok(())
+                } else {
+                    Err("Unauthorized".into())
+                }
             } else {
-                false
+                Err("Authorization not found.".into())
             }
         } else {
-            false
+            Err("Banter has already been approved and can't be edited.".into())
         }
     }
-    pub fn can_edit_intro_v2(&self) -> Result<(),String> {
+    pub fn can_upload_intro(&self) -> Result<(),String> {
         if let Some(permission) = &self.0 {
             if OrdRoles(permission.user_role) >= OrdRoles(UserRole::Moderator) {
                 Ok(())
@@ -108,101 +116,7 @@ impl Auth {
             Err(String::from("Permission not found."))
         }
     }
-    pub fn can_edit_intro(&self) -> bool {
-        if let Some(permission) = &self.0 {
-            OrdRoles(permission.user_role) >= OrdRoles(UserRole::Moderator)
-        } else {
-            false
-        }
-    }
-    pub fn can_edit_banter_v2(&self, item:&entity::banters::Model) -> Result<(),String> {
-            if !item.approved {
-                if let Some(permission) = &self.0 {
-                    // If you created the poem you can edit the poem.
-                    if item.originator_uuid == permission.user_uuid {
-                        Ok(())
-                    } else {
-                        Err("Unauthorized".into())
-                    }
-                } else {
-                    Err("Authorization not found.".into())
-                }
-            } else {
-                Err("Banter has already been approved and can't be edited.".into())
-            }
-    }
-    pub fn can_edit_poem_v2(&self, poem:&entity::poems::Model) -> Result<(),String> {
-        if !poem.is_approved {
-                if let Some(permission) = &self.0 {
-                    // If you created the poem you can edit the poem.
-                    if poem.originator_uuid == permission.user_uuid {
-                        Ok(())
-                    } else {
-                        Err("Unauthorized".into())
-                    }
-                } else {
-                    Err("Authorization not found.".into())
-                }
-            } else {
-                Err("Poem has already been approved and can't be edited.".into())
-            }
-    }
-    pub fn can_edit_poem(&self, poem: &entity::poems::Model) -> bool {
-        if !poem.is_approved {
-            if let Some(permission) = &self.0 {
-                // If you created the poem you can edit the poem.
-                poem.originator_uuid == permission.user_uuid
-            } else {
-                false
-            }
-        } else {
-            false
-        }
-    }
-    /// >= Moderator can approve sets, poems & banter.
-    pub fn can_approve(&self) -> bool {
-        if let Some(permission) = &self.0 {
-            OrdRoles(permission.user_role) >= OrdRoles(UserRole::Moderator)
-        } else {
-            false
-        }
-    }
-    pub fn can_approve_v2(&self) -> Result<bool,&'static str> {
-        if let Some(permission) = &self.0 {
-            if OrdRoles(permission.user_role) >= OrdRoles(UserRole::Moderator){
-                Ok(true)
-            } else {
-                Err("Must be at least moderator to approve.")
-            }
-        } else {
-            Err("Authorization not found.")
-        }
-    }
-
-    pub fn can_issue_promotion(&self, user_role: UserRole) -> bool {
-        if let Some(permission) = &self.0 {
-            // A greater role can issue a promotion to a lesser role.
-            OrdRoles(permission.user_role) > OrdRoles(user_role)
-        } else {
-            // Someone with no permissions can't promote.
-            false
-        }
-    }
-    pub fn can_read_poem(&self, poem: &entity::poems::Model) -> bool {
-        // Everyone can read approved poems
-        if poem.is_approved {
-            true
-        } else {
-            // To read in progress poems you must be the author or a moderator.
-            if let Some(permission) = &self.0 {
-                permission.user_uuid == poem.originator_uuid
-                    || OrdRoles(permission.user_role) >= OrdRoles(UserRole::Moderator)
-            } else {
-                false
-            }
-        }
-    }
-    pub fn can_read_pending_set(&self, set: &entity::sets::Model) -> bool {
+    pub fn presign_urls_for_set(&self, set: &entity::sets::Model) -> bool {
         if let Some(permission) = &self.0 {
             if OrdRoles(permission.user_role) >= OrdRoles(UserRole::Moderator) {
                 true
@@ -211,16 +125,6 @@ impl Auth {
             }
         } else {
             false
-        }
-    }
-
-    pub fn uuid(&self) -> Result<Uuid> {
-        if let Some(permission) = &self.0 {
-            // A greater role can issue a promotion to a lesser role.
-            Ok(permission.user_uuid)
-        } else {
-            // Someone with no permissions can't promote.
-            Err(anyhow::Error::msg("No permission, no uuid."))
         }
     }
 }
